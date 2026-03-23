@@ -26,20 +26,3 @@ urlpatterns = [
     path("api/v1/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("api/v1/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
 ]
-
-# ---------------------------------------------------------------------------
-# Frontend UI Routes
-# ---------------------------------------------------------------------------
-from django.views.generic import TemplateView
-from django.conf import settings
-from django.conf.urls.static import static
-
-urlpatterns += [
-    path("ui/", TemplateView.as_view(template_name="index.html"), name="frontend-ui"),
-    path("", TemplateView.as_view(template_name="index.html")),
-]
-
-# Serve static files in development (css, js in frontend dir)
-if settings.DEBUG:
-    urlpatterns += static("/ui/", document_root=settings.BASE_DIR / "frontend")
-    urlpatterns += static("/", document_root=settings.BASE_DIR / "frontend")
