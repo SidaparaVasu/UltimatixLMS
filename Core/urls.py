@@ -20,6 +20,7 @@ urlpatterns = [
     # App API routes (v1)
     path("api/v1/system/", include("apps.core_system.urls")),
     path("api/v1/auth/", include("apps.auth_security.urls")),
+    path("api/v1/org/", include("apps.org_management.urls")),
 
     # OpenAPI schema + interactive docs
     path("api/v1/schema/", SpectacularAPIView.as_view(), name="schema"),

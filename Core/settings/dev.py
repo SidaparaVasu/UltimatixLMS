@@ -3,6 +3,7 @@ Development settings.
 Usage: DJANGO_SETTINGS_MODULE=Core.settings.dev
 """
 
+import os
 from .base import *  # noqa: F401, F403
 
 # ---------------------------------------------------------------------------
@@ -13,12 +14,32 @@ DEBUG = True
 # ---------------------------------------------------------------------------
 # Database — SQLite for local dev
 # ---------------------------------------------------------------------------
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+
+# Switch DB between SQLite and MySQL
+DB_TYPE = os.getenv("DB_TYPE", "sqlite")
+
+if DB_TYPE == "mysql":
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': os.getenv("DB_NAME"),
+            'USER': os.getenv("DB_USER"),
+            'PASSWORD': os.getenv("DB_PASSWORD"),
+            'HOST': os.getenv("DB_HOST"),
+            'PORT': os.getenv("DB_PORT"),
+            'OPTIONS': {
+                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+                'charset': 'utf8mb4',
+            },
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 # ---------------------------------------------------------------------------
 # CORS (add django-cors-headers in prod)
