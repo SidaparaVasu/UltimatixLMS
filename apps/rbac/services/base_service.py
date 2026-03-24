@@ -1,38 +1,36 @@
-from rest_framework import serializers
-from .models import (
-    PermissionGroupMaster,
-    PermissionMaster,
-    RoleMaster,
-    RolePermissionMaster,
-    UserRoleMaster
-)
+from rest_framework.exceptions import NotFound
 
-class PermissionGroupSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PermissionGroupMaster
-        fields = ["id", "group_name", "group_code", "description", "display_order", "is_active", "created_at", "updated_at"]
-        read_only_fields = ["id", "created_at", "updated_at"]
 
-class PermissionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PermissionMaster
-        fields = ["id", "permission_group", "permission_name", "permission_code", "description", "is_active", "created_at", "updated_at"]
-        read_only_fields = ["id", "created_at", "updated_at"]
+class BaseRBACService:
+    model = None
 
-class RoleMasterSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = RoleMaster
-        fields = ["id", "role_name", "role_code", "description", "is_system_role", "is_active", "created_at", "updated_at"]
-        read_only_fields = ["id", "is_system_role", "created_at", "updated_at"]
+    def get_by_id(self, pk):
+        try:
+            return self.model.objects.get(pk=pk)
+        except self.model.DoesNotExist:
+            raise NotFound(f"{self.model.__name__} with ID {pk} not found.")
 
-class RolePermissionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = RolePermissionMaster
-        fields = ["id", "role", "permission", "created_at"]
-        read_only_fields = ["id", "created_at"]
+    def get_all_active(self):
+        return self.model.objects.filter(is_active=True)
 
-class UserRoleSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UserRoleMaster
-        fields = ["id", "user", "role", "scope_type", "scope_id", "is_active", "created_at", "updated_at"]
-        read_only_fields = ["id", "created_at", "updated_at"]
+    def get_all(self):
+        return self.model.objects.all()
+
+    def create(self, **data):
+        return self.model.objects.create(**data)
+
+    def update(self, pk, partial=False, **data):
+        instance = self.get_by_id(pk)
+        for attr, value in data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+
+    def delete(self, pk, soft_delete=True):
+        instance = self.get_by_id(pk)
+        if soft_delete and hasattr(instance, "is_active"):
+            instance.is_active = False
+            instance.save()
+        else:
+            instance.delete()
+        return True
