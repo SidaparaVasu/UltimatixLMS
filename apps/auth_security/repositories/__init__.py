@@ -1,1 +1,1 @@
-# Repository layer for auth_security — implemented in Phase 5
+# Repository layer for auth_security
