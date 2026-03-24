@@ -1,1 +1,1 @@
-# Service layer for auth_security — implemented in Phase 5
+# Service layer for auth_security
