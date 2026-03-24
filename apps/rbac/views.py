@@ -1,9 +1,25 @@
 from rest_framework import viewsets, status
+from rest_framework.decorators import action
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from common.response import success_response, created_response, error_response
-from .models import PermissionGroupMaster, PermissionMaster
-from .serializers import PermissionGroupSerializer, PermissionSerializer
-from .services import PermissionGroupService, PermissionService
+from .models import (
+    PermissionGroupMaster,
+    PermissionMaster,
+    RoleMaster,
+    RolePermissionMaster
+)
+from .serializers import (
+    PermissionGroupSerializer,
+    PermissionSerializer,
+    RoleMasterSerializer,
+    RolePermissionSerializer
+)
+from .services import (
+    PermissionGroupService,
+    PermissionService,
+    RoleService,
+    RolePermissionService
+)
 
 
 class BaseRBACViewSet(viewsets.ModelViewSet):
@@ -81,3 +97,56 @@ class PermissionMasterViewSet(BaseRBACViewSet):
     serializer_class = PermissionSerializer
     service_class = PermissionService
     model = PermissionMaster
+
+
+class RoleMasterViewSet(BaseRBACViewSet):
+    queryset = RoleMaster.objects.all()
+    serializer_class = RoleMasterSerializer
+    service_class = RoleService
+    model = RoleMaster
+
+    def destroy(self, request, *args, **kwargs):
+        role = self.get_object()
+        if role.is_system_role:
+            return error_response(
+                message="Cannot delete a system-defined role.",
+                status_code=status.HTTP_403_FORBIDDEN
+            )
+        return super().destroy(request, *args, **kwargs)
+
+    @extend_schema(responses={200: RolePermissionSerializer(many=True)})
+    @action(detail=True, methods=["post"], url_path="assign-permissions")
+    def assign_permissions(self, request, pk=None):
+        """
+        Accepts a list of mission_ids and maps them to the role.
+        Replaces current mappings with the provided list.
+        """
+        role = self.get_object()
+        permission_ids = request.data.get("permission_ids", [])
+        
+        # Verify permissions exist
+        permissions = PermissionMaster.objects.filter(id__in=permission_ids)
+        if len(permissions) != len(permission_ids):
+             return error_response(message="One or more permission IDs are invalid.", status_code=status.HTTP_400_BAD_REQUEST)
+
+        # Bulk update strategy: Clear and re-create for simplicity
+        RolePermissionMaster.objects.filter(role=role).delete()
+        mappings = [RolePermissionMaster(role=role, permission=p) for p in permissions]
+        RolePermissionMaster.objects.bulk_create(mappings)
+
+        return success_response(message="Permissions assigned successfully.")
+
+    @action(detail=True, methods=["get"], url_path="permissions")
+    def get_role_permissions(self, request, pk=None):
+        """Returns all permissions currently assigned to this role."""
+        role = self.get_object()
+        mappings = RolePermissionMaster.objects.filter(role=role).select_related("permission")
+        serializer = PermissionSerializer([m.permission for m in mappings], many=True)
+        return success_response(data=serializer.data)
+
+
+class RolePermissionViewSet(BaseRBACViewSet):
+    queryset = RolePermissionMaster.objects.all()
+    serializer_class = RolePermissionSerializer
+    service_class = RolePermissionService
+    model = RolePermissionMaster
