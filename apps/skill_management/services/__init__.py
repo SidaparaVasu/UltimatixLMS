@@ -5,7 +5,9 @@ from ..models import (
     SkillLevelMaster,
     JobRoleSkillRequirement,
     EmployeeSkill,
-    EmployeeSkillHistory
+    EmployeeSkillHistory,
+    EmployeeSkillAssessment,
+    CourseSkillMapping
 )
 from .base_service import BaseSkillService
 
@@ -40,3 +42,11 @@ class EmployeeSkillService(BaseSkillService):
 
 class EmployeeSkillHistoryService(BaseSkillService):
     model = EmployeeSkillHistory
+
+
+class EmployeeSkillAssessmentService(BaseSkillService):
+    model = EmployeeSkillAssessment
+
+
+class CourseSkillMappingService(BaseSkillService):
+    model = CourseSkillMapping

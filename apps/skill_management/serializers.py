@@ -6,7 +6,9 @@ from .models import (
     SkillLevelMaster,
     JobRoleSkillRequirement,
     EmployeeSkill,
-    EmployeeSkillHistory
+    EmployeeSkillHistory,
+    EmployeeSkillAssessment,
+    CourseSkillMapping
 )
 
 
@@ -77,4 +79,23 @@ class EmployeeSkillHistorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EmployeeSkillHistory
+        fields = "__all__"
+
+
+class EmployeeSkillAssessmentSerializer(serializers.ModelSerializer):
+    employee_code = serializers.CharField(source="employee.employee_code", read_only=True)
+    skill_name = serializers.CharField(source="skill.skill_name", read_only=True)
+    result_level_name = serializers.CharField(source="result_level.level_name", read_only=True)
+
+    class Meta:
+        model = EmployeeSkillAssessment
+        fields = "__all__"
+
+
+class CourseSkillMappingSerializer(serializers.ModelSerializer):
+    skill_name = serializers.CharField(source="skill.skill_name", read_only=True)
+    target_level_name = serializers.CharField(source="target_level.level_name", read_only=True)
+
+    class Meta:
+        model = CourseSkillMapping
         fields = "__all__"

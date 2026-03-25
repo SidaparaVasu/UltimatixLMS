@@ -259,3 +259,74 @@ class EmployeeSkillHistory(models.Model):
 
     def __str__(self):
         return f"{self.employee.employee_code} - {self.skill.skill_name} changed on {self.changed_at}"
+
+
+class EmployeeSkillAssessment(models.Model):
+    """
+    Stores results of skill-based assessments for employees.
+    Acts as a foundation hook for the future Assessment Engine.
+    """
+    employee = models.ForeignKey(
+        EmployeeMaster,
+        on_delete=models.CASCADE,
+        related_name="skill_assessments"
+    )
+    skill = models.ForeignKey(
+        SkillMaster,
+        on_delete=models.CASCADE
+    )
+    # Using BigIntegerField temporarily until AssessmentMaster is created
+    assessment_id = models.BigIntegerField(
+        help_text="Reference to future AssessmentMaster ID."
+    )
+    score = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        help_text="Score achieved in the assessment."
+    )
+    result_level = models.ForeignKey(
+        SkillLevelMaster,
+        on_delete=models.PROTECT,
+        help_text="Skill proficiency level awarded based on the score."
+    )
+    assessed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "employee_skill_assessment"
+        verbose_name = "Employee Skill Assessment"
+        verbose_name_plural = "Employee Skill Assessments"
+        ordering = ["-assessed_at"]
+
+    def __str__(self):
+        return f"{self.employee.employee_code} - {self.skill.skill_name} Score: {self.score}"
+
+
+class CourseSkillMapping(models.Model):
+    """
+    Maps courses to skills for targeted learning recommendations.
+    Acts as a foundation hook for the future Course Management module.
+    """
+    # Using BigIntegerField temporarily until CourseMaster is created
+    course_id = models.BigIntegerField(
+        help_text="Reference to future CourseMaster ID."
+    )
+    skill = models.ForeignKey(
+        SkillMaster,
+        on_delete=models.CASCADE,
+        related_name="course_mappings"
+    )
+    target_level = models.ForeignKey(
+        SkillLevelMaster,
+        on_delete=models.PROTECT,
+        help_text="The proficiency level expected after completing this course."
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "course_skill_mapping"
+        unique_together = ["course_id", "skill"]
+        verbose_name = "Course Skill Mapping"
+        verbose_name_plural = "Course Skill Mappings"
+
+    def __str__(self):
+        return f"Course ID {self.course_id} targets {self.skill.skill_name} ({self.target_level.level_name})"

@@ -7,7 +7,9 @@ from .views import (
     SkillLevelViewSet,
     JobRoleSkillRequirementViewSet,
     EmployeeSkillViewSet,
-    EmployeeSkillHistoryViewSet
+    EmployeeSkillHistoryViewSet,
+    EmployeeSkillAssessmentViewSet,
+    CourseSkillMappingViewSet
 )
 
 router = DefaultRouter()
@@ -18,6 +20,8 @@ router.register("skill-levels", SkillLevelViewSet, basename="skill-levels")
 router.register("role-requirements", JobRoleSkillRequirementViewSet, basename="role-requirements")
 router.register("employee-skills", EmployeeSkillViewSet, basename="employee-skills")
 router.register("employee-skill-history", EmployeeSkillHistoryViewSet, basename="employee-skill-history")
+router.register("skill-assessments", EmployeeSkillAssessmentViewSet, basename="skill-assessments")
+router.register("course-skill-mappings", CourseSkillMappingViewSet, basename="course-skill-mappings")
 
 urlpatterns = [
     path("", include(router.urls)),

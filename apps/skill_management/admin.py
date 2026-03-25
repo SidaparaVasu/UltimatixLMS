@@ -6,7 +6,9 @@ from .models import (
     SkillLevelMaster,
     JobRoleSkillRequirement,
     EmployeeSkill,
-    EmployeeSkillHistory
+    EmployeeSkillHistory,
+    EmployeeSkillAssessment,
+    CourseSkillMapping
 )
 
 
@@ -60,3 +62,17 @@ class EmployeeSkillHistoryAdmin(admin.ModelAdmin):
     search_fields = ("employee__employee_code", "skill__skill_name")
     list_filter = ("skill", "changed_at")
     readonly_fields = ("employee", "skill", "old_level", "new_level", "changed_at", "remarks")
+
+
+@admin.register(EmployeeSkillAssessment)
+class EmployeeSkillAssessmentAdmin(admin.ModelAdmin):
+    list_display = ("employee", "skill", "score", "result_level", "assessed_at")
+    search_fields = ("employee__employee_code", "skill__skill_name")
+    list_filter = ("result_level", "assessed_at")
+
+
+@admin.register(CourseSkillMapping)
+class CourseSkillMappingAdmin(admin.ModelAdmin):
+    list_display = ("course_id", "skill", "target_level", "created_at")
+    search_fields = ("skill__skill_name",)
+    list_filter = ("target_level", "created_at")
