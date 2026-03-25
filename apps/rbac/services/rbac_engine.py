@@ -25,7 +25,7 @@ class RBACEngine:
             }
         }
         """
-        if not user or not user.is_authenticated:
+        if not user or not getattr(user, "is_authenticated", False) or not user.id:
             return {}
 
         cache_key = f"rbac_user_perms_{user.id}"
@@ -101,6 +101,10 @@ class RBACEngine:
         If scope_type and scope_id are provided, it verifies the permission exists within that scope or a higher scope (GLOBAL).
         """
         # Superusers bypass all permission checks
+        # Handle unauthenticated or None users safely
+        if not user or not getattr(user, "is_authenticated", False):
+            return False
+
         if user.is_superuser:
             return True
 
