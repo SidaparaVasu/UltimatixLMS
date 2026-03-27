@@ -2,25 +2,27 @@
   "compilerOptions": {
     "target": "ESNext",
     "lib": ["DOM", "ESNext"],
+    "types": ["vite/client"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
     "strict": true,
-    "baseUrl": "./src",
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["*"],
-      "@/api/*": ["api/*"],
-      "@/components/*": ["components/*"],
-      "@/modules/*": ["modules/*"],
-      "@/pages/*": ["pages/*"],
-      "@/queries/*": ["queries/*"],
-      "@/stores/*": ["stores/*"],
-      "@/hooks/*": ["hooks/*"],
-      "@/layouts/*": ["layouts/*"],
-      "@/routes/*": ["routes/*"],
-      "@/utils/*": ["utils/*"],
-      "@/constants/*": ["constants/*"],
-      "@/types/*": ["types/*"]
+      "@/*": ["src/*"],
+      "@/api/*": ["src/api/*"],
+      "@/components/*": ["src/components/*"],
+      "@/modules/*": ["src/modules/*"],
+      "@/pages/*": ["src/pages/*"],
+      "@/queries/*": ["src/queries/*"],
+      "@/stores/*": ["src/stores/*"],
+      "@/hooks/*": ["src/hooks/*"],
+      "@/layouts/*": ["src/layouts/*"],
+      "@/routes/*": ["src/routes/*"],
+      "@/utils/*": ["src/utils/*"],
+      "@/constants/*": ["src/constants/*"],
+      "@/types/*": ["src/types/*"]
     }
   }
 }
