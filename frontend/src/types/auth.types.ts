@@ -79,6 +79,35 @@ export interface LoginResponse {
   user: User;
 }
 
+export interface RegisterRequest {
+  email: string;
+  username: string;
+  password: string;
+}
+
+export interface RegisterResponse {
+  id: number;
+  email: string;
+  username: string;
+  is_active: boolean;
+  is_email_verified: boolean;
+  created_at: string;
+}
+
+export interface OtpLoginRequest {
+  identifier: string;
+}
+
+export interface OtpLoginConfirmRequest {
+  identifier: string;
+  otp_code: string;
+}
+
+export interface EmailVerifyRequest {
+  email: string;
+  otp_code: string;
+}
+
 export interface ProfileUpdateRequest {
   first_name?: string;
   last_name?: string;

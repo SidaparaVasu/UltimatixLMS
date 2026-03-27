@@ -1,19 +1,9 @@
-/**
- * auth-api.ts
- *
- * Centralized service for all backend auth_security endpoints.
- * Prefixed under: /api/v1/auth/
- *
- * Rules:
- * - All calls go through apiClient (Axios instance).
- * - No business logic here — only HTTP communication.
- * - Returns typed response data extracted from the standard wrapper.
- */
-
 import { apiClient } from './axios-client';
 import type {
   LoginRequest,
   LoginResponse,
+  RegisterRequest,
+  RegisterResponse,
   User,
   ProfileUpdateRequest,
   UserProfile,
@@ -22,6 +12,8 @@ import type {
   PasswordResetConfirmRequest,
   TokenRefreshRequest,
   TokenRefreshResponse,
+  OtpLoginConfirmRequest,
+  EmailVerifyRequest,
 } from '@/types/auth.types';
 
 const AUTH_BASE = '/auth';
@@ -32,8 +24,15 @@ const AUTH_BASE = '/auth';
 
 export const authApi = {
   /**
+   * POST /auth/register/
+   */
+  register: async (payload: RegisterRequest): Promise<RegisterResponse> => {
+    const res = await apiClient.post(`${AUTH_BASE}/register/`, payload);
+    return res.data.data;
+  },
+
+  /**
    * POST /auth/login/
-   * Authenticates user with email/username + password.
    */
   login: async (payload: LoginRequest): Promise<LoginResponse> => {
     const res = await apiClient.post(`${AUTH_BASE}/login/`, payload);
@@ -63,7 +62,6 @@ export const authApi = {
 
   /**
    * POST /auth/login/otp/request/
-   * Sends a login OTP to the user's email/phone.
    */
   requestOtpLogin: async (identifier: string): Promise<void> => {
     await apiClient.post(`${AUTH_BASE}/login/otp/request/`, { identifier });
@@ -71,11 +69,17 @@ export const authApi = {
 
   /**
    * POST /auth/login/otp/confirm/
-   * Confirms OTP-based login and returns tokens.
    */
-  confirmOtpLogin: async (identifier: string, otp_code: string): Promise<LoginResponse> => {
-    const res = await apiClient.post(`${AUTH_BASE}/login/otp/confirm/`, { identifier, otp_code });
+  confirmOtpLogin: async (payload: OtpLoginConfirmRequest): Promise<LoginResponse> => {
+    const res = await apiClient.post(`${AUTH_BASE}/login/otp/confirm/`, payload);
     return res.data.data;
+  },
+
+  /**
+   * POST /auth/otp/verify/  — email verification after registration
+   */
+  verifyEmail: async (payload: EmailVerifyRequest): Promise<void> => {
+    await apiClient.post(`${AUTH_BASE}/otp/verify/`, payload);
   },
 
   // ---------------------------------------------------------------------------

@@ -6,7 +6,10 @@ import { ProtectedRoute } from '@/routes/ProtectedRoute';
 
 // Lazy-loaded pages
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
+const OtpLoginPage = lazy(() => import('@/pages/OtpLoginPage'));
+const RegisterPage = lazy(() => import('@/pages/RegisterPage'));
 const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPasswordPage'));
+const EmailVerificationPage = lazy(() => import('@/pages/EmailVerificationPage'));
 
 // Minimal fallback for lazy loading
 const PageLoader = () => (
@@ -23,7 +26,10 @@ export const AppRoutes = () => {
           {/* Auth Routes */}
           <Route element={<AuthLayout />}>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/login/otp" element={<OtpLoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/verify-email" element={<EmailVerificationPage />} />
           </Route>
 
           {/* Protected Routes */}
