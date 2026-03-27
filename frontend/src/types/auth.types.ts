@@ -106,6 +106,7 @@ export interface OtpLoginConfirmRequest {
 export interface EmailVerifyRequest {
   email: string;
   otp_code: string;
+  purpose: "EMAIL_VERIFICATION";
 }
 
 export interface ProfileUpdateRequest {

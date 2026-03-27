@@ -28,7 +28,7 @@ def custom_exception_handler(exc, context):
         payload = {
             "success": False,
             "message": exc.message,
-            "errors": {},
+            "errors": exc.errors or {},
         }
         if getattr(exc, "code", None):
             payload["code"] = exc.code
@@ -86,16 +86,21 @@ class AppBaseException(Exception):
     default_status = status.HTTP_400_BAD_REQUEST
     default_code = None
 
-    def __init__(self, message=None, status_code=None, code=None):
+    def __init__(self, message=None, status_code=None, code=None, errors=None):
         self.message = message or self.default_message
         self.status_code = status_code or self.default_status
         self.code = code or self.default_code
+        self.errors = errors or {}
         super().__init__(self.message)
 
 class EmailVerificationRequiredException(AppBaseException):
     default_message = "Email verification is required before logging in."
     default_status = status.HTTP_403_FORBIDDEN
     default_code = "VERIFICATION_REQUIRED"
+
+    def __init__(self, email=None):
+        errors = {"email": email} if email else {}
+        super().__init__(errors=errors)
 
 
 class ConfigNotFoundException(AppBaseException):

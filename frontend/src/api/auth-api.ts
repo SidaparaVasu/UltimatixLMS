@@ -146,6 +146,13 @@ export const authApi = {
   },
 
   /**
+   * POST /auth/otp/send/  — generic OTP request
+   */
+  requestOtp: async (email: string, purpose: 'EMAIL_VERIFICATION' | 'LOGIN' | 'PASSWORD_RESET'): Promise<void> => {
+    await apiClient.post(`${AUTH_BASE}/otp/send/`, { email, purpose });
+  },
+
+  /**
    * DELETE /auth/sessions/:id/
    * Revokes a specific session by its ID.
    */

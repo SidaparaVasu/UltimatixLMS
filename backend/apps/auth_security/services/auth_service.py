@@ -223,7 +223,7 @@ class AuthService:
                 OTPService().send_otp(user=user, purpose=OTPPurpose.EMAIL_VERIFICATION)
 
                 # Throw a specialized exception that the frontend can catch
-                raise EmailVerificationRequiredException()
+                raise EmailVerificationRequiredException(email=user.email)
 
         self.lock_service.record_attempt(identifier, ip, AttemptStatus.SUCCESS)
         self.user_repo.update_last_login(user)
