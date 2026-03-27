@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { DashboardLayout } from '@/layouts/DashboardLayout';
 import { AuthLayout } from '@/layouts/AuthLayout';
+import { ProtectedRoute } from '@/routes/ProtectedRoute';
 
 // Lazy-loaded pages
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
@@ -19,25 +20,22 @@ export const AppRoutes = () => {
     <BrowserRouter>
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          {/* ────────────────────────────────────────── */}
-          {/* Auth Routes — no sidebar / header         */}
-          {/* ────────────────────────────────────────── */}
+          {/* Auth Routes */}
           <Route element={<AuthLayout />}>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-            {/* /reset-password → same page as forgot-password */}
           </Route>
 
-          {/* ────────────────────────────────────────── */}
-          {/* Protected Routes — inside DashboardLayout  */}
-          {/* ────────────────────────────────────────── */}
-          <Route element={<DashboardLayout />}>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<div>Dashboard Page Placeholder</div>} />
+          {/* Protected Routes */}
+          <Route element={<ProtectedRoute />}>
+            <Route element={<DashboardLayout />}>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard" element={<div>Dashboard Page Placeholder</div>} />
+            </Route>
           </Route>
 
           {/* 404 fallback */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Suspense>
     </BrowserRouter>
