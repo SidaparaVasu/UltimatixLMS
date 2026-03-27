@@ -1,0 +1,80 @@
+[
+  {
+    "model": "rbac.rolemaster",
+    "pk": 1,
+    "fields": {
+      "role_name": "Super Admin",
+      "role_code": "SUPER_ADMIN",
+      "description": "Full system access with master privileges.",
+      "is_system_role": true,
+      "is_active": true,
+      "created_at": "2026-03-27T10:20:00Z",
+      "updated_at": "2026-03-27T10:20:00Z"
+    }
+  },
+  {
+    "model": "rbac.rolemaster",
+    "pk": 2,
+    "fields": {
+      "role_name": "LMS Admin",
+      "role_code": "LMS_ADMIN",
+      "description": "Administrative access to LMS management and support.",
+      "is_system_role": true,
+      "is_active": true,
+      "created_at": "2026-03-27T10:20:00Z",
+      "updated_at": "2026-03-27T10:20:00Z"
+    }
+  },
+  {
+    "model": "rbac.rolemaster",
+    "pk": 4,
+    "fields": {
+      "role_name": "HR Manager",
+      "role_code": "HR",
+      "description": "Manages employee lifecycle, HR processes, and policies.",
+      "is_system_role": false,
+      "is_active": true,
+      "created_at": "2026-03-27T10:20:00Z",
+      "updated_at": "2026-03-27T10:20:00Z"
+    }
+  },
+  {
+    "model": "rbac.rolemaster",
+    "pk": 5,
+    "fields": {
+      "role_name": "L&D Approver",
+      "role_code": "L&D",
+      "description": "Approves learning and development requests and workflows.",
+      "is_system_role": false,
+      "is_active": true,
+      "created_at": "2026-03-27T10:20:00Z",
+      "updated_at": "2026-03-27T10:20:00Z"
+    }
+  },
+  {
+    "model": "rbac.rolemaster",
+    "pk": 6,
+    "fields": {
+      "role_name": "Trainer",
+      "role_code": "TRAINER",
+      "description": "Responsible for conducting training sessions and managing course delivery.",
+      "is_system_role": false,
+      "is_active": true,
+      "created_at": "2026-03-27T10:20:00Z",
+      "updated_at": "2026-03-27T10:20:00Z"
+    }
+  },
+  {
+    "model": "rbac.rolemaster",
+    "pk": 7,
+    "fields": {
+      "role_name": "Auditor",
+      "role_code": "AUD",
+      "description": "Reviews system activities and ensures compliance and audit readiness.",
+      "is_system_role": false,
+      "is_active": true,
+      "created_at": "2026-03-27T10:20:00Z",
+      "updated_at": "2026-03-27T10:20:00Z"
+    }
+  }
+]
