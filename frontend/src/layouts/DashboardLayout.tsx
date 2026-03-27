@@ -1,5 +1,5 @@
 import { useUIStore } from '@/stores/uiStore';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/cn';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { Outlet } from 'react-router-dom';
