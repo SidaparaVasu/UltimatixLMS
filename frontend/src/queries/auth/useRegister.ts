@@ -9,8 +9,11 @@ export const useRegister = () => {
   return useMutation({
     mutationFn: (payload: RegisterRequest) => authApi.register(payload),
     onSuccess: (_data, variables) => {
-      // After registration, redirect to email verification interstitial
-      // Pass email via state so EmailVerificationPage can display it
+      // Dispatch verification OTP from frontend as per user requirement
+      authApi.requestOtp(variables.email, 'EMAIL_VERIFICATION').catch(() => {
+        // Silent catch for initial dispatch — user can manually resend on verify page if this fails
+      });
+
       navigate('/verify-email', {
         state: { email: variables.email },
         replace: true,

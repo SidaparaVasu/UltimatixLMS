@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LoginForm } from '@/modules/auth/LoginForm';
+import { authApi } from '@/api/auth-api';
 import { useLogin, getLoginError } from '@/queries/auth/useLogin';
 import type { LoginRequest } from '@/types/auth.types';
 
@@ -15,7 +16,11 @@ const LoginPage = () => {
       const axiosError = error as { response?: { data?: { code?: string; errors?: { email?: string } } } };
       if (axiosError?.response?.data?.code === 'VERIFICATION_REQUIRED') {
         const email = axiosError?.response?.data?.errors?.email;
-        navigate('/verify-email', { state: { email }, replace: true });
+        if (email) {
+          // Trigger the initial verification OTP from frontend as required
+          authApi.requestOtp(email, "EMAIL_VERIFICATION").catch(() => {});
+        }
+        navigate("/verify-email", { state: { email }, replace: true });
       }
     }
   }, [error, navigate]);
