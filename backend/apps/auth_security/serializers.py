@@ -37,13 +37,38 @@ class AuthUserProfileSerializer(serializers.ModelSerializer):
 
 
 class AuthUserSerializer(serializers.ModelSerializer):
-    """Read-only user data including profile."""
+    """Read-only user data including profile, roles, and permissions."""
     profile = AuthUserProfileSerializer(read_only=True)
+    roles = serializers.SerializerMethodField()
+    permissions = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ["id", "email", "username", "is_active", "is_email_verified", "email_verified_at", "last_login", "created_at", "profile"]
+        fields = [
+            "id", "email", "username", "is_active", 
+            "is_email_verified", "email_verified_at", 
+            "last_login", "created_at", "profile", 
+            "roles", "permissions"
+        ]
         read_only_fields = fields
+
+    def get_roles(self, obj):
+        """Fetch active roles for the user."""
+        from apps.rbac.models import UserRoleMaster
+        from apps.rbac.serializers import UserRoleSerializer
+        
+        user_roles = UserRoleMaster.objects.filter(
+            user=obj,
+            is_active=True,
+            role__is_active=True
+        ).select_related("role")
+        
+        return UserRoleSerializer(user_roles, many=True).data
+
+    def get_permissions(self, obj):
+        """Fetch aggregated permissions for the user via RBACEngine."""
+        from apps.rbac.services.rbac_engine import RBACEngine
+        return RBACEngine.get_user_permissions(obj)
 
 
 # ---------------------------------------------------------------------------

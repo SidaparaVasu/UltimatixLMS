@@ -32,7 +32,14 @@ class RolePermissionSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at"]
 
 class UserRoleSerializer(serializers.ModelSerializer):
+    role_name = serializers.CharField(source="role.role_name", read_only=True)
+    role_code = serializers.CharField(source="role.role_code", read_only=True)
+
     class Meta:
         model = UserRoleMaster
-        fields = ["id", "user", "role", "scope_type", "scope_id", "is_active", "created_at", "updated_at"]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        fields = [
+            "id", "user", "role", "role_name", "role_code", 
+            "scope_type", "scope_id", "is_active", 
+            "created_at", "updated_at"
+        ]
+        read_only_fields = ["id", "role_name", "role_code", "created_at", "updated_at"]
