@@ -38,7 +38,7 @@
     --shadow-lg:   0 4px 16px rgba(15,22,35,0.11);
 
     --sidebar-w:   240px;
-    --sidebar-collapsed-w: 64px;
+    --sidebar-collapsed-w: 68px;
     --topnav-h:    56px;
 
     --font-display: 'DM Serif Display', Georgia, serif;
@@ -168,7 +168,7 @@
   overflow: hidden;
   flex-shrink: 0;
 }
-.sidebar-logo-mark img {
+.sidebar-logo-mark .sidebar-logo-img  {
   background-size: cover;
   background-position: center;
 }
@@ -348,13 +348,29 @@
   pointer-events: none;
 }
 
-.app-shell.sidebar-collapsed .nav-item-icon {
-  margin: auto;
+.app-shell.sidebar-collapsed .nav-item {
+  justify-content: center;
+  padding: 0 0 0 0;
+  padding-right: 3px;
 }
 
 .app-shell.sidebar-collapsed .nav-item-label,
 .app-shell.sidebar-collapsed .nav-badge {
   display: none;
+}
+
+.app-shell.sidebar-collapsed .sidebar-logo {
+  padding: 0 6px;
+}
+
+.app-shell.sidebar-collapsed .sidebar-logo-mark {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+}
+
+.app-shell.sidebar-collapsed .sidebar-logo-mark .sidebar-logo-img {
+  border-radius: var(--radius-lg);
 }
 
 /* ═══════════════════════════════════════════════

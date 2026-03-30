@@ -57,7 +57,7 @@ export const Sidebar = () => {
           <img 
             src="/assets/images/ultimatix-logo.jpg" 
             alt="Ultimatix Logo" 
-            className="w-full h-full object-cover rounded-[inherit]"
+            className="sidebar-logo-img w-full h-full object-contain rounded-[inherit]"
           />
         </div>
         <span className="sidebar-logo-text">Ultimatix LMS</span>
