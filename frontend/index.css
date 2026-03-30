@@ -1,10 +1,65 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    /* Standard shadcn variables */
+    /* Design Tokens from Dashboard Design */
+    --color-sidebar-bg:           #0F1623;
+    --color-sidebar-active:       #1C2A3A;
+    --color-sidebar-text:         #8FA3B8;
+    --color-sidebar-active-text:  #FFFFFF;
+    --color-canvas:               #F5F4F1;
+    --color-surface:              #FFFFFF;
+    --color-surface-alt:          #EFEEE9;
+    --color-accent:               #E8833A;
+    --color-accent-hover:         #D4722E;
+    --color-accent-subtle:        #FDF1E8;
+    --color-text-primary:         #1A1F2E;
+    --color-text-secondary:       #5C6478;
+    --color-text-muted:           #9AA0AF;
+    --color-success:              #2E8B5E;
+    --color-warning:              #C97B1A;
+    --color-danger:               #C0392B;
+    --color-info:                 #2870B8;
+    --color-border:               #E2E0D8;
+    --color-border-strong:        #C8C5BA;
+
+    --radius-sm:   4px;
+    --radius-md:   6px;
+    --radius-lg:   10px;
+    --radius-xl:   14px;
+    --radius-full: 999px;
+
+    --shadow-sm:   0 1px 3px rgba(15,22,35,0.06);
+    --shadow-md:   0 2px 8px rgba(15,22,35,0.09);
+    --shadow-lg:   0 4px 16px rgba(15,22,35,0.11);
+
+    --sidebar-w:   240px;
+    --sidebar-collapsed-w: 64px;
+    --topnav-h:    56px;
+
+    --font-display: 'DM Serif Display', Georgia, serif;
+    --font-body:    'DM Sans', system-ui, sans-serif;
+    --font-mono:    'JetBrains Mono', monospace;
+
+    /* Spacing System */
+    --space-1: 4px; --space-2: 8px; --space-3: 12px;
+    --space-4: 16px; --space-5: 20px; --space-6: 24px;
+    --space-8: 32px; --space-10: 40px; --space-12: 48px; --space-16: 64px;
+
+    /* Font Sizes */
+    --text-xs:   11px; --text-sm: 13px; --text-base: 15px;
+    --text-md:   17px; --text-lg: 22px; --text-xl: 28px; --text-2xl: 36px;
+
+    /* Shadcn/UI Compatibility Fallbacks */
+    --background: var(--color-canvas);
+    --foreground: var(--color-text-primary);
+    --primary: var(--color-accent);
+    --primary-foreground: #FFFFFF;
+    --border: var(--color-border);
+    --ring: var(--color-accent);
   }
 }
