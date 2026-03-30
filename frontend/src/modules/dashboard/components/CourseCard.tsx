@@ -20,7 +20,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
         <div className="course-cat-stripe" style={{ background: accentColor }} />
       </div>
       <div className="course-body">
-        <div className="course-tag" style={{ background: `${accentColor}15`, color: accentColor }}>
+        <div className="course-tag" style={{ color: accentColor }}>
           {category}
         </div>
         <div className="course-title" title={title}>{title}</div>

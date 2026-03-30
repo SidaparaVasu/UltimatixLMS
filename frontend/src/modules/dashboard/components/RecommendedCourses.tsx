@@ -20,7 +20,7 @@ const RecommendedCard: React.FC<RecommendedCardProps> = ({
     <div className="rec-card">
       <div className="rec-card-bar" style={{ background: accColor }} />
       <div className="rec-card-body">
-        <div className="rec-cat-tag" style={{ background: `${accColor}15`, color: accColor }}>
+        <div className="rec-cat-tag" style={{ color: accColor }}>
           {category}
         </div>
         <div className="rec-title">{title}</div>
