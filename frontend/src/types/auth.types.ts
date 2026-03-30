@@ -115,7 +115,7 @@ export interface ProfileUpdateRequest {
   phone_number?: string;
   profile_image_url?: string;
   date_of_birth?: string;
-  gender?: 'M' | 'F' | 'O';
+  gender?: 'M' | 'F' | 'O' | null;
 }
 
 export interface PasswordChangeRequest {
