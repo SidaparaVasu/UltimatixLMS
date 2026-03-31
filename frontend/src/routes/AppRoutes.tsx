@@ -1,8 +1,9 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { DashboardLayout } from '@/layouts/DashboardLayout';
 import { AuthLayout } from '@/layouts/AuthLayout';
 import { ProtectedRoute } from '@/routes/ProtectedRoute';
+import { useThemeStore } from '@/stores/themeStore';
 
 // Lazy-loaded pages
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
@@ -25,9 +26,20 @@ const PageLoader = () => (
   </div>
 );
 
+// Syncs persisted theme to the HTML element on startup
+const ThemeInitializer = () => {
+  const { colorTheme, mode } = useThemeStore();
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', colorTheme);
+    document.documentElement.setAttribute('data-mode', mode);
+  }, [colorTheme, mode]);
+  return null;
+};
+
 export const AppRoutes = () => {
   return (
     <BrowserRouter>
+      <ThemeInitializer />
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Auth Routes */}

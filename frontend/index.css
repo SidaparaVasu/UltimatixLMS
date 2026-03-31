@@ -5,28 +5,8 @@
 @tailwind utilities;
 
 @layer base {
+  /* ─── Shared non-color tokens (all themes) ─── */
   :root {
-    /* Design Tokens from Dashboard Design */
-    --color-sidebar-bg:           #0F1623;
-    --color-sidebar-active:       #1C2A3A;
-    --color-sidebar-text:         #8FA3B8;
-    --color-sidebar-active-text:  #FFFFFF;
-    --color-canvas:               #F5F4F1;
-    --color-surface:              #FFFFFF;
-    --color-surface-alt:          #EFEEE9;
-    --color-accent:               #E8833A;
-    --color-accent-hover:         #D4722E;
-    --color-accent-subtle:        #FDF1E8;
-    --color-text-primary:         #1A1F2E;
-    --color-text-secondary:       #5C6478;
-    --color-text-muted:           #9AA0AF;
-    --color-success:              #2E8B5E;
-    --color-warning:              #C97B1A;
-    --color-danger:               #C0392B;
-    --color-info:                 #2870B8;
-    --color-border:               #E2E0D8;
-    --color-border-strong:        #C8C5BA;
-
     --radius-sm:   4px;
     --radius-md:   6px;
     --radius-lg:   10px;
@@ -45,16 +25,155 @@
     --font-body:    'DM Sans', system-ui, sans-serif;
     --font-mono:    'JetBrains Mono', monospace;
 
-    /* Spacing System */
     --space-1: 4px; --space-2: 8px; --space-3: 12px;
     --space-4: 16px; --space-5: 20px; --space-6: 24px;
     --space-8: 32px; --space-10: 40px; --space-12: 48px; --space-16: 64px;
 
-    /* Font Sizes */
     --text-xs:   11px; --text-sm: 13px; --text-base: 15px;
     --text-md:   17px; --text-lg: 22px; --text-xl: 28px; --text-2xl: 36px;
+  }
 
-    /* Shadcn/UI Compatibility Fallbacks */
+  /* ════════════════════════════════════════════════════════
+     THEME: ORANGE × LIGHT (default)
+  ════════════════════════════════════════════════════════ */
+  html,
+  html[data-theme="orange"][data-mode="light"] {
+    --color-accent:              #FF6420;
+    --color-accent-hover:        #E8541A;
+    --color-accent-subtle:       #FFF0E8;
+
+    --color-canvas:              #F5F4F1;
+    --color-surface:             #FFFFFF;
+    --color-surface-alt:         #EFEEE9;
+
+    --color-sidebar-bg:          #0F1623;
+    --color-sidebar-active:      #1C2A3A;
+    --color-sidebar-text:        #8FA3B8;
+    --color-sidebar-active-text: #FFFFFF;
+
+    --color-text-primary:        #1A1F2E;
+    --color-text-secondary:      #5C6478;
+    --color-text-muted:          #9AA0AF;
+
+    --color-success:             #1A9E3A;
+    --color-warning:             #D97706;
+    --color-danger:              #DC2626;
+    --color-info:                #2563EB;
+
+    --color-border:              #E2E0D8;
+    --color-border-strong:       #C8C5BA;
+
+    --background: var(--color-canvas);
+    --foreground: var(--color-text-primary);
+    --primary: var(--color-accent);
+    --primary-foreground: #FFFFFF;
+    --border: var(--color-border);
+    --ring: var(--color-accent);
+  }
+
+  /* ════════════════════════════════════════════════════════
+     THEME: ORANGE × DARK
+  ════════════════════════════════════════════════════════ */
+  html[data-theme="orange"][data-mode="dark"] {
+    --color-accent:              #FF6420;
+    --color-accent-hover:        #FF7840;
+    --color-accent-subtle:       #2A1A10;
+
+    --color-canvas:              #0F1117;
+    --color-surface:             #181C25;
+    --color-surface-alt:         #1F2430;
+
+    --color-sidebar-bg:          #0A0D14;
+    --color-sidebar-active:      #1E2535;
+    --color-sidebar-text:        #6A7F96;
+    --color-sidebar-active-text: #FFFFFF;
+
+    --color-text-primary:        #E4E8F0;
+    --color-text-secondary:      #8A92A8;
+    --color-text-muted:          #5A6278;
+
+    --color-success:             #22C55E;
+    --color-warning:             #F59E0B;
+    --color-danger:              #F87171;
+    --color-info:                #60A5FA;
+
+    --color-border:              #252A38;
+    --color-border-strong:       #343B50;
+
+    --background: var(--color-canvas);
+    --foreground: var(--color-text-primary);
+    --primary: var(--color-accent);
+    --primary-foreground: #FFFFFF;
+    --border: var(--color-border);
+    --ring: var(--color-accent);
+  }
+
+  /* ════════════════════════════════════════════════════════
+     THEME: BLUE × LIGHT
+  ════════════════════════════════════════════════════════ */
+  html[data-theme="blue"][data-mode="light"] {
+    --color-accent:              #2563EB;
+    --color-accent-hover:        #1D4FD8;
+    --color-accent-subtle:       #EEF2FF;
+
+    --color-canvas:              #F1F4FB;
+    --color-surface:             #FFFFFF;
+    --color-surface-alt:         #E8EDF8;
+
+    --color-sidebar-bg:          #0F1B3D;
+    --color-sidebar-active:      #1A2F5C;
+    --color-sidebar-text:        #7E9BC0;
+    --color-sidebar-active-text: #FFFFFF;
+
+    --color-text-primary:        #111827;
+    --color-text-secondary:      #4B5563;
+    --color-text-muted:          #9CA3AF;
+
+    --color-success:             #16A34A;
+    --color-warning:             #D97706;
+    --color-danger:              #DC2626;
+    --color-info:                #0EA5E9;
+
+    --color-border:              #D8E0F0;
+    --color-border-strong:       #B8C6E0;
+
+    --background: var(--color-canvas);
+    --foreground: var(--color-text-primary);
+    --primary: var(--color-accent);
+    --primary-foreground: #FFFFFF;
+    --border: var(--color-border);
+    --ring: var(--color-accent);
+  }
+
+  /* ════════════════════════════════════════════════════════
+     THEME: BLUE × DARK
+  ════════════════════════════════════════════════════════ */
+  html[data-theme="blue"][data-mode="dark"] {
+    --color-accent:              #3B82F6;
+    --color-accent-hover:        #60A5FA;
+    --color-accent-subtle:       #0D1A35;
+
+    --color-canvas:              #0D1117;
+    --color-surface:             #161B2A;
+    --color-surface-alt:         #1C2338;
+
+    --color-sidebar-bg:          #080E1F;
+    --color-sidebar-active:      #112044;
+    --color-sidebar-text:        #6080A8;
+    --color-sidebar-active-text: #FFFFFF;
+
+    --color-text-primary:        #E2E8F0;
+    --color-text-secondary:      #8096B8;
+    --color-text-muted:          #546080;
+
+    --color-success:             #34D399;
+    --color-warning:             #FBBF24;
+    --color-danger:              #F87171;
+    --color-info:                #38BDF8;
+
+    --color-border:              #1E2845;
+    --color-border-strong:       #2A3860;
+
     --background: var(--color-canvas);
     --foreground: var(--color-text-primary);
     --primary: var(--color-accent);

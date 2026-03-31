@@ -1,7 +1,8 @@
 import { useUIStore } from '@/stores/uiStore';
 import { useAuthStore } from '@/stores/authStore';
-import { Bell, Menu, Search, Settings } from 'lucide-react';
+import { Bell, Menu, Search } from 'lucide-react';
 import { getFullName, getInitials } from '@/utils/user.utils';
+import { ThemeSwitcher } from '@/components/layout/ThemeSwitcher';
 
 export const Header = () => {
   const { toggleSidebar } = useUIStore();
@@ -36,9 +37,7 @@ export const Header = () => {
           <Bell size={18} />
           <span className="notif-dot"></span>
         </button>
-        <button className="topnav-icon-btn" title="Settings">
-          <Settings size={18} />
-        </button>
+        <ThemeSwitcher />
         <div className="topnav-avatar" title={fullName}>{initials}</div>
       </div>
     </header>
