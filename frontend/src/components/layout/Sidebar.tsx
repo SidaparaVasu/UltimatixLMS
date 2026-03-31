@@ -10,6 +10,8 @@ import {
   Award, 
   Trophy,
   Star,
+  User,
+  ShieldCheck,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { getFullName, getInitials, getPrimaryRoleName } from "@/utils/user.utils";
@@ -41,6 +43,13 @@ export const Sidebar = () => {
       items: [
         { label: "Reports", icon: ChartNoAxesColumn, path: "/reports", badge: null },
         { label: "Leaderboard", icon: Trophy, path: "/leaderboard", badge: null },
+      ]
+    },
+    {
+      title: "Account",
+      items: [
+        { label: "My Profile", icon: User, path: "/profile", badge: null },
+        { label: "Security", icon: ShieldCheck, path: "/security", badge: null },
       ]
     }
   ];

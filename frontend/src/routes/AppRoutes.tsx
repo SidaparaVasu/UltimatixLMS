@@ -12,7 +12,8 @@ const RegisterPage = lazy(() => import('@/pages/RegisterPage'));
 const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPasswordPage'));
 const EmailVerificationPage = lazy(() => import('@/pages/EmailVerificationPage'));
 const DashboardPage = lazy(() => import('@/pages/dashboard/DashboardPage'));
-
+const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
+const SecuritySettingsPage = lazy(() => import('@/pages/SecuritySettingsPage'));
 const ComingSoon = () => (
   <div className="flex items-center justify-center min-h-[60vh]">
     <span className="text-slate-500 font-medium italic">This feature is currently under development and will be available soon.</span>
@@ -56,7 +57,10 @@ export const AppRoutes = () => {
             <Route element={<DashboardLayout />}>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<DashboardPage />} />
-              
+              {/* Settings Routes */}
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/security" element={<SecuritySettingsPage />} />
+
               {/* Coming Soon Routes */}
               <Route path="/courses" element={<ComingSoon />} />
               <Route path="/skills" element={<ComingSoon />} />
