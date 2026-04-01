@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { DashboardLayout } from '@/layouts/DashboardLayout';
 import { AuthLayout } from '@/layouts/AuthLayout';
 import { ProtectedRoute } from '@/routes/ProtectedRoute';
+import { RoleGuard } from '@/routes/RoleGuard';
 import { useThemeStore } from '@/stores/themeStore';
 
 // Lazy-loaded pages
@@ -14,6 +15,7 @@ const EmailVerificationPage = lazy(() => import('@/pages/EmailVerificationPage')
 const DashboardPage = lazy(() => import('@/pages/dashboard/DashboardPage'));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
 const SecuritySettingsPage = lazy(() => import('@/pages/SecuritySettingsPage'));
+const UnauthorizedPage = lazy(() => import('@/pages/UnauthorizedPage'));
 const ComingSoon = () => (
   <div className="flex items-center justify-center min-h-[60vh]">
     <span className="text-slate-500 font-medium italic">This feature is currently under development and will be available soon.</span>
@@ -54,6 +56,15 @@ export const AppRoutes = () => {
 
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
+            
+            <Route path="/unauthorized" element={<UnauthorizedPage />} />
+
+            {/* Admin Routes Namespace (Protected by RoleGuard) */}
+            <Route element={<RoleGuard allowedRoles={['ADMIN', 'SUPER_ADMIN', 'HR', 'LMS_ADMIN']} />}>
+              <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
+              <Route path="/admin/users" element={<ComingSoon />} />
+            </Route>
+
             <Route element={<DashboardLayout />}>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<DashboardPage />} />
