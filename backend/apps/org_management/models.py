@@ -332,6 +332,29 @@ class EmployeeMaster(models.Model):
     def __str__(self):
         return f"Employee<{self.employee_code}>"
 
+    def user_label(self):
+        from apps.auth_security.models import AuthUserProfile 
+        user_profile = AuthUserProfile.objects.get(user=self.user)
+        return f"{user_profile.first_name} {user_profile.last_name}"
+
+    def user_email(self):
+        return f"{self.user.email}"
+
+    def company_label(self):
+        return self.company.company_name
+
+    def business_unit_label(self):
+        return self.business_unit.business_unit_name
+
+    def department_label(self):
+        return self.department.department_name
+
+    def job_role_label(self):
+        return self.job_role.job_role_name
+
+    def location_label(self):
+        return self.location.location_name
+
 
 # ---------------------------------------------------------------------------
 # 7. EmployeeReportingManager

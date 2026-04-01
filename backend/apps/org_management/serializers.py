@@ -48,7 +48,13 @@ class JobRoleMasterSerializer(serializers.ModelSerializer):
 class EmployeeMasterSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmployeeMaster
-        fields = ["id", "user", "employee_code", "company", "business_unit", "department", "job_role", "location", "joining_date", "employment_status", "created_at", "updated_at"]
+        fields = [
+            "id", "user", "employee_code", 
+            "user_label", "user_email",
+            "company", "business_unit", "department", "job_role", "location", 
+            "company_label", "business_unit_label", "department_label", "job_role_label", "location_label",
+            "joining_date", "employment_status", "created_at", "updated_at"
+        ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
 
