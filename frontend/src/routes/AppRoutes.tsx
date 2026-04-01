@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { DashboardLayout } from '@/layouts/DashboardLayout';
+import { AdminLayout } from '@/layouts/AdminLayout';
 import { AuthLayout } from '@/layouts/AuthLayout';
 import { ProtectedRoute } from '@/routes/ProtectedRoute';
 import { RoleGuard } from '@/routes/RoleGuard';
@@ -61,8 +62,13 @@ export const AppRoutes = () => {
 
             {/* Admin Routes Namespace (Protected by RoleGuard) */}
             <Route element={<RoleGuard allowedRoles={['ADMIN', 'SUPER_ADMIN', 'HR', 'LMS_ADMIN']} />}>
-              <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
-              <Route path="/admin/users" element={<ComingSoon />} />
+              <Route element={<AdminLayout />}>
+                <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
+                <Route path="/admin/users" element={<ComingSoon />} />
+                <Route path="/admin/roles" element={<ComingSoon />} />
+                <Route path="/admin/reports" element={<ComingSoon />} />
+                <Route path="/admin/settings" element={<ComingSoon />} />
+              </Route>
             </Route>
 
             <Route element={<DashboardLayout />}>
