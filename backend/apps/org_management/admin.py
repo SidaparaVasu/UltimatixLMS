@@ -48,4 +48,4 @@ class EmployeeMasterAdmin(admin.ModelAdmin):
 class EmployeeReportingManagerAdmin(admin.ModelAdmin):
     list_display = ["id", "employee", "manager", "relationship_type", "created_at"]
     list_filter = ["relationship_type"]
-    search_fields = ["employee__employee_code", "manager__employee_code"]
+    search_fields = ["employee__user_label", "manager__user_label"]

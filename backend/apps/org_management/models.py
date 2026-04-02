@@ -330,7 +330,7 @@ class EmployeeMaster(models.Model):
         ]
 
     def __str__(self):
-        return f"Employee<{self.employee_code}>"
+        return f"{self.user_label()} ({self.employee_code})"
 
     def user_label(self):
         from apps.auth_security.models import AuthUserProfile 
@@ -393,4 +393,4 @@ class EmployeeReportingManager(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.employee.employee_code} -> {self.manager.employee_code} ({self.relationship_type})"
+        return f"{self.employee.user_label()} -> {self.manager.user_label()} ({self.relationship_type})"
