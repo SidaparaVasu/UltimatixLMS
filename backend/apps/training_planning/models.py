@@ -67,7 +67,7 @@ class TrainingPlanItem(models.Model):
     )
     course = models.ForeignKey(
         CourseMaster,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="plan_items",
         null=True,
         blank=True
@@ -177,7 +177,7 @@ class TrainingSession(models.Model):
     """
     course = models.ForeignKey(
         CourseMaster,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="sessions",
         null=True,
         blank=True

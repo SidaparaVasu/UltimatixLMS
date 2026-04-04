@@ -128,7 +128,7 @@ class ComplianceTrainingRequirement(models.Model):
     )
     course = models.ForeignKey(
         CourseMaster,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="compliance_requirements",
         null=True,
         blank=True
@@ -212,7 +212,7 @@ class TrainingNeedCourseRecommendation(models.Model):
     )
     course = models.ForeignKey(
         CourseMaster,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="tni_recommendations",
         null=True,
         blank=True

@@ -1,4 +1,5 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, filters
+from django_filters.rest_framework import DjangoFilterBackend
 from common.response import success_response, created_response, error_response
 from apps.rbac.permissions import HasScopedPermission
 from .models import (
@@ -46,10 +47,23 @@ from .services import (
 class BaseCourseViewSet(viewsets.ModelViewSet):
     """
     Standardizes response logic for Course Management views.
+    Includes Action-Aware Permission Mapping.
     """
     service_class = None
     model = None
     permission_classes = [HasScopedPermission]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+
+    # Permission defaults
+    VIEW_PERMISSION = "COURSE_VIEW"
+    EDIT_PERMISSION = "COURSE_EDIT"
+
+    @property
+    def required_permission(self):
+        """Map DRF actions to permission codes for RBAC evaluation."""
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+             return self.EDIT_PERMISSION
+        return self.VIEW_PERMISSION
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
@@ -97,7 +111,6 @@ class CourseCategoryViewSet(BaseCourseViewSet):
     serializer_class = CourseCategorySerializer
     service_class = CourseCategoryService
     model = CourseCategoryMaster
-    required_permission = "COURSE_CATEGORY_MANAGE"
 
 
 class TagViewSet(BaseCourseViewSet):
@@ -105,7 +118,6 @@ class TagViewSet(BaseCourseViewSet):
     serializer_class = TagSerializer
     service_class = TagService
     model = TagMaster
-    required_permission = "COURSE_TAG_MANAGE"
 
 
 class CourseMasterViewSet(BaseCourseViewSet):
@@ -113,7 +125,8 @@ class CourseMasterViewSet(BaseCourseViewSet):
     serializer_class = CourseMasterSerializer
     service_class = CourseService
     model = CourseMaster
-    required_permission = "COURSE_VIEW"
+    filterset_fields = ["category", "difficulty_level", "is_active"]
+    search_fields = ["course_title", "course_code", "description"]
 
     def get_serializer_class(self):
         if self.action == "retrieve":
@@ -133,7 +146,6 @@ class CourseSectionViewSet(BaseCourseViewSet):
     serializer_class = CourseSectionSerializer
     service_class = CourseSectionService
     model = CourseSection
-    required_permission = "COURSE_EDIT"
 
 
 class CourseLessonViewSet(BaseCourseViewSet):
@@ -141,7 +153,6 @@ class CourseLessonViewSet(BaseCourseViewSet):
     serializer_class = CourseLessonSerializer
     service_class = CourseLessonService
     model = CourseLesson
-    required_permission = "COURSE_EDIT"
 
 
 class CourseContentViewSet(BaseCourseViewSet):
@@ -149,7 +160,6 @@ class CourseContentViewSet(BaseCourseViewSet):
     serializer_class = CourseContentSerializer
     service_class = CourseContentService
     model = CourseContent
-    required_permission = "COURSE_EDIT"
 
 
 class CourseSkillMappingViewSet(BaseCourseViewSet):
@@ -157,7 +167,6 @@ class CourseSkillMappingViewSet(BaseCourseViewSet):
     serializer_class = CourseSkillMappingSerializer
     service_class = CourseSkillMappingService
     model = CourseSkillMapping
-    required_permission = "COURSE_EDIT"
 
 
 class CourseResourceViewSet(BaseCourseViewSet):
@@ -165,7 +174,6 @@ class CourseResourceViewSet(BaseCourseViewSet):
     serializer_class = CourseResourceSerializer
     service_class = CourseResourceService
     model = CourseResource
-    required_permission = "COURSE_EDIT"
 
 
 class CourseDiscussionThreadViewSet(BaseCourseViewSet):
@@ -173,7 +181,8 @@ class CourseDiscussionThreadViewSet(BaseCourseViewSet):
     serializer_class = CourseDiscussionThreadSerializer
     service_class = CourseDiscussionThreadService
     model = CourseDiscussionThread
-    required_permission = "COURSE_FORUM_VIEW"
+    VIEW_PERMISSION = "COURSE_FORUM_VIEW"
+    EDIT_PERMISSION = "COURSE_FORUM_CONTRIBUTE"
 
 
 class CourseDiscussionReplyViewSet(BaseCourseViewSet):
@@ -181,4 +190,5 @@ class CourseDiscussionReplyViewSet(BaseCourseViewSet):
     serializer_class = CourseDiscussionReplySerializer
     service_class = CourseDiscussionReplyService
     model = CourseDiscussionReply
-    required_permission = "COURSE_FORUM_CONTRIBUTE"
+    VIEW_PERMISSION = "COURSE_FORUM_VIEW"
+    EDIT_PERMISSION = "COURSE_FORUM_CONTRIBUTE"
