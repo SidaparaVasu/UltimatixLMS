@@ -50,6 +50,7 @@ LOCAL_APPS = [
     "apps.skill_management",
     "apps.tni_management",
     "apps.training_planning",
+    "apps.course_management",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
