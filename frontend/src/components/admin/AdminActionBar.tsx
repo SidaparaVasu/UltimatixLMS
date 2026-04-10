@@ -35,7 +35,7 @@ export const AdminActionBar = ({
         style={{
           position: 'relative',
           flex: '1 1 260px',
-          maxWidth: '380px',
+          maxWidth: '100%',
         }}
       >
         {/* Search icon */}
@@ -57,12 +57,13 @@ export const AdminActionBar = ({
           placeholder={searchPlaceholder}
           value={searchTerm}
           onChange={e => onSearchChange?.(e.target.value)}
-          className="form-control"
+          className="form-input"
           style={{
             paddingLeft: '34px',
             paddingRight: hasSearch ? '34px' : 'var(--space-4)',
-            height: '36px',
+            height: '40px',
             fontSize: 'var(--text-sm)',
+            width: '100%',
           }}
         />
 

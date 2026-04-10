@@ -9,6 +9,7 @@ import {
   BarChart,
   User,
   ShieldCheck,
+  Building2,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { getFullName, getInitials, getPrimaryRoleName } from "@/utils/user.utils";
@@ -25,6 +26,12 @@ export const AdminSidebar = () => {
         { label: "Dashboard", icon: LayoutDashboard, path: "/admin", badge: null },
         { label: "User Management", icon: Users, path: "/admin/users", badge: null },
         { label: "Roles & Permissions", icon: ShieldAlert, path: "/admin/roles", badge: null },
+      ]
+    },
+    {
+      title: "Organization",
+      items: [
+        { label: "Business Units", icon: Building2, path: "/admin/business-units", badge: null },
       ]
     },
     {

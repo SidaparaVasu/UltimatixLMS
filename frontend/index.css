@@ -204,7 +204,12 @@
   overflow-y: auto;
   overflow-x: hidden;
   height: calc(100vh - var(--topnav-h));
+  width: calc(100vw - var(--sidebar-w));
   background: var(--color-canvas);
+}
+
+.app-shell.sidebar-collapsed .main-content {
+  width: calc(100vw - var(--sidebar-collapsed-w));
 }
 
 /* ═══════════════════════════════════════════════
@@ -232,12 +237,12 @@
 .section-link:hover { color: var(--color-accent-hover); }
 
 .content-inner {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: var(--space-8);
+  max-width: 100%;
+  min-height: 100vh;
+  padding: 0 var(--space-8);
   display: flex;
   flex-direction: column;
-  gap: var(--space-8);
+  padding-top: calc(var(--topnav-h) / 2);
 }
 
 /* ═══════════════════════════════════════════════
@@ -1299,4 +1304,126 @@
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+/* ═══════════════════════════════════════════════
+   MODAL / DIALOG & FORMS
+═══════════════════════════════════════════════ */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(15, 22, 35, 0.6);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+}
 
+.dialog-content {
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.dialog-title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+}
+
+.dialog-desc {
+  margin: 4px 0 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.dialog-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+  flex-shrink: 0;
+}
+.dialog-close-btn:hover {
+  background: var(--color-surface-alt);
+  color: var(--color-text-primary);
+}
+
+.dialog-body {
+  padding: var(--space-6);
+  overflow-y: auto;
+}
+
+.dialog-footer {
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-canvas);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+/* Base Form Items */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: var(--space-5);
+}
+
+.form-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.form-input {
+  height: 40px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  outline: none;
+  transition: border-color 150ms ease;
+  font-family: var(--font-body);
+}
+
+.form-input:focus {
+  border-color: var(--color-accent);
+}
+
+.form-input[disabled] {
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}

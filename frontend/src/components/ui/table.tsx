@@ -452,7 +452,7 @@ const TableActionCell = ({
 }: React.TdHTMLAttributes<HTMLTableCellElement>) => (
   <TableCell
     className={className}
-    style={{ textAlign: 'right', whiteSpace: 'nowrap', ...style }}
+    style={{ textAlign: 'center', whiteSpace: 'nowrap', ...style }}
     {...props}
   >
     <div

@@ -17,6 +17,7 @@ const DashboardPage = lazy(() => import('@/pages/dashboard/DashboardPage'));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
 const SecuritySettingsPage = lazy(() => import('@/pages/SecuritySettingsPage'));
 const UnauthorizedPage = lazy(() => import('@/pages/UnauthorizedPage'));
+const BusinessUnitPage = lazy(() => import('@/pages/admin/masters/BusinessUnitPage'));
 
 // Placeholder for pages that are not yet implemented
 const ComingSoon = () => (
@@ -69,6 +70,7 @@ export const AppRoutes = () => {
                 <Route path="/admin/users" element={<ComingSoon />} />
                 <Route path="/admin/roles" element={<ComingSoon />} />
                 <Route path="/admin/reports" element={<ComingSoon />} />
+                <Route path="/admin/business-units" element={<BusinessUnitPage />} />
                 <Route path="/admin/settings" element={<ComingSoon />} />
               </Route>
             </Route>
