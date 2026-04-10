@@ -91,6 +91,7 @@
     --color-sidebar-text:        var(--secondary-foreground);
     --color-sidebar-active:      var(--sidebar-accent);
     --color-sidebar-active-text: var(--sidebar-primary-foreground);
+    --color-shadow:              oklch(89.897% 0.04917 259.824);
   }
 
   .dark {
@@ -1324,8 +1325,8 @@
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
   width: 100%;
-  max-width: 500px;
-  max-height: 90vh;
+  max-width: 700px;
+  height: 85vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1380,6 +1381,10 @@
 }
 
 .dialog-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
   padding: var(--space-4) var(--space-6);
   border-top: 1px solid var(--color-border);
   background: var(--color-canvas);
@@ -1398,11 +1403,13 @@
 }
 
 .form-label {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-muted);
+  font-size: 14px;
+  text-transform: capitalize;
+  color: var(--accent-foreground);
+}
+
+.input-requied {
+  color: var(--destructive);
 }
 
 .form-input {
@@ -1420,6 +1427,7 @@
 
 .form-input:focus {
   border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-shadow);
 }
 
 .form-input[disabled] {

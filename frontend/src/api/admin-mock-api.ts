@@ -38,6 +38,10 @@ export interface Employee {
   firstName: string; 
   lastName: string; 
   email: string; 
+  mobile_no: string;
+  profile_image: string;
+  date_of_birth: string;
+  gender: string;
   departmentId: string; 
   roleId: string; 
   managerId: string | null; 
