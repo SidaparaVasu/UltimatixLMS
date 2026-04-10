@@ -63,7 +63,7 @@ export const AdminSidebar = () => {
   const roleName = getPrimaryRoleName(user);
 
   return (
-    <aside className="sidebar" style={{ borderRight: '1px solid var(--color-danger)', borderRightColor: 'rgba(220, 38, 38, 0.2)' }}>
+    <aside className="sidebar">
       {/* Sidebar Logo Section */}
       <div className="sidebar-logo">
         <div className="sidebar-logo-mark">
