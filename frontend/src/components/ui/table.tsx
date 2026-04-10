@@ -498,8 +498,8 @@ const iconButtonConfig: Record<
   },
   view: {
     icon:    Eye,
-    color:   'var(--color-info)',
-    hoverBg: 'rgba(37,99,235,0.08)',
+    color:   'var(--color-accent)',
+    hoverBg: 'var(--color-accent-subtle)',
   },
 };
 

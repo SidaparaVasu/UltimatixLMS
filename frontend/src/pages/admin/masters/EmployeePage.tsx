@@ -7,6 +7,7 @@ import { AdminActionBar } from '@/components/admin/AdminActionBar';
 import { AdminFilterChips } from '@/components/admin/AdminFilterChips';
 import { AdminTableSkeleton } from '@/components/admin/AdminTableSkeleton';
 import { Dialog } from '@/components/ui/dialog';
+import { Drawer } from '@/components/ui/drawer';
 import { 
   Table, 
   TableHeader, 
@@ -39,6 +40,8 @@ const EmployeePage: React.FC = () => {
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEmp, setEditingEmp] = useState<Employee | null>(null);
+  const [isViewDrawerOpen, setIsViewDrawerOpen] = useState(false);
+  const [viewingEmp, setViewingEmp] = useState<Employee | null>(null);
 
   // Multi-step form state
   const [currentStep, setCurrentStep] = useState(1);
@@ -394,6 +397,11 @@ const EmployeePage: React.FC = () => {
                   </TableCell>
                   <TableActionCell>
                     <TableIconButton 
+                      variant="view" 
+                      title="View Employee Details" 
+                      onClick={() => { setViewingEmp(emp); setIsViewDrawerOpen(true); }}
+                    />
+                    <TableIconButton 
                       variant="edit" 
                       title="Edit Employee Account" 
                       onClick={() => handleOpenDialog(emp)}
@@ -539,10 +547,9 @@ const EmployeePage: React.FC = () => {
                     style={{ cursor: 'pointer' }}
                   >
                     <option value="" disabled>Select Gender...</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                    <option value="Prefer Not to Say">Prefer Not to Say</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
                   </select>
                 </div>
                 <div className="form-group" style={{ gridColumn: '1 / -1' }}>
@@ -551,11 +558,10 @@ const EmployeePage: React.FC = () => {
                     type="file" 
                     accept="image/*"
                     className="form-input" 
-                    style={{ paddingTop: '8px' }}
+                    style={{ padding: '6px' }}
                     onChange={e => {
-                      // Mock file handler
                       if (e.target.files && e.target.files[0]) {
-                        setFormData({ ...formData, profile_image: e.target.files[0].name });
+                        setFormData({ ...formData, profile_image: e.target.value });
                       }
                     }}
                   />
@@ -595,7 +601,7 @@ const EmployeePage: React.FC = () => {
                     onChange={e => setFormData({ ...formData, businessUnitId: e.target.value })}
                     style={{ cursor: 'pointer' }}
                   >
-                    <option value="" disabled>Select BU...</option>
+                    <option value="" disabled>Select Business Unit...</option>
                     {businessUnits?.map(bu => (
                       <option key={bu.id} value={bu.id}>{bu.name}</option>
                     ))}
@@ -610,8 +616,8 @@ const EmployeePage: React.FC = () => {
                     style={{ cursor: 'pointer' }}
                   >
                     <option value="" disabled>Select Department...</option>
-                    {departments?.map(d => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
+                    {departments?.map(dept => (
+                      <option key={dept.id} value={dept.id}>{dept.name}</option>
                     ))}
                   </select>
                 </div>
@@ -637,9 +643,9 @@ const EmployeePage: React.FC = () => {
                     onChange={e => setFormData({ ...formData, roleId: e.target.value })}
                     style={{ cursor: 'pointer' }}
                   >
-                    <option value="" disabled>Select Role...</option>
-                    {jobRoles?.map(r => (
-                      <option key={r.id} value={r.id}>{r.name}</option>
+                    <option value="" disabled>Select Job Role...</option>
+                    {jobRoles?.map(role => (
+                      <option key={role.id} value={role.id}>{role.name}</option>
                     ))}
                   </select>
                 </div>
@@ -659,23 +665,23 @@ const EmployeePage: React.FC = () => {
           {currentStep === 3 && (
             <div className="anim" style={{ display: 'flex', flexDirection: 'column' }}>
               <h3 style={{ fontSize: '15px', fontWeight: 600, marginBottom: 'var(--space-4)', color: 'var(--color-text-primary)' }}>Assign Reporting Manager</h3>
-              <div className="form-group">
-                <label className="form-label">Reporting Manager</label>
-                <select 
-                  className="form-input" 
-                  value={formData.managerId}
-                  onChange={e => setFormData({ ...formData, managerId: e.target.value })}
-                  style={{ cursor: 'pointer' }}
-                >
+                <div className="form-group">
+                  <label className="form-label">Reporting Manager</label>
+                  <select 
+                    className="form-input" 
+                    value={formData.managerId}
+                    onChange={e => setFormData({ ...formData, managerId: e.target.value })}
+                    style={{ cursor: 'pointer' }}
+                  >
                   <option value="">No Line Manager (Root Node)</option>
-                  {employees?.filter(e => e.id !== editingEmp?.id).map(emp => (
+                    {employees?.filter(e => e.id !== editingEmp?.id).map(emp => (
                     <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName} [{emp.employeeCode}]</option>
-                  ))}
-                </select>
-              </div>
-              
+                    ))}
+                  </select>
+                </div>
+
               <div className="form-group" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-4)', marginTop: 'var(--space-2)' }}>
-                <div>
+                    <div>
                   <label className="form-label" style={{ display: 'block', color: 'var(--color-text-primary)' }}>Account Access Status</label>
                   <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>Revoking active status will immediately suspend login capabilities.</span>
                 </div>
@@ -692,6 +698,118 @@ const EmployeePage: React.FC = () => {
           )}
         </div>
       </Dialog>
+      
+      {/* ── View Employee Drawer ── */}
+      <Drawer
+        open={isViewDrawerOpen}
+        onOpenChange={(op) => {
+          setIsViewDrawerOpen(op);
+          if (!op) setTimeout(() => setViewingEmp(null), 300); // clear after animation
+        }}
+        title="Employee Details"
+        position="right"
+        size="500px"
+      >
+        {viewingEmp && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+            
+            {/* Header info */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', paddingBottom: 'var(--space-4)', borderBottom: '1px solid var(--color-border)' }}>
+              <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'var(--color-surface-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: '24px', fontWeight: 600 }}>
+                {viewingEmp.firstName?.[0] || '?'}{viewingEmp.lastName?.[0] || ''}
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
+                    {viewingEmp.firstName} {viewingEmp.lastName}
+                    <span style={{ 
+                      display: 'inline-block', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 600,
+                      background: viewingEmp.isActive ? '#dcfce7' : '#f1f5f9',
+                      color: viewingEmp.isActive ? '#166534' : '#64748b'
+                    }}>
+                      {viewingEmp.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                </h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: 'var(--color-text-muted)' }}>
+                  {viewingEmp.email}
+                </p>
+              </div>
+            </div>
+
+            {/* Details Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 'var(--space-5)' }}>
+              
+              <div>
+                <h4 style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 700, letterSpacing: '0.05em', marginBottom: 'var(--space-3)' }}>Personal Details</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+                  <div>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>Username</div>
+                    <div style={{ fontSize: '14px', fontWeight: 500 }}>{viewingEmp.username || '-'}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>Mobile No</div>
+                    <div style={{ fontSize: '14px', fontWeight: 500 }}>{(viewingEmp as any).mobile_no || '-'}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>Date of Birth</div>
+                    <div style={{ fontSize: '14px', fontWeight: 500 }}>{(viewingEmp as any).date_of_birth || '-'}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>Gender</div>
+                    <div style={{ fontSize: '14px', fontWeight: 500, textTransform: 'capitalize' }}>{(viewingEmp as any).gender || '-'}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 700, letterSpacing: '0.05em', marginBottom: 'var(--space-3)' }}>Organizational Info</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+                  <div>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>Emp Code</div>
+                    <div style={{ fontSize: '14px', fontWeight: 500 }}>{viewingEmp.employeeCode || '-'}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>Company</div>
+                    <div style={{ fontSize: '14px', fontWeight: 500 }}>Ultimatix Global</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>Business Unit</div>
+                    <div style={{ fontSize: '14px', fontWeight: 500 }}>{getFilterLabel('businessUnit', (viewingEmp as any).businessUnitId)}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>Location</div>
+                    <div style={{ fontSize: '14px', fontWeight: 500 }}>{getFilterLabel('location', (viewingEmp as any).locationId)}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>Department</div>
+                    <div style={{ fontSize: '14px', fontWeight: 500 }}>{getFilterLabel('department', viewingEmp.departmentId)}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>Designation</div>
+                    <div style={{ fontSize: '14px', fontWeight: 500 }}>{getFilterLabel('role', viewingEmp.roleId)}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>Joining Date</div>
+                    <div style={{ fontSize: '14px', fontWeight: 500 }}>{(viewingEmp as any).joiningDate || '-'}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 700, letterSpacing: '0.05em', marginBottom: 'var(--space-3)' }}>Reporting Hierarchy</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+                  <div>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>Reporting Manager</div>
+                    <div style={{ fontSize: '14px', fontWeight: 500 }}>{getManagerName(viewingEmp.managerId)}</div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
+      </Drawer>
     </div>
   );
 };

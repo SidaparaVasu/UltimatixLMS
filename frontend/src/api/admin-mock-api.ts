@@ -34,6 +34,7 @@ export interface JobRole {
 
 export interface Employee { 
   id: string; 
+  username: string;
   employeeCode: string; 
   firstName: string; 
   lastName: string; 
