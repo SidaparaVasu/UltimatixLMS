@@ -18,7 +18,7 @@ const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
 const SecuritySettingsPage = lazy(() => import('@/pages/SecuritySettingsPage'));
 const UnauthorizedPage = lazy(() => import('@/pages/UnauthorizedPage'));
 const BusinessUnitPage = lazy(() => import('@/pages/admin/masters/BusinessUnitPage'));
-
+const DepartmentPage = lazy(() => import('@/pages/admin/masters/DepartmentPage'));
 // Placeholder for pages that are not yet implemented
 const ComingSoon = () => (
   <div className="flex items-center justify-center min-h-[60vh]">
@@ -71,6 +71,7 @@ export const AppRoutes = () => {
                 <Route path="/admin/roles" element={<ComingSoon />} />
                 <Route path="/admin/reports" element={<ComingSoon />} />
                 <Route path="/admin/business-units" element={<BusinessUnitPage />} />
+                <Route path="/admin/departments" element={<DepartmentPage />} />
                 <Route path="/admin/settings" element={<ComingSoon />} />
               </Route>
             </Route>

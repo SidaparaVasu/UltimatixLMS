@@ -10,6 +10,7 @@ import {
   User,
   ShieldCheck,
   Building2,
+  Network,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { getFullName, getInitials, getPrimaryRoleName } from "@/utils/user.utils";
@@ -32,6 +33,7 @@ export const AdminSidebar = () => {
       title: "Organization",
       items: [
         { label: "Business Units", icon: Building2, path: "/admin/business-units", badge: null },
+        { label: "Departments", icon: Network, path: "/admin/departments", badge: null },
       ]
     },
     {
