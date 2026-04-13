@@ -119,7 +119,7 @@ export const InlineAdd: React.FC<InlineAddProps> = ({
             position: 'absolute',
             ...placementStyle,
             width,
-            background: 'var(--color-bg)',
+            background: 'white',
             border: '1px solid var(--color-border)',
             borderRadius: 'var(--radius-md)',
             boxShadow: '0 8px 24px rgba(0,0,0,0.14)',

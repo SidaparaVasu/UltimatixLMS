@@ -77,11 +77,11 @@ export const GridCard: React.FC<GridCardProps> = ({
     style={{
       background: 'var(--color-bg)',
       border: '1px solid var(--color-border)',
-      borderLeft: `3px solid ${accentColor}`,
+      borderLeft: `1px solid var(--color-border)`,
       borderRadius: 'var(--radius-lg)',
       display: 'flex',
       flexDirection: 'column',
-      overflow: 'hidden',
+      // overflow: 'hidden',
       transition: 'box-shadow 150ms',
       ...style,
     }}
@@ -97,6 +97,8 @@ export const GridCard: React.FC<GridCardProps> = ({
         padding: 'var(--space-3) var(--space-4)',
         borderBottom: '1px solid var(--color-border)',
         background: 'var(--color-surface)',
+        borderTopLeftRadius: 'var(--radius-lg)',
+        borderTopRightRadius: 'var(--radius-lg)',
         gap: 'var(--space-2)',
       }}
     >
@@ -104,15 +106,16 @@ export const GridCard: React.FC<GridCardProps> = ({
         <div style={{
           fontSize: '14px', fontWeight: 600,
           color: 'var(--color-text-primary)',
+          display: 'flex', alignItems: 'center', gap: 'var(--space-2)',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>
           {title}
+          {subtitle && (
+            <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '1px' }}>
+              {subtitle}
+            </div>
+          )}
         </div>
-        {subtitle && (
-          <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '1px' }}>
-            {subtitle}
-          </div>
-        )}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexShrink: 0 }}>
@@ -132,6 +135,8 @@ export const GridCard: React.FC<GridCardProps> = ({
         padding: 'var(--space-2) var(--space-4)',
         borderTop: '1px solid var(--color-border)',
         background: 'var(--color-surface)',
+        borderBottomLeftRadius: 'var(--radius-lg)',
+        borderBottomRightRadius: 'var(--radius-lg)'
       }}>
         {footer}
       </div>

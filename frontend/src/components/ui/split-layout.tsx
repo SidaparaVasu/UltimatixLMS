@@ -57,6 +57,9 @@ export const SplitLayout: React.FC<SplitLayoutProps> = ({
         style={{
           width: sidebarWidth,
           flexShrink: 0,
+          overflow: 'auto',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
           ...(stickySection
             ? {
                 position: 'sticky',

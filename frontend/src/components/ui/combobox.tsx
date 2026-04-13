@@ -32,6 +32,8 @@ interface ComboboxProps {
   disabled?: boolean;
   /** Custom class for the container */
   className?: string;
+  /** Called when user hits Enter on the input */
+  onEnter?: () => void;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -62,6 +64,7 @@ export const Combobox: React.FC<ComboboxProps> = ({
   maxItems,
   disabled = false,
   className,
+  onEnter,
 }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -132,7 +135,7 @@ export const Combobox: React.FC<ComboboxProps> = ({
           padding: '4px 8px',
           border: '1px solid var(--color-border)',
           borderRadius: 'var(--radius-md)',
-          background: disabled ? 'var(--color-surface-alt)' : 'var(--color-bg)',
+          background: disabled ? 'var(--color-surface-alt)' : 'white',
           cursor: disabled ? 'not-allowed' : 'text',
           transition: 'border-color 150ms',
           ...(open ? { borderColor: 'var(--color-accent)', outline: '2px solid color-mix(in srgb, var(--color-accent) 20%, transparent)' } : {}),
@@ -147,7 +150,7 @@ export const Combobox: React.FC<ComboboxProps> = ({
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: '4px',
                 padding: '2px 6px 2px 8px', borderRadius: '999px',
-                background: 'color-mix(in srgb, var(--color-accent) 12%, transparent)',
+                // background: 'color-mix(in srgb, var(--color-accent) 12%, transparent)',
                 border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)',
                 color: 'var(--color-accent)', fontSize: '12px', fontWeight: 500,
                 lineHeight: 1.5, maxWidth: '180px',
@@ -175,6 +178,12 @@ export const Combobox: React.FC<ComboboxProps> = ({
             value={query}
             onChange={e => { setQuery(e.target.value); setOpen(true); }}
             onFocus={() => setOpen(true)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && onEnter) {
+                e.preventDefault();
+                onEnter();
+              }
+            }}
             placeholder={value.length === 0 ? placeholder : ''}
             disabled={disabled}
             style={{
@@ -194,7 +203,7 @@ export const Combobox: React.FC<ComboboxProps> = ({
         <div
           style={{
             position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
-            background: 'var(--color-bg)', border: '1px solid var(--color-border)',
+            background: 'white', border: '1px solid var(--color-border)',
             borderRadius: 'var(--radius-md)', boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
             zIndex: 1000, maxHeight: '240px', overflowY: 'auto',
           }}
