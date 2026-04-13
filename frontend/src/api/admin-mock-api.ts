@@ -42,13 +42,29 @@ export interface Employee {
   mobile_no: string;
   profile_image: string;
   date_of_birth: string;
-  gender: string;
+  gender: 'male' | 'female' | 'other';
   businessUnitId: string;
-  departmentId: string; 
-  roleId: string;
+  departmentId: string;
   locationId: string;
-  managerId: string | null; 
-  isActive: boolean; 
+  roleId: string;
+  managerId: string | null;
+  isActive: boolean;
+}
+
+export interface CourseCategory {
+  id: string;
+  name: string;
+  code: string;
+  description: string;
+  isActive: boolean;
+  courseCount: number;
+}
+
+export interface TrainingPlan {
+  id: string;
+  name: string;
+  description: string;
+  isActive: boolean;
 }
 
 // MOCK DATA (Max 3 items enforced)
@@ -85,6 +101,41 @@ const MOCK_EMPLOYEES: Employee[] = [
 // Reusable fixed delay to simulate network latency cleanly
 const simulateNetwork = () => new Promise(resolve => setTimeout(resolve, 600));
 
+const MOCK_COURSE_CATEGORIES: CourseCategory[] = [
+  { 
+    id: '1', 
+    name: 'Technical Skills', 
+    code: 'CAT-TECH', 
+    description: 'Software development, infrastructure, and engineering principles.', 
+    isActive: true,
+    courseCount: 12
+  },
+  { 
+    id: '2', 
+    name: 'Human Resources', 
+    code: 'CAT-HR', 
+    description: 'Corporate culture, ethics, and leadership training.', 
+    isActive: true,
+    courseCount: 5
+  },
+  { 
+    id: '3', 
+    name: 'Marketing & Sales', 
+    code: 'CAT-MKT', 
+    description: 'Branding, campaign management, and sales techniques.', 
+    isActive: false,
+    courseCount: 8
+  },
+  { 
+    id: '4', 
+    name: 'Healthcare', 
+    code: 'CAT-MED', 
+    description: 'Privacy, medical ethics, and patient care fundamentals.', 
+    isActive: true,
+    courseCount: 3
+  },
+];
+
 export const adminMockApi = {
   getBusinessUnits: async () => { await simulateNetwork(); return [...MOCK_BUS]; },
   getDepartments: async () => { await simulateNetwork(); return [...MOCK_DEPTS]; },
@@ -98,10 +149,20 @@ export const adminMockApi = {
   getSkillMappings: async () => { await simulateNetwork(); return [...MOCK_SKILL_MAPPINGS]; },
   getJobRoleSkills: async () => { await simulateNetwork(); return [...MOCK_JOB_ROLE_SKILLS]; },
   getEmployeeSkills: async () => { await simulateNetwork(); return [...MOCK_EMPLOYEE_SKILLS]; },
+  // Course Categories
+  getCourseCategories: async () => {
+    await simulateNetwork();
+    return [...MOCK_COURSE_CATEGORIES];
+  },
+  saveCourseCategory: async (category: Partial<CourseCategory>) => {
+    await simulateNetwork();
+    console.log('API: Saving Category:', category);
+    return { success: true };
+  },
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   PHASE 2: COMPETENCY & SKILL MANAGEMENT
+   COMPETENCY & SKILL MANAGEMENT
 ═══════════════════════════════════════════════════════════════ */
 
 // ── Interfaces ──
@@ -213,6 +274,7 @@ const MOCK_JOB_ROLE_SKILLS: JobRoleSkillRequirement[] = [
   { id: 'jrs-2', jobRoleId: '1', skillId: 'sk-2', requiredLevelId: 'sl-2' }, // TS - Intermediate
   { id: 'jrs-3', jobRoleId: '1', skillId: 'sk-3', requiredLevelId: 'sl-1' }, // Python - Basic
 ];
+
 
 const MOCK_EMPLOYEE_SKILLS: EmployeeSkillAssessment[] = [
   // Alice (id: '1')

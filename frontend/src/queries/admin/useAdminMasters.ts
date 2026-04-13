@@ -14,6 +14,7 @@ export const ADMIN_QUERY_KEYS = {
   skillMappings: ['admin', 'skill-mappings'],
   jobRoleSkills: ['admin', 'job-role-skills'],
   employeeSkills: ['admin', 'employee-skills'],
+  courseCategories: ['admin', 'course-categories'],
 };
 
 export const useBusinessUnits = () => {
@@ -70,4 +71,7 @@ export const useJobRoleSkills = () =>
 
 export const useEmployeeSkills = () =>
   useQuery({ queryKey: ADMIN_QUERY_KEYS.employeeSkills, queryFn: adminMockApi.getEmployeeSkills });
+
+export const useCourseCategories = () =>
+  useQuery({ queryKey: ADMIN_QUERY_KEYS.courseCategories, queryFn: adminMockApi.getCourseCategories });
 

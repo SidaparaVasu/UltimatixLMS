@@ -15,6 +15,7 @@ import {
   Briefcase,
   Users2,
   Brain,
+  BookOpen,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { getFullName, getInitials, getPrimaryRoleName } from "@/utils/user.utils";
@@ -47,6 +48,12 @@ export const AdminSidebar = () => {
       title: "Skill Management",
       items: [
         { label: "Competency & Skills", icon: Brain, path: "/admin/competency", badge: null },
+      ]
+    },
+    {
+      title: "Course Management",
+      items: [
+        { label: "Course Categories", icon: BookOpen, path: "/admin/course-categories", badge: null },
       ]
     },
     {
