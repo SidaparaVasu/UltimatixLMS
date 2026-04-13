@@ -10,6 +10,7 @@ import {
   Eye,
   RotateCcw,
   CheckCircle,
+  Target,
 } from 'lucide-react';
 
 /* ─────────────────────────────────────────────────────────────
@@ -475,7 +476,7 @@ TableActionCell.displayName = 'TableActionCell';
    Remove = amber circle-x, View = blue eye.
    Each shows a tinted bg square on hover.
 ───────────────────────────────────────────────────────────── */
-type IconButtonVariant = 'edit' | 'delete' | 'remove' | 'view';
+type IconButtonVariant = 'edit' | 'delete' | 'remove' | 'view' | 'map';
 
 const iconButtonConfig: Record<
   IconButtonVariant,
@@ -498,6 +499,11 @@ const iconButtonConfig: Record<
   },
   view: {
     icon:    Eye,
+    color:   'var(--color-accent)',
+    hoverBg: 'var(--color-accent-subtle)',
+  },
+  map: {
+    icon:    Target,
     color:   'var(--color-accent)',
     hoverBg: 'var(--color-accent-subtle)',
   },

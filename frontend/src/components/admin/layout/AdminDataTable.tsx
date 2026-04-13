@@ -79,6 +79,7 @@ type ActionsColumn<T> = BaseColumn<T> & {
   onView?: (row: T) => void;
   onEdit?: (row: T) => void;
   onDelete?: (row: T) => void;
+  onMap?: (row: T) => void;
 };
 
 /** Custom render — full control for one-off cases */
@@ -218,6 +219,9 @@ function renderCell<T extends Record<string, any>>(col: DataTableColumn<T>, row:
           )}
           {col.onEdit && (
             <TableIconButton variant="edit" title="Edit" onClick={() => col.onEdit?.(row)} />
+          )}
+          {col.onMap && (
+            <TableIconButton variant="map" title="Map Skills" onClick={() => col.onMap?.(row)} />
           )}
           {col.onDelete && (
             <TableIconButton variant="delete" title="Delete" onClick={() => col.onDelete?.(row)} />

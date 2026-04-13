@@ -16,6 +16,7 @@ import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
 import { SplitLayout, SidebarCard } from '@/components/ui/split-layout';
 import { GridCard, ResponsiveGrid } from '@/components/ui/grid-card';
 import { Combobox, ComboboxOption } from '@/components/ui/combobox';
+import { SkillTag } from '@/components/ui/skill-tag';
 import { InlineAdd } from '@/components/ui/inline-add';
 import { CheckboxFilterList } from '@/components/ui/checkbox-filter-list';
 import { QuickActionsList, OrderedItemList } from '@/components/ui/quick-actions';
@@ -34,58 +35,6 @@ const ACCENTS = [
   '#ef4444',
   '#06b6d4',
 ];
-
-/* ─────────────────────────────────────────────────────────────
-   SKILL TAG — small pill inside category card
-───────────────────────────────────────────────────────────── */
-const SkillTag: React.FC<{ 
-  name: string; 
-  isSubSkill?: boolean;
-  onRemove?: () => void;
-}> = ({ name, isSubSkill, onRemove }) => (
-  <li
-    style={{
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: '6px',
-      padding: '3px 10px',
-      borderRadius: '999px',
-      fontSize: '12px',
-      fontWeight: 500,
-      background: isSubSkill
-        ? 'var(--color-surface-alt)'
-        : 'color-mix(in srgb, var(--color-accent) 10%, transparent)',
-      border: `1px solid ${isSubSkill ? 'var(--color-border)' : 'color-mix(in srgb, var(--color-accent) 25%, transparent)'}`,
-      color: isSubSkill ? 'var(--color-text-muted)' : 'var(--color-accent)',
-      listStyle: 'none',
-      transition: 'all 150ms',
-    }}
-  >
-    {isSubSkill && <span style={{ opacity: 0.5 }}>↳</span>}
-    <span>{name}</span>
-    {onRemove && (
-      <button
-        onClick={onRemove}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'none',
-          border: 'none',
-          padding: 0,
-          cursor: 'pointer',
-          color: 'inherit',
-          opacity: 0.5,
-          marginLeft: '2px',
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-        onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.5')}
-      >
-        <Plus size={12} style={{ transform: 'rotate(45deg)' }} />
-      </button>
-    )}
-  </li>
-);
 
 /* ─────────────────────────────────────────────────────────────
    SKELETON CARD
