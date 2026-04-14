@@ -9,6 +9,7 @@ import {
   TableStatusBadge,
   TableActionCell,
   TableIconButton,
+  TableStatusToggle,
   TableIdCell,
   TableProfileCell,
 } from '@/components/ui/table';
@@ -80,6 +81,8 @@ type ActionsColumn<T> = BaseColumn<T> & {
   onEdit?: (row: T) => void;
   onDelete?: (row: T) => void;
   onMap?: (row: T) => void;
+  onToggle?: (row: T) => void;
+  getIsActive?: (row: T) => boolean;
 };
 
 /** Custom render — full control for one-off cases */
@@ -119,7 +122,7 @@ export interface PaginationConfig {
 interface AdminDataTableProps<T extends Record<string, any>> {
   columns: DataTableColumn<T>[];
   data: T[] | undefined;
-  rowKey: keyof T;
+  rowKey: keyof T | ((row: T) => string | number);
   isLoading?: boolean;
   error?: unknown;
   emptyMessage?: string;
@@ -225,6 +228,12 @@ function renderCell<T extends Record<string, any>>(col: DataTableColumn<T>, row:
           )}
           {col.onDelete && (
             <TableIconButton variant="delete" title="Delete" onClick={() => col.onDelete?.(row)} />
+          )}
+          {col.onToggle && (
+            <TableStatusToggle
+              isActive={col.getIsActive ? col.getIsActive(row) : !!row.is_active}
+              onToggle={() => col.onToggle?.(row)}
+            />
           )}
         </TableActionCell>
       );
@@ -343,7 +352,7 @@ export function AdminDataTable<T extends Record<string, any>>({
             </TableRow>
           ) : (
             data.map(row => (
-              <TableRow key={String(row[rowKey])}>
+              <TableRow key={typeof rowKey === 'function' ? String(rowKey(row)) : String(row[rowKey])}>
                 {columns.map((col, i) => (
                   <React.Fragment key={i}>
                     {renderCell(col, row)}

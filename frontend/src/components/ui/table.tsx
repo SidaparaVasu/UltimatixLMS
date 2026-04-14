@@ -11,6 +11,8 @@ import {
   RotateCcw,
   CheckCircle,
   Target,
+  ToggleLeft,
+  ToggleRight,
 } from 'lucide-react';
 
 /* ─────────────────────────────────────────────────────────────
@@ -461,7 +463,6 @@ const TableActionCell = ({
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'flex-end',
-        gap: '4px',
       }}
     >
       {children}
@@ -476,7 +477,7 @@ TableActionCell.displayName = 'TableActionCell';
    Remove = amber circle-x, View = blue eye.
    Each shows a tinted bg square on hover.
 ───────────────────────────────────────────────────────────── */
-type IconButtonVariant = 'edit' | 'delete' | 'remove' | 'view' | 'map';
+type IconButtonVariant = 'edit' | 'delete' | 'remove' | 'view' | 'map' | 'toggle_on' | 'toggle_off';
 
 const iconButtonConfig: Record<
   IconButtonVariant,
@@ -504,8 +505,18 @@ const iconButtonConfig: Record<
   },
   map: {
     icon:    Target,
-    color:   'var(--color-accent)',
-    hoverBg: 'var(--color-accent-subtle)',
+    color:   'var(--color-warning)',
+    hoverBg: 'rgba(217,119,6,0.08)',
+  },
+  toggle_on: {
+    icon:    ToggleRight,
+    color:   'var(--color-success)',
+    hoverBg: 'var(--color-success-subtle)',
+  },
+  toggle_off: {
+    icon:    ToggleLeft,
+    color:   'var(--color-text-muted)',
+    hoverBg: 'var(--color-surface-alt)',
   },
 };
 
@@ -674,6 +685,29 @@ interface TableLinkCellProps
   onClick?: () => void;
 }
 
+/* ─────────────────────────────────────────────────────────────
+   HELPER — TableStatusToggle
+   Interactive switch icon for activation/deactivation.
+───────────────────────────────────────────────────────────── */
+interface TableStatusToggleProps {
+  isActive: boolean;
+  onToggle: () => void;
+  title?: string;
+}
+
+const TableStatusToggle = ({
+  isActive,
+  onToggle,
+  title,
+}: TableStatusToggleProps) => (
+  <TableIconButton
+    variant={isActive ? 'toggle_on' : 'toggle_off'}
+    title={title || (isActive ? 'Deactivate' : 'Activate')}
+    onClick={onToggle}
+  />
+);
+TableStatusToggle.displayName = 'TableStatusToggle';
+
 const TableLinkCell = ({
   label,
   onClick,
@@ -731,6 +765,7 @@ export {
   TableActionCell,
   TableIconButton,
   TableActionButton,
+  TableStatusToggle,
   TableLinkCell,
 };
 

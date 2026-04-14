@@ -86,6 +86,7 @@
     --color-border:              var(--border);
     --color-border-strong:       oklch(0.87 0.012 262);
     --color-success:             var(--success);
+    --color-success-subtle:      oklch(0.6117 0.1764 146.31 / 10%);
     --color-warning:             var(--warning);
     --color-danger:              var(--destructive);
     --color-info:                oklch(0.55 0.18 240);

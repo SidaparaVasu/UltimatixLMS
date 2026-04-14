@@ -32,7 +32,7 @@ export const GlobalToast: React.FC = () => {
   };
 
   return (
-    <div className="fixed top-6 right-6 z-[100] flex flex-col gap-3 animate-in fade-in slide-in-from-top-4 duration-300">
+    <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-3 animate-in fade-in slide-in-from-top-4 duration-300">
       <div
         className={cn(
           "min-w-[320px] max-w-md bg-card/80 backdrop-blur-md border border-slate-200/50 rounded-lg shadow-lg border-l-4 p-4 flex gap-3 items-start",
