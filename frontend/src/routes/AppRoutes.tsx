@@ -6,6 +6,7 @@ import { AuthLayout } from '@/layouts/AuthLayout';
 import { ProtectedRoute } from '@/routes/ProtectedRoute';
 import { RoleGuard } from '@/routes/RoleGuard';
 import { useThemeStore } from '@/stores/themeStore';
+import { GlobalToast } from '@/components/layout/GlobalToast';
 
 // Lazy-loaded pages
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
@@ -53,6 +54,7 @@ export const AppRoutes = () => {
   return (
     <BrowserRouter>
       <ThemeInitializer />
+      <GlobalToast />
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Auth Routes */}
