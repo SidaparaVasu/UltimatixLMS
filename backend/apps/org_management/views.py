@@ -34,33 +34,60 @@ from .services import (
 class BaseOrgViewSet(viewsets.ModelViewSet):
     """
     Base viewset for all organization mapping modules.
-    Handles standard CRUD with soft-delete support.
+    Handles standard CRUD with soft-delete support and multi-tenancy.
     """
     service_class = None
+    model = None
 
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        return context
+    def _get_user_company(self):
+        """Helper to get the company associated with the logged-in user."""
+        try:
+            employee = EmployeeMaster.objects.get(user=self.request.user)
+            return employee.company
+        except EmployeeMaster.DoesNotExist:
+            return None
 
-    def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
+    def get_queryset(self):
+        """
+        Filter queryset by the user's company.
+        If the user is not linked to a company, return empty queryset for security.
+        """
+        queryset = super().get_queryset()
+        
+        # If it's the CompanyMasterViewSet, we only show their own company
+        if self.model == CompanyMaster:
+            company = self._get_user_company()
+            return queryset.filter(id=company.id) if company else queryset.none()
 
-        serializer = self.get_serializer(queryset, many=True)
-        return success_response(data=serializer.data)
+        # For JobRole, BusinessUnit, Location (models with direct 'company' FK)
+        if hasattr(self.model, 'company'):
+            company = self._get_user_company()
+            return queryset.filter(company=company) if company else queryset.none()
+        
+        # For Department (linked via BusinessUnit)
+        if self.model == DepartmentMaster:
+            company = self._get_user_company()
+            return queryset.filter(business_unit__company=company) if company else queryset.none()
 
-    def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
-        return success_response(data=serializer.data)
+        return queryset
 
     def create(self, request, *args, **kwargs):
+        company = self._get_user_company()
+        if not company:
+            return error_response(
+                message="User is not associated with any company. Cannot create record.",
+                status_code=status.HTTP_403_FORBIDDEN
+            )
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        instance = self.service_class().create(**serializer.validated_data)
+        
+        # Inject company into validated data for models that have it
+        data = serializer.validated_data
+        if hasattr(self.model, 'company'):
+            data['company'] = company
+            
+        instance = self.service_class().create(**data)
         return created_response(
             message=f"{self.model.__name__} created successfully.",
             data=self.get_serializer(instance).data

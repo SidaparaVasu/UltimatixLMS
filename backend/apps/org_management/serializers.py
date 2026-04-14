@@ -21,7 +21,7 @@ class BusinessUnitMasterSerializer(serializers.ModelSerializer):
     class Meta:
         model = BusinessUnitMaster
         fields = ["id", "company", "business_unit_name", "business_unit_code", "description", "is_active", "created_at", "updated_at"]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = ["id", "company", "created_at", "updated_at"]
 
 
 class DepartmentMasterSerializer(serializers.ModelSerializer):
@@ -35,14 +35,14 @@ class LocationMasterSerializer(serializers.ModelSerializer):
     class Meta:
         model = LocationMaster
         fields = ["id", "company", "location_name", "location_code", "address", "city", "state", "country", "postal_code", "is_active", "created_at", "updated_at"]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = ["id", "company", "created_at", "updated_at"]
 
 
 class JobRoleMasterSerializer(serializers.ModelSerializer):
     class Meta:
         model = JobRoleMaster
-        fields = ["id", "job_role_name", "job_role_code", "description", "is_active", "created_at", "updated_at"]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        fields = ["id", "company", "job_role_name", "job_role_code", "description", "is_active", "created_at", "updated_at"]
+        read_only_fields = ["id", "company", "created_at", "updated_at"]
 
 
 class EmployeeMasterSerializer(serializers.ModelSerializer):

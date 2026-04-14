@@ -229,9 +229,13 @@ class JobRoleMaster(models.Model):
     )
     job_role_code = models.CharField(
         max_length=50,
-        unique=True,
         db_index=True,
         help_text="Unique short code for the designation.",
+    )
+    company = models.ForeignKey(
+        CompanyMaster,
+        on_delete=models.CASCADE,
+        related_name="job_roles",
     )
     description = models.CharField(
         max_length=255,
@@ -249,6 +253,7 @@ class JobRoleMaster(models.Model):
         verbose_name = "Job Role"
         verbose_name_plural = "Job Roles"
         ordering = ["job_role_name"]
+        unique_together = ["job_role_code", "company"]
         indexes = [
             models.Index(fields=["job_role_code"], name="idx_job_role_code"),
         ]
