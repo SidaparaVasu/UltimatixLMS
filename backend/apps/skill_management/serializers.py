@@ -90,4 +90,11 @@ class EmployeeSkillAssessmentSerializer(serializers.ModelSerializer):
         model = EmployeeSkillAssessment
         fields = "__all__"
 
+class SkillRequirementItemSerializer(serializers.Serializer):
+    skill_id = serializers.IntegerField()
+    level_id = serializers.IntegerField()
 
+
+class JobRoleSkillBulkSyncSerializer(serializers.Serializer):
+    job_role_id = serializers.IntegerField()
+    requirements = SkillRequirementItemSerializer(many=True)

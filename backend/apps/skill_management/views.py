@@ -1,4 +1,5 @@
 from rest_framework import viewsets, status
+from rest_framework.decorators import action
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from common.response import success_response, created_response, error_response
 from apps.rbac.permissions import HasScopedPermission
@@ -19,10 +20,11 @@ from .serializers import (
     SkillCategoryMappingSerializer,
     SkillLevelSerializer,
     SkillDetailSerializer,
-    JobRoleSkillRequirementSerializer,
     EmployeeSkillSerializer,
     EmployeeSkillHistorySerializer,
-    EmployeeSkillAssessmentSerializer
+    EmployeeSkillAssessmentSerializer,
+    JobRoleSkillBulkSyncSerializer,
+    JobRoleSkillRequirementSerializer
 )
 from .services import (
     SkillCategoryService,
@@ -143,6 +145,18 @@ class JobRoleSkillRequirementViewSet(BaseSkillViewSet):
     service_class = JobRoleSkillService
     model = JobRoleSkillRequirement
     required_permission = "ROLE_COMPETENCY_MANAGE"
+
+    @action(detail=False, methods=['post'], url_path='bulk-sync')
+    def bulk_sync(self, request):
+        serializer = JobRoleSkillBulkSyncSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        results = self.service_class().bulk_sync_requirements(**serializer.validated_data)
+        
+        return success_response(
+            message="Job role skills updated successfully.",
+            data=self.get_serializer(results, many=True).data
+        )
 
 
 class EmployeeSkillViewSet(BaseSkillViewSet):
