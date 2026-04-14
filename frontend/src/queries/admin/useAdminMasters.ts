@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { adminMockApi } from '@/api/admin-mock-api';
+import { organizationApi } from '@/api/organization-api';
 
 export const ADMIN_QUERY_KEYS = {
   businessUnits: ['admin', 'business-units'],
@@ -7,7 +8,7 @@ export const ADMIN_QUERY_KEYS = {
   locations: ['admin', 'locations'],
   jobRoles: ['admin', 'job-roles'],
   employees: ['admin', 'employees'],
-  // Phase 2: Competency
+
   skillCategories: ['admin', 'skill-categories'],
   skills: ['admin', 'skills'],
   skillLevels: ['admin', 'skill-levels'],
@@ -17,31 +18,31 @@ export const ADMIN_QUERY_KEYS = {
   courseCategories: ['admin', 'course-categories'],
 };
 
-export const useBusinessUnits = () => {
+export const useBusinessUnits = (params?: { page?: number; page_size?: number }) => {
   return useQuery({
-    queryKey: ADMIN_QUERY_KEYS.businessUnits,
-    queryFn: adminMockApi.getBusinessUnits,
+    queryKey: [...ADMIN_QUERY_KEYS.businessUnits, params],
+    queryFn: () => organizationApi.getBusinessUnits(params),
   });
 };
 
-export const useDepartments = () => {
+export const useDepartments = (params?: { page?: number; page_size?: number }) => {
   return useQuery({
-    queryKey: ADMIN_QUERY_KEYS.departments,
-    queryFn: adminMockApi.getDepartments,
+    queryKey: [...ADMIN_QUERY_KEYS.departments, params],
+    queryFn: () => organizationApi.getDepartments(params),
   });
 };
 
-export const useLocations = () => {
+export const useLocations = (params?: { page?: number; page_size?: number }) => {
   return useQuery({
-    queryKey: ADMIN_QUERY_KEYS.locations,
-    queryFn: adminMockApi.getLocations,
+    queryKey: [...ADMIN_QUERY_KEYS.locations, params],
+    queryFn: () => organizationApi.getLocations(params),
   });
 };
 
-export const useJobRoles = () => {
+export const useJobRoles = (params?: { page?: number; page_size?: number }) => {
   return useQuery({
-    queryKey: ADMIN_QUERY_KEYS.jobRoles,
-    queryFn: adminMockApi.getJobRoles,
+    queryKey: [...ADMIN_QUERY_KEYS.jobRoles, params],
+    queryFn: () => organizationApi.getJobRoles(params),
   });
 };
 
@@ -52,7 +53,7 @@ export const useEmployees = () => {
   });
 };
 
-// ── Phase 2: Competency hooks ──
+// ── Competency hooks ──
 
 export const useSkillCategories = () =>
   useQuery({ queryKey: ADMIN_QUERY_KEYS.skillCategories, queryFn: adminMockApi.getSkillCategories });

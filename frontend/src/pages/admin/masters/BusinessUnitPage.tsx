@@ -1,59 +1,99 @@
 import React, { useState } from 'react';
-import { useBusinessUnits } from '@/queries/admin/useAdminMasters';
-import { BusinessUnit } from '@/api/admin-mock-api';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { ToggleLeft, ToggleRight } from 'lucide-react';
+import { useBusinessUnits, ADMIN_QUERY_KEYS } from '@/queries/admin/useAdminMasters';
+import { organizationApi, BusinessUnit } from '@/api/organization-api';
 import { useAdminCRUD } from '@/hooks/admin/useAdminCRUD';
 import { AdminMasterLayout } from '@/components/admin/layout/AdminMasterLayout';
 import { AdminDataTable, DataTableColumn } from '@/components/admin/layout/AdminDataTable';
-import { AdminInput, AdminToggle, DialogFooterActions } from '@/components/admin/form';
+import { AdminInput, DialogFooterActions } from '@/components/admin/form';
 import { Dialog } from '@/components/ui/dialog';
 
 /* ── Form shape ──────────────────────────────────────────────── */
 interface BUForm {
-  name: string;
-  code: string;
+  business_unit_name: string;
+  business_unit_code: string;
   description: string;
-  isActive: boolean;
 }
 
-const EMPTY_FORM: BUForm = { name: '', code: '', description: '', isActive: true };
+const EMPTY_FORM: BUForm = { 
+  business_unit_name: '', 
+  business_unit_code: '', 
+  description: '', 
+};
 
 /* ── Column definitions ──────────────────────────────────────── */
 const buildColumns = (
-  onEdit: (bu: BusinessUnit) => void
+  onEdit: (bu: BusinessUnit) => void,
+  onToggleStatus: (bu: BusinessUnit) => void
 ): DataTableColumn<BusinessUnit>[] => [
-  { type: 'id',     key: 'code',     header: 'Unit Code', width: '130px' },
-  { type: 'text',   key: 'name',     header: 'Business Unit', cellStyle: { fontWeight: 600, color: 'var(--color-text-primary)' } },
-  { type: 'text',   key: 'description', header: 'Description' },
-  { type: 'status', key: 'isActive', header: 'Status', width: '110px' },
-  { type: 'actions', onEdit },
+  { type: 'id',     key: 'business_unit_code', header: 'Unit Code', width: '130px' },
+  { type: 'text',   key: 'business_unit_name', header: 'Business Unit', cellStyle: { fontWeight: 600, color: 'var(--color-text-primary)' } },
+  { type: 'text',   key: 'description',        header: 'Description' },
+  { type: 'status', key: 'is_active',          header: 'Status', width: '110px' },
+  { type: 'actions', onEdit, onToggle: onToggleStatus },
 ];
 
 /* ── Page ────────────────────────────────────────────────────── */
 const BusinessUnitPage: React.FC = () => {
-  const { data: businessUnits, isLoading, error } = useBusinessUnits();
+  const queryClient = useQueryClient();
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+
+  const { data: response, isLoading, error } = useBusinessUnits({ page, page_size: pageSize });
+
+  /* ── Mutations ── */
+  const saveMutation = useMutation({
+    mutationFn: (data: Partial<BusinessUnit>) => 
+      data.id 
+        ? organizationApi.updateBusinessUnit(data.id, data) 
+        : organizationApi.createBusinessUnit(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ADMIN_QUERY_KEYS.businessUnits });
+      crud.closeDialog();
+    },
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: ({ id, is_active }: { id: number; is_active: boolean }) => 
+      organizationApi.updateBusinessUnit(id, { is_active }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ADMIN_QUERY_KEYS.businessUnits });
+    },
+  });
 
   const crud = useAdminCRUD<BusinessUnit, BUForm>({
     emptyForm: EMPTY_FORM,
-    mapToForm: bu => ({ name: bu.name, code: bu.code, description: bu.description, isActive: bu.isActive }),
+    mapToForm: bu => ({ 
+      business_unit_name: bu.business_unit_name, 
+      business_unit_code: bu.business_unit_code, 
+      description: bu.description, 
+    }),
   });
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  /* ── Filtering ── */
-  const filteredData = businessUnits?.filter(bu => {
-    const matchesSearch = (bu.name + bu.code).toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || (statusFilter === 'active') === bu.isActive;
+  /* ── Filtering (Frontend-side on current page) ── */
+  const filteredData = response?.results?.filter(bu => {
+    const matchesSearch = (bu.business_unit_name + bu.business_unit_code).toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || (statusFilter === 'active') === bu.is_active;
     return matchesSearch && matchesStatus;
   });
 
-  /* ── Save handler (replace with useMutation when API is ready) ── */
+  /* ── Handlers ── */
   const handleSave = () => {
-    console.log(crud.editingItem ? 'Update:' : 'Create:', crud.formData);
-    crud.closeDialog();
+    saveMutation.mutate({
+      ...crud.formData,
+      id: crud.editingItem?.id,
+    });
   };
 
-  const isFormValid = !!(crud.formData.name.trim() && crud.formData.code.trim());
+  const handleToggleStatus = (bu: BusinessUnit) => {
+    toggleMutation.mutate({ id: bu.id, is_active: !bu.is_active });
+  };
+
+  const isFormValid = !!(crud.formData.business_unit_name.trim() && crud.formData.business_unit_code.trim());
 
   return (
     <AdminMasterLayout
@@ -66,10 +106,10 @@ const BusinessUnitPage: React.FC = () => {
       ]}
       addLabel="Add Business Unit"
       onAdd={() => crud.openDialog()}
-      searchPlaceholder="Search by name or code..."
+      searchPlaceholder="Search on this page..."
       searchTerm={searchTerm}
       onSearchChange={setSearchTerm}
-      resultCount={filteredData?.length}
+      resultCount={response?.count}
       filterSlot={
         <select
           className="form-input"
@@ -86,12 +126,18 @@ const BusinessUnitPage: React.FC = () => {
       {/* ── Data Table ── */}
       <AdminDataTable<BusinessUnit>
         rowKey="id"
-        columns={buildColumns(crud.openDialog)}
+        columns={buildColumns(crud.openDialog, handleToggleStatus)}
         data={filteredData}
-        isLoading={isLoading}
+        isLoading={isLoading || toggleMutation.isPending}
         error={error}
-        emptyMessage="No business units found."
+        emptyMessage="No business units found on this page."
         skeletonRowCount={4}
+        pagination={{
+          page,
+          pageSize,
+          total: response?.count ?? 0,
+          onPageChange: setPage,
+        }}
       />
 
       {/* ── Add / Edit Dialog ── */}
@@ -107,6 +153,7 @@ const BusinessUnitPage: React.FC = () => {
             isEditing={!!crud.editingItem}
             label="Business Unit"
             isSaveDisabled={!isFormValid}
+            isLoading={saveMutation.isPending}
           />
         }
       >
@@ -114,18 +161,17 @@ const BusinessUnitPage: React.FC = () => {
           <AdminInput
             label="Business Unit Code"
             required
-            value={crud.formData.code}
-            onChange={v => crud.setField('code', v)}
+            value={crud.formData.business_unit_code}
+            onChange={v => crud.setField('business_unit_code', v)}
             placeholder="e.g. BU-ENG"
           />
           <AdminInput
             label="Business Unit Name"
             required
-            value={crud.formData.name}
-            onChange={v => crud.setField('name', v)}
+            value={crud.formData.business_unit_name}
+            onChange={v => crud.setField('business_unit_name', v)}
             placeholder="e.g. Engineering"
           />
-          {/* Textarea for description — AdminInput doesn't cover textarea, use inline */}
           <div className="form-group">
             <label className="form-label">Description</label>
             <textarea
@@ -136,12 +182,6 @@ const BusinessUnitPage: React.FC = () => {
               onChange={e => crud.setField('description', e.target.value)}
             />
           </div>
-          <AdminToggle
-            label="Active Status"
-            hint="Inactive Business Units will be hidden from normal operations."
-            checked={crud.formData.isActive}
-            onChange={v => crud.setField('isActive', v)}
-          />
         </div>
       </Dialog>
     </AdminMasterLayout>
