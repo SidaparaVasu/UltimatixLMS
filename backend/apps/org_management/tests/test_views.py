@@ -368,3 +368,106 @@ class OrgManagementTestCase(APITestCase):
         option_codes = {row["employee_code"] for row in response.data["data"]}
         self.assertEqual(option_codes, {"EMP040"})
         self.assertIn("Active Lead", {row["full_name"] for row in response.data["data"]})
+
+    def test_business_unit_options_return_active_same_company_records_only(self):
+        BusinessUnitMaster.objects.create(
+            company=self.company,
+            business_unit_name="Inactive Unit",
+            business_unit_code="INACT",
+            is_active=False,
+        )
+        BusinessUnitMaster.objects.create(
+            company=self.other_company,
+            business_unit_name="Other Unit",
+            business_unit_code="OTHER",
+        )
+
+        response = self.client.get(reverse("business-units-options"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.data["data"],
+            [{"id": self.business_unit.id, "name": "Technology"}],
+        )
+
+    def test_department_options_support_business_unit_filter_and_scope_company(self):
+        second_business_unit = BusinessUnitMaster.objects.create(
+            company=self.company,
+            business_unit_name="Operations",
+            business_unit_code="OPS",
+        )
+        second_department = DepartmentMaster.objects.create(
+            business_unit=second_business_unit,
+            department_name="Support",
+            department_code="SUP",
+        )
+        DepartmentMaster.objects.create(
+            business_unit=self.business_unit,
+            department_name="Inactive Department",
+            department_code="INACTIVE",
+            is_active=False,
+        )
+        DepartmentMaster.objects.create(
+            business_unit=self.other_business_unit,
+            department_name="Foreign Department",
+            department_code="FRN",
+        )
+
+        response = self.client.get(
+            reverse("departments-options"),
+            data={"business_unit_id": second_business_unit.id},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.data["data"],
+            [{"id": second_department.id, "name": "Support"}],
+        )
+
+    def test_department_options_reject_invalid_business_unit_id(self):
+        response = self.client.get(
+            reverse("departments-options"),
+            data={"business_unit_id": "abc"},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["message"], "business_unit_id must be an integer.")
+
+    def test_location_and_job_role_options_return_active_same_company_records_only(self):
+        LocationMaster.objects.create(
+            company=self.company,
+            location_name="Dormant Office",
+            location_code="DO",
+            is_active=False,
+        )
+        LocationMaster.objects.create(
+            company=self.other_company,
+            location_name="Other Office",
+            location_code="OO",
+        )
+        JobRoleMaster.objects.create(
+            company=self.company,
+            job_role_name="Inactive Role",
+            job_role_code="IROLE",
+            is_active=False,
+        )
+        JobRoleMaster.objects.create(
+            company=self.other_company,
+            job_role_name="Foreign Role",
+            job_role_code="FROLE",
+        )
+
+        location_response = self.client.get(reverse("locations-options"))
+        job_role_response = self.client.get(reverse("job-roles-options"))
+
+        self.assertEqual(location_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            location_response.data["data"],
+            [{"id": self.location.id, "name": "HQ"}],
+        )
+
+        self.assertEqual(job_role_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            job_role_response.data["data"],
+            [{"id": self.role.id, "name": "Developer"}],
+        )

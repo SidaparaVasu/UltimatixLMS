@@ -35,11 +35,29 @@ class BusinessUnitMasterSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "company", "created_at", "updated_at"]
 
 
+class BusinessUnitOptionSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source="business_unit_name", read_only=True)
+
+    class Meta:
+        model = BusinessUnitMaster
+        fields = ["id", "name"]
+        read_only_fields = fields
+
+
 class DepartmentMasterSerializer(serializers.ModelSerializer):
     class Meta:
         model = DepartmentMaster
         fields = ["id", "business_unit", "department_name", "department_code", "description", "parent_department", "is_active", "created_at", "updated_at"]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class DepartmentOptionSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source="department_name", read_only=True)
+
+    class Meta:
+        model = DepartmentMaster
+        fields = ["id", "name"]
+        read_only_fields = fields
 
 
 class LocationMasterSerializer(serializers.ModelSerializer):
@@ -49,11 +67,29 @@ class LocationMasterSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "company", "created_at", "updated_at"]
 
 
+class LocationOptionSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source="location_name", read_only=True)
+
+    class Meta:
+        model = LocationMaster
+        fields = ["id", "name"]
+        read_only_fields = fields
+
+
 class JobRoleMasterSerializer(serializers.ModelSerializer):
     class Meta:
         model = JobRoleMaster
         fields = ["id", "company", "job_role_name", "job_role_code", "description", "is_active", "created_at", "updated_at"]
         read_only_fields = ["id", "company", "created_at", "updated_at"]
+
+
+class JobRoleOptionSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source="job_role_name", read_only=True)
+
+    class Meta:
+        model = JobRoleMaster
+        fields = ["id", "name"]
+        read_only_fields = fields
 
 
 class EmployeeMasterSerializer(serializers.ModelSerializer):

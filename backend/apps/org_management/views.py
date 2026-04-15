@@ -14,9 +14,13 @@ from .models import (
 from .serializers import (
     CompanyMasterSerializer,
     BusinessUnitMasterSerializer,
+    BusinessUnitOptionSerializer,
     DepartmentMasterSerializer,
+    DepartmentOptionSerializer,
     LocationMasterSerializer,
+    LocationOptionSerializer,
     JobRoleMasterSerializer,
+    JobRoleOptionSerializer,
     EmployeeDirectorySerializer,
     EmployeeFullProfileWriteSerializer,
     EmployeeManagerOptionSerializer,
@@ -158,12 +162,59 @@ class BusinessUnitMasterViewSet(BaseOrgViewSet):
     service_class = BusinessUnitService
     model = BusinessUnitMaster
 
+    @action(detail=False, methods=["get"], url_path="options")
+    def options(self, request):
+        company = self._get_user_company()
+        if not company:
+            return success_response(data=[])
+
+        business_units = self.service_class().get_dropdown_options(company=company)
+        serializer = BusinessUnitOptionSerializer(business_units, many=True)
+        return success_response(
+            message="Business unit options retrieved successfully.",
+            data=serializer.data,
+        )
+
 
 class DepartmentMasterViewSet(BaseOrgViewSet):
     queryset = DepartmentMaster.objects.all()
     serializer_class = DepartmentMasterSerializer
     service_class = DepartmentService
     model = DepartmentMaster
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="business_unit_id",
+                type=int,
+                description="Optional business unit filter for department dropdown options.",
+            )
+        ]
+    )
+    @action(detail=False, methods=["get"], url_path="options")
+    def options(self, request):
+        company = self._get_user_company()
+        if not company:
+            return success_response(data=[])
+
+        business_unit_id = request.query_params.get("business_unit_id")
+        try:
+            business_unit_id = int(business_unit_id) if business_unit_id else None
+        except (TypeError, ValueError):
+            return error_response(
+                message="business_unit_id must be an integer.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        departments = self.service_class().get_dropdown_options(
+            company=company,
+            business_unit_id=business_unit_id,
+        )
+        serializer = DepartmentOptionSerializer(departments, many=True)
+        return success_response(
+            message="Department options retrieved successfully.",
+            data=serializer.data,
+        )
 
 
 class LocationMasterViewSet(BaseOrgViewSet):
@@ -172,12 +223,38 @@ class LocationMasterViewSet(BaseOrgViewSet):
     service_class = LocationService
     model = LocationMaster
 
+    @action(detail=False, methods=["get"], url_path="options")
+    def options(self, request):
+        company = self._get_user_company()
+        if not company:
+            return success_response(data=[])
+
+        locations = self.service_class().get_dropdown_options(company=company)
+        serializer = LocationOptionSerializer(locations, many=True)
+        return success_response(
+            message="Location options retrieved successfully.",
+            data=serializer.data,
+        )
+
 
 class JobRoleMasterViewSet(BaseOrgViewSet):
     queryset = JobRoleMaster.objects.all()
     serializer_class = JobRoleMasterSerializer
     service_class = JobRoleService
     model = JobRoleMaster
+
+    @action(detail=False, methods=["get"], url_path="options")
+    def options(self, request):
+        company = self._get_user_company()
+        if not company:
+            return success_response(data=[])
+
+        job_roles = self.service_class().get_dropdown_options(company=company)
+        serializer = JobRoleOptionSerializer(job_roles, many=True)
+        return success_response(
+            message="Job role options retrieved successfully.",
+            data=serializer.data,
+        )
 
 
 class EmployeeMasterViewSet(BaseOrgViewSet):

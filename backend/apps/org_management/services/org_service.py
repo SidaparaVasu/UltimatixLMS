@@ -31,6 +31,9 @@ class CompanyService(BaseService):
 class BusinessUnitService(BaseService):
     repository_class = BusinessUnitRepository
 
+    def get_dropdown_options(self, company):
+        return self.repository.get_active_for_company(company=company)
+
 
 class DepartmentService(BaseService):
     repository_class = DepartmentRepository
@@ -39,13 +42,25 @@ class DepartmentService(BaseService):
         """Fetch department tree levels."""
         return self.repository.get_sub_departments(parent_id)
 
+    def get_dropdown_options(self, company, business_unit_id=None):
+        return self.repository.get_active_for_company(
+            company=company,
+            business_unit_id=business_unit_id,
+        )
+
 
 class LocationService(BaseService):
     repository_class = LocationRepository
 
+    def get_dropdown_options(self, company):
+        return self.repository.get_active_for_company(company=company)
+
 
 class JobRoleService(BaseService):
     repository_class = JobRoleRepository
+
+    def get_dropdown_options(self, company):
+        return self.repository.get_active_for_company(company=company)
 
 
 class EmployeeService(BaseService):

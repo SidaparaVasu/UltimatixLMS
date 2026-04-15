@@ -23,6 +23,9 @@ class BusinessUnitRepository(BaseRepository[BusinessUnitMaster]):
     def get_for_company(self, company: CompanyMaster, pk: int):
         return self.filter(company=company, pk=pk).first()
 
+    def get_active_for_company(self, company: CompanyMaster):
+        return self.filter(company=company, is_active=True)
+
 
 class DepartmentRepository(BaseRepository[DepartmentMaster]):
     model = DepartmentMaster
@@ -33,6 +36,15 @@ class DepartmentRepository(BaseRepository[DepartmentMaster]):
     def get_for_company(self, company: CompanyMaster, pk: int):
         return self.filter(business_unit__company=company, pk=pk).select_related("business_unit").first()
 
+    def get_active_for_company(self, company: CompanyMaster, business_unit_id: int | None = None):
+        queryset = self.filter(
+            business_unit__company=company,
+            is_active=True,
+        ).select_related("business_unit")
+        if business_unit_id:
+            queryset = queryset.filter(business_unit_id=business_unit_id)
+        return queryset
+
 
 class LocationRepository(BaseRepository[LocationMaster]):
     model = LocationMaster
@@ -40,12 +52,18 @@ class LocationRepository(BaseRepository[LocationMaster]):
     def get_for_company(self, company: CompanyMaster, pk: int):
         return self.filter(company=company, pk=pk).first()
 
+    def get_active_for_company(self, company: CompanyMaster):
+        return self.filter(company=company, is_active=True)
+
 
 class JobRoleRepository(BaseRepository[JobRoleMaster]):
     model = JobRoleMaster
 
     def get_for_company(self, company: CompanyMaster, pk: int):
         return self.filter(company=company, pk=pk).first()
+
+    def get_active_for_company(self, company: CompanyMaster):
+        return self.filter(company=company, is_active=True)
 
 
 class EmployeeRepository(BaseRepository[EmployeeMaster]):
