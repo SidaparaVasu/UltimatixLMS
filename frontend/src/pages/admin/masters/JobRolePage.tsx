@@ -7,7 +7,8 @@ import {
   useJobRoleSkills,
   ADMIN_QUERY_KEYS,
 } from "@/queries/admin/useAdminMasters";
-import { organizationApi, JobRole } from "@/api/organization-api";
+import { organizationApi } from "@/api/organization-api";
+import { JobRole } from "@/types/org.types";
 import { skillApi } from "@/api/skill-api";
 import { useAdminCRUD } from "@/hooks/admin/useAdminCRUD";
 import { AdminMasterLayout } from "@/components/admin/layout/AdminMasterLayout";
