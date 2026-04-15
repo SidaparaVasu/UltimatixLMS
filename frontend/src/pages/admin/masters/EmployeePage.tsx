@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNotificationStore } from '@/stores/notificationStore';
+import React, { useState, useMemo } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNotificationStore } from "@/stores/notificationStore";
 import {
   ChevronRight,
   ChevronLeft,
@@ -21,9 +21,8 @@ import {
   useJobRoleOptions,
   ADMIN_QUERY_KEYS,
 } from "@/queries/admin/useAdminMasters";
-import {
-  organizationApi,
-} from "@/api/organization-api";
+import { organizationApi } from "@/api/organization-api";
+import { skillApi } from "@/api/skill-api";
 import {
   Employee,
   EmployeeCreatePayload,
@@ -40,7 +39,10 @@ import { AdminInput, AdminSelect, AdminToggle } from "@/components/admin/form";
 import { Dialog } from "@/components/ui/dialog";
 import { Drawer } from "@/components/ui/drawer";
 import { ProficiencyBadge } from "@/components/ui/proficiency-badge";
-import { UnifiedSkillMappingModal, SkillMappingEntry } from "@/components/admin/UnifiedSkillMappingModal";
+import {
+  UnifiedSkillMappingModal,
+  SkillMappingEntry,
+} from "@/components/admin/UnifiedSkillMappingModal";
 
 /* ─────────────────────────────────────────────────────────────
    FORM SHAPE
@@ -151,7 +153,8 @@ const normalizeEmployeeRow = (row: EmployeeDirectoryRow): Employee => ({
   email: row.email,
   firstName: row.first_name || "",
   lastName: row.last_name || "",
-  fullName: row.full_name || `${row.first_name || ""} ${row.last_name || ""}`.trim(),
+  fullName:
+    row.full_name || `${row.first_name || ""} ${row.last_name || ""}`.trim(),
   mobile_no: row.phone_number || "",
   profile_image: row.profile_image_url || "",
   date_of_birth: row.date_of_birth || "",
@@ -206,16 +209,22 @@ const EmployeePage: React.FC = () => {
   const pageSize = 10;
   const queryClient = useQueryClient();
 
-  const { data: employeesRes, isLoading, error } = useEmployees({ page, page_size: pageSize });
+  const {
+    data: employeesRes,
+    isLoading,
+    error,
+  } = useEmployees({ page, page_size: pageSize });
   const { data: businessUnitOptions } = useBusinessUnitOptions();
   const { data: departmentOptions } = useDepartmentOptions(
-    formData.businessUnitId ? { businessUnitId: Number(formData.businessUnitId) } : undefined,
+    formData.businessUnitId
+      ? { businessUnitId: Number(formData.businessUnitId) }
+      : undefined,
   );
   const { data: locationOptions } = useLocationOptions();
   const { data: jobRoleOptions } = useJobRoleOptions();
   const { data: skillsRes } = useSkills();
   const { data: levelsRes } = useSkillLevels();
-  const { data: empSkills = [] } = useEmployeeSkills();
+  const { data: empSkillsRes } = useEmployeeSkills({ page_size: 1000 });
   const { data: managerOptions = [] } = useEmployeeManagerOptions(
     editingEmp ? { excludeEmployeeId: editingEmp.id } : undefined,
   );
@@ -244,7 +253,9 @@ const EmployeePage: React.FC = () => {
     return Number.isFinite(parsed) ? parsed : undefined;
   };
 
-  const buildEmployeePayload = (includePassword: boolean): EmployeeCreatePayload => {
+  const buildEmployeePayload = (
+    includePassword: boolean,
+  ): EmployeeCreatePayload => {
     const payload: EmployeeCreatePayload = {
       username: formData.username.trim(),
       email: formData.email.trim(),
@@ -258,7 +269,9 @@ const EmployeePage: React.FC = () => {
       department: parseId(formData.departmentId),
       job_role: parseId(formData.roleId),
       location: parseId(formData.locationId),
-      manager: formData.managerId ? parseId(formData.managerId) ?? null : null,
+      manager: formData.managerId
+        ? (parseId(formData.managerId) ?? null)
+        : null,
       joining_date: formData.joiningDate || undefined,
       is_active: formData.isActive,
     };
@@ -307,34 +320,45 @@ const EmployeePage: React.FC = () => {
       organizationApi.createEmployee(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ADMIN_QUERY_KEYS.employees });
-      queryClient.invalidateQueries({ queryKey: ADMIN_QUERY_KEYS.employeeManagerOptions });
+      queryClient.invalidateQueries({
+        queryKey: ADMIN_QUERY_KEYS.employeeManagerOptions,
+      });
       closeDialog();
     },
     onError: (error: any) => {
       const managerError = error.response?.data?.errors?.manager?.[0];
       if (managerError) {
-        showNotification(managerError, 'error');
+        showNotification(managerError, "error");
       }
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: EmployeeUpdatePayload }) =>
-      organizationApi.updateEmployee(id, payload),
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: number;
+      payload: EmployeeUpdatePayload;
+    }) => organizationApi.updateEmployee(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ADMIN_QUERY_KEYS.employees });
-      queryClient.invalidateQueries({ queryKey: ADMIN_QUERY_KEYS.employeeManagerOptions });
+      queryClient.invalidateQueries({
+        queryKey: ADMIN_QUERY_KEYS.employeeManagerOptions,
+      });
       closeDialog();
     },
     onError: (error: any) => {
       const managerError = error.response?.data?.errors?.manager?.[0];
       if (managerError) {
-        showNotification(managerError, 'error');
+        showNotification(managerError, "error");
       }
     },
   });
 
-  const showNotification = useNotificationStore((state) => state.showNotification);
+  const showNotification = useNotificationStore(
+    (state) => state.showNotification,
+  );
 
   const toggleActiveMutation = useMutation({
     mutationFn: ({ id, isActive }: { id: number; isActive: boolean }) =>
@@ -342,9 +366,9 @@ const EmployeePage: React.FC = () => {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ADMIN_QUERY_KEYS.employees });
       const message = variables.isActive
-        ? 'Employee profile activated successfully.'
-        : 'Employee profile deactivated successfully.';
-      showNotification(message, 'success');
+        ? "Employee profile activated successfully."
+        : "Employee profile deactivated successfully.";
+      showNotification(message, "success");
     },
   });
 
@@ -391,7 +415,10 @@ const EmployeePage: React.FC = () => {
 
   const handleSave = () => {
     if (editingEmp) {
-      updateMutation.mutate({ id: editingEmp.id, payload: buildUpdatePayload() });
+      updateMutation.mutate({
+        id: editingEmp.id,
+        payload: buildUpdatePayload(),
+      });
     } else {
       createMutation.mutate(buildCreatePayload());
     }
@@ -407,17 +434,42 @@ const EmployeePage: React.FC = () => {
     setIsMappingOpen(true);
   };
 
-  const currentMappings: SkillMappingEntry[] = empSkills
-    .filter(es => es.employeeId === mappingEmp?.id)
-    .map(es => ({ 
-      skillId: es.skillId, 
-      levelId: es.assessedLevelId,
-      status: es.status 
-    }));
+  const syncEmployeeSkillsMutation = useMutation({
+    mutationFn: (mappings: SkillMappingEntry[]) => {
+      if (!mappingEmp) return Promise.reject("No employee selected");
+      return skillApi.bulkSyncEmployeeSkills({
+        employee_id: mappingEmp.id,
+        skills: mappings.map((m) => ({
+          skill_id: Number(m.skillId),
+          level_id: Number(m.levelId),
+        })),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ADMIN_QUERY_KEYS.employeeSkills,
+      });
+      showNotification("Employee skills updated successfully", "success");
+      setIsMappingOpen(false);
+    },
+    onError: () => {
+      showNotification("Failed to update employee skills", "error");
+    },
+  });
+
+  const currentMappings: SkillMappingEntry[] = useMemo(() => {
+    if (!mappingEmp || !empSkillsRes?.results) return [];
+    return empSkillsRes.results
+      .filter((es: any) => es.employee === mappingEmp.id)
+      .map((es: any) => ({
+        skillId: String(es.skill),
+        levelId: String(es.current_level),
+        status: es.status,
+      }));
+  }, [mappingEmp, empSkillsRes]);
 
   const handleSaveMapping = (mappings: SkillMappingEntry[]) => {
-    console.log('Saving Employee Skills for', mappingEmp?.firstName, mappings);
-    // Logic to update backend would go here
+    syncEmployeeSkillsMutation.mutate(mappings);
   };
 
   /* ── Filtering ── */
@@ -486,9 +538,7 @@ const EmployeePage: React.FC = () => {
       type: "custom",
       header: "Department",
       render: (emp) => (
-        <span style={{ fontSize: "13px" }}>
-          {emp.departmentName || "-"}
-        </span>
+        <span style={{ fontSize: "13px" }}>{emp.departmentName || "-"}</span>
       ),
     },
     {
@@ -1144,7 +1194,10 @@ const EmployeePage: React.FC = () => {
                     label="Emp Code"
                     value={viewingEmp.employeeCode}
                   />
-                  <DetailField label="Company" value={viewingEmp.companyName || "Ultimatix Global"} />
+                  <DetailField
+                    label="Company"
+                    value={viewingEmp.companyName || "Ultimatix Global"}
+                  />
                   <DetailField
                     label="Business Unit"
                     value={viewingEmp.businessUnitName}
@@ -1180,37 +1233,56 @@ const EmployeePage: React.FC = () => {
 
               <div>
                 <SectionHeader title="Competency Profile" />
-                {empSkills.filter(es => es.employeeId === viewingEmp.id).length === 0 ? (
-                  <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                {!empSkillsRes?.results?.filter(
+                  (es) => es.employee === viewingEmp.id && es.is_active,
+                ).length ? (
+                  <p
+                    style={{
+                      fontSize: "13px",
+                      color: "var(--color-text-muted)",
+                      fontStyle: "italic",
+                    }}
+                  >
                     No skill assessments recorded.
                   </p>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                    {empSkills
-                      .filter(es => es.employeeId === viewingEmp.id)
-                      .map(es => {
-                        const skill = skills.find(s => s.id === es.skillId);
-                        const level = levels.find(l => l.id === es.assessedLevelId);
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "var(--space-2)",
+                    }}
+                  >
+                    {empSkillsRes.results
+                      .filter((es) => es.employee === viewingEmp.id && es.is_active)
+                      .map((es) => {
+                        const skill = allSkills.find((s) => s.id === es.skill);
+                        const level = allLevels.find(
+                          (l) => l.id === es.current_level,
+                        );
                         if (!skill) return null;
                         return (
-                          <div 
-                            key={es.id} 
-                            style={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              justifyContent: 'space-between',
-                              padding: 'var(--space-2) var(--space-3)',
-                              background: 'var(--color-canvas)',
-                              borderRadius: 'var(--radius-md)',
-                              border: '1px solid var(--color-border)'
+                          <div
+                            key={es.id}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              padding: "var(--space-2) var(--space-3)",
+                              background: "var(--color-canvas)",
+                              borderRadius: "var(--radius-md)",
+                              border: "1px solid var(--color-border)",
                             }}
                           >
-                            <span style={{ fontSize: '13px', fontWeight: 500 }}>{skill.skill_name}</span>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                              <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
-                                {es.status === 'VERIFIED' ? '✓ Verified' : 'Pending'}
+                            <span style={{ fontSize: "13px", fontWeight: 500 }}>{skill.skill_name}</span>
+                            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", }}>
+                              <span style={{ fontSize: "11px", color: "var(--color-text-muted)", textTransform: "uppercase", }}>
+                                {(es as any).status === "VERIFIED" ? "✓ Verified" : "Pending"}
                               </span>
-                              <ProficiencyBadge level={level?.level_name || 'Not Rated'} rank={level?.level_rank || 0} />
+                              <ProficiencyBadge
+                                level={level?.level_name || "Not Rated"}
+                                rank={level?.level_rank || 0}
+                              />
                             </div>
                           </div>
                         );

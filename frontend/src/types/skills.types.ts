@@ -37,3 +37,14 @@ export interface JobRoleSkillRequirement {
   required_level: number;
   is_active: boolean;
 }
+
+export interface EmployeeSkill {
+  id: number;
+  employee: number;
+  skill: number;
+  current_level: number;
+  is_active: boolean;
+  employee_code?: string;
+  skill_name?: string;
+  level_name?: string;
+}

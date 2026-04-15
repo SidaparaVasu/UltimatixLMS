@@ -7,6 +7,7 @@ import {
   SkillLevel,
   SkillCategoryMapping,
   JobRoleSkillRequirement,
+  EmployeeSkill,
 } from "@/types/skills.types";
 
 /**
@@ -146,6 +147,32 @@ export const skillApi = {
   }) => {
     try {
       const response = await apiClient.post("/skills/role-requirements/bulk-sync/", data);
+      return handleApiResponse(response.data);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  // Employee Skills
+  getEmployeeSkills: async (params?: { page?: number; page_size?: number }) => {
+    try {
+      const response = await apiClient.get("/skills/employee-skills/", { params });
+      return handleApiResponse<PaginatedResponse<EmployeeSkill>>(response.data, false);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  /**
+   * Bulk synchronizes skills for an employee.
+   * This action deactivates missing skills and creates/reactivates provided ones.
+   */
+  bulkSyncEmployeeSkills: async (data: { 
+    employee_id: number; 
+    skills: { skill_id: number; level_id: number }[] 
+  }) => {
+    try {
+      const response = await apiClient.post("/skills/employee-skills/bulk-sync/", data);
       return handleApiResponse(response.data);
     } catch (error) {
       return handleApiError(error);

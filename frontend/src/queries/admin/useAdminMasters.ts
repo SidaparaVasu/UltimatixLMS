@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query';
-import { adminMockApi } from '@/api/admin-mock-api';
 import { organizationApi } from '@/api/organization-api';
 import { skillApi } from '@/api/skill-api';
 import { courseApi } from '@/api/course-api';
@@ -130,8 +129,11 @@ export const useSkillMappings = () =>
 export const useJobRoleSkills = () =>
   useQuery({ queryKey: ADMIN_QUERY_KEYS.jobRoleSkills, queryFn: skillApi.getRoleRequirements });
 
-export const useEmployeeSkills = () =>
-  useQuery({ queryKey: ADMIN_QUERY_KEYS.employeeSkills, queryFn: adminMockApi.getEmployeeSkills });
+export const useEmployeeSkills = (params?: { page?: number; page_size?: number }) =>
+  useQuery({ 
+    queryKey: [...ADMIN_QUERY_KEYS.employeeSkills, params], 
+    queryFn: () => skillApi.getEmployeeSkills(params) 
+  });
 
 export const useCourseCategories = (params?: { page?: number; page_size?: number }) =>
   useQuery({ 
