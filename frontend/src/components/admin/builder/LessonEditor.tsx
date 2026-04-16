@@ -17,6 +17,41 @@ export const LessonEditor: React.FC<LessonEditorProps> = ({ node, onSave }) => {
   const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
   const videoInfo = getVideoInfo(videoUrl);
 
+  // Document Upload State
+  const [docFile, setDocFile] = useState<{ name: string; size: string } | null>(node.docMetadata || null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'compressing' | 'complete'>(node.docMetadata ? 'complete' : 'idle');
+
+  const simulateUpload = (fileName: string, fileSize: number) => {
+    setDocFile({ name: fileName, size: (fileSize / (1024 * 1024)).toFixed(2) + ' MB' });
+    setUploadStatus('uploading');
+    setUploadProgress(0);
+
+    let prog = 0;
+    const interval = setInterval(() => {
+      prog += Math.random() * 30;
+      if (prog >= 100) {
+        clearInterval(interval);
+        setUploadProgress(100);
+        setUploadStatus('compressing');
+        
+        // Simulate compression delay
+        setTimeout(() => {
+          setUploadStatus('complete');
+        }, 2000);
+      } else {
+        setUploadProgress(prog);
+      }
+    }, 400);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      simulateUpload(file.name, file.size);
+    }
+  };
+
   const fetchVideoMetadata = async (url: string) => {
     if (!url || !videoInfo) return;
     setIsFetchingMetadata(true);
@@ -34,7 +69,12 @@ export const LessonEditor: React.FC<LessonEditorProps> = ({ node, onSave }) => {
   }, [node]);
 
   const handleSave = () => {
-    onSave(node.id, { title, contentType });
+    onSave(node.id, { 
+      title, 
+      contentType, 
+      videoUrl, 
+      docMetadata: docFile 
+    });
   };
 
   const renderIcon = () => {
@@ -181,15 +221,68 @@ export const LessonEditor: React.FC<LessonEditorProps> = ({ node, onSave }) => {
 
           {(contentType === 'PDF' || contentType === 'PPT') && (
              <div className="space-y-4">
-               <label className="text-xs font-semibold text-slate-400 uppercase tracking-widest block">Upload {contentType} Document</label>
-               <div className="border-2 border-dashed border-slate-700 rounded-md p-12 flex flex-col items-center justify-center text-center hover:border-blue-500/50 hover:bg-blue-500/5 transition-all cursor-pointer">
-                <UploadCloud size={48} className="text-slate-500 mb-4" />
-                <h4 className="text-sm font-bold text-slate-300 mb-1">Upload {contentType}</h4>
-                <p className="text-xs text-slate-500 max-w-xs mb-3">Drag and drop your .{contentType.toLowerCase()} or .potx file here.</p>
-                <div className="px-3 py-1 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-full text-[10px] font-bold">
-                  Files will be seen in-browser
-                </div>
-              </div>
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-widest block">Document Configuration</label>
+               
+               {uploadStatus === 'idle' ? (
+                 <label className="border-2 border-dashed border-slate-700 rounded-md p-10 flex flex-col items-center justify-center text-center hover:border-blue-500/50 hover:bg-blue-500/5 transition-all cursor-pointer group">
+                  <input type="file" className="hidden" accept={contentType === 'PDF' ? '.pdf' : '.ppt,.pptx'} onChange={handleFileChange} />
+                  <UploadCloud size={40} className="text-slate-500 mb-3 group-hover:text-blue-400 transition-colors" />
+                  <h4 className="text-sm font-bold text-slate-300 mb-1">Click to upload {contentType}</h4>
+                  <p className="text-[10px] text-slate-500 max-w-xs mb-3 uppercase tracking-tighter">Drag & Drop supported</p>
+                  <div className="px-3 py-1 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-full text-[9px] font-bold">
+                    In-browser viewer enabled
+                  </div>
+                </label>
+               ) : (
+                 <div className="bg-[#0a0c10] border border-slate-800 rounded-lg p-5 space-y-4">
+                    <div className="flex items-start gap-4">
+                       <div className="w-12 h-12 rounded bg-slate-800 flex items-center justify-center shrink-0">
+                          {contentType === 'PDF' ? <FileText className="text-red-400" /> : <Presentation className="text-orange-400" />}
+                       </div>
+                       <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-bold text-slate-200 truncate">{docFile?.name}</h4>
+                          <p className="text-xs text-slate-500">{docFile?.size}</p>
+                       </div>
+                       {uploadStatus === 'complete' && (
+                         <button 
+                            onClick={() => setUploadStatus('idle')}
+                            className="text-[10px] font-bold text-slate-500 hover:text-red-400 transition-colors"
+                         >
+                            REPLACE
+                         </button>
+                       )}
+                    </div>
+
+                    {uploadStatus !== 'complete' && (
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-[10px] font-bold uppercase tracking-tight">
+                           <span className="text-blue-400">
+                             {uploadStatus === 'uploading' ? 'Uploading...' : 'Applying Data Compression...'}
+                           </span>
+                           <span className="text-slate-500">{Math.round(uploadProgress)}%</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                           <div 
+                              className={cn(
+                                "h-full transition-all duration-300",
+                                uploadStatus === 'uploading' ? 'bg-blue-500' : 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
+                              )}
+                              style={{ width: `${uploadStatus === 'uploading' ? uploadProgress : 100}%` }}
+                           />
+                        </div>
+                      </div>
+                    )}
+
+                    {uploadStatus === 'complete' && (
+                      <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-md">
+                         <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+                            <span className="text-[10px] text-black">✓</span>
+                         </div>
+                         <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wide">Ready for course launch</p>
+                      </div>
+                    )}
+                 </div>
+               )}
              </div>
           )}
 

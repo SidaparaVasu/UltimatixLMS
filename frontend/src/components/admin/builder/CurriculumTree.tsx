@@ -43,6 +43,7 @@ export interface CurriculumNode {
   children?: CurriculumNode[];
   isExpanded?: boolean;
   videoUrl?: string;
+  docMetadata?: { name: string; size: string } | null;
 }
 
 interface CurriculumTreeProps {
