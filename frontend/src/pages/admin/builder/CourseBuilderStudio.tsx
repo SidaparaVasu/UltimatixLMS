@@ -60,7 +60,7 @@ const CourseBuilderStudio: React.FC = () => {
       const newNode = draft.addSection('New Section');
       setSelectedNode(newNode);
     } else if (parentId) {
-      draft.addLesson(parentId, 'New Lesson', 'VIDEO');
+      draft.addLesson(parentId, 'New Lesson', undefined);
       // For immediate select, we'd need to return the new node from addLesson
     }
   };

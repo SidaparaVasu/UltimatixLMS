@@ -62,6 +62,29 @@ export const LessonEditor: React.FC<LessonEditorProps> = ({ node, onSave }) => {
     setIsFetchingMetadata(false);
   };
 
+  // Logic: A lesson is "Committed" (Locked) if the parent node already has a contentType saved.
+  // We check node.contentType specifically to see if it was persisted in the curriculum tree.
+  const isCommitted = !!node.contentType;
+
+  const handleFormatSwitch = (newType: ContentType) => {
+    if (isCommitted || newType === contentType) return;
+
+    // Check if any local content exists (unsaved)
+    const hasUnsavedContent = !!videoUrl || !!docFile;
+    
+    if (hasUnsavedContent) {
+      const confirmed = window.confirm("Switching the content format will clear all currently entered data for this lesson. Do you want to continue?");
+      if (!confirmed) return;
+    }
+
+    // Isolate State: Explicitly clear all content-related states
+    setVideoUrl('');
+    setDocFile(null);
+    setUploadProgress(0);
+    setUploadStatus('idle');
+    setContentType(newType);
+  };
+
   useEffect(() => {
     setTitle(node.title);
     setContentType(node.contentType || 'VIDEO');
@@ -139,18 +162,23 @@ export const LessonEditor: React.FC<LessonEditorProps> = ({ node, onSave }) => {
             ].map(format => (
               <button
                 key={format.type}
-                disabled={!format.active}
-                onClick={() => setContentType(format.type as ContentType)}
+                disabled={!format.active || (isCommitted && contentType !== format.type)}
+                onClick={() => handleFormatSwitch(format.type as ContentType)}
                 className={cn(
                   "flex items-center justify-center gap-2 p-3 rounded-md border transition-all relative overflow-hidden",
                   contentType === format.type 
                     ? "bg-blue-500/10 border-blue-500 text-blue-400" 
-                    : format.active
+                    : (format.active && !isCommitted)
                       ? "bg-slate-800/30 border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-white"
                       : "bg-[#0b0d13] border-slate-800 text-slate-600 cursor-not-allowed opacity-50"
                 )}
               >
-                {!format.active && (
+                {isCommitted && contentType === format.type && (
+                  <div className="absolute top-0 left-0 bg-blue-500 text-[8px] px-1 text-white rounded-br-sm font-bold">
+                    LOCKED
+                  </div>
+                )}
+                {!format.active && !isCommitted && (
                    <div className="absolute top-0 right-0 bg-slate-800 text-[8px] px-1 text-slate-400 rounded-bl-sm">
                      SOON
                    </div>
