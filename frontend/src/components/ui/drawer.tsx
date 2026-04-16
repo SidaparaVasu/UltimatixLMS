@@ -11,6 +11,8 @@ interface DrawerProps {
   children: React.ReactNode;
   footer?: React.ReactNode;
   hideCloseButton?: boolean;
+  className?: string;
+  fullScreen?: boolean;
 }
 
 export const Drawer = ({ 
@@ -22,7 +24,9 @@ export const Drawer = ({
   description, 
   children, 
   footer,
-  hideCloseButton = false
+  hideCloseButton = false,
+  className,
+  fullScreen = false,
 }: DrawerProps) => {
   
   // Prevent body scroll when drawer is open
@@ -37,24 +41,29 @@ export const Drawer = ({
 
   if (!open) return null;
 
-  // Determine structural sizing dimensions based on injection axis
   const styleProps: React.CSSProperties = 
-    (position === 'left' || position === 'right') 
-      ? { width: size, maxWidth: '100vw' } 
-      : { height: size, maxHeight: '100vh' };
+    fullScreen 
+      ? { width: '100vw', height: '100vh', maxWidth: '100vw', maxHeight: '100vh' }
+      : (position === 'left' || position === 'right') 
+        ? { width: size, maxWidth: '100vw' } 
+        : { height: size, maxHeight: '100vh' };
 
   return (
     <div 
-      className="drawer-overlay anim" 
-      style={{ animationDuration: '200ms' }}
-      onClick={() => onOpenChange(false)}
+      className={`drawer-overlay anim ${className || ''}`} 
+      style={{ animationDuration: '200ms', zIndex: fullScreen ? 100 : 50 }}
+      onClick={() => !fullScreen && onOpenChange(false)}
     >
       <div 
-        className={`drawer-content drawer-${position}`}
-        style={styleProps}
-        onClick={e => e.stopPropagation()} // Prevent closing when clicking inside the drawer itself
+        className={`drawer-content drawer-${position} ${fullScreen ? 'drawer-fullscreen' : ''}`}
+        style={{ 
+          ...styleProps, 
+          borderRadius: fullScreen ? 0 : undefined,
+          boxShadow: fullScreen ? 'none' : undefined 
+        }}
+        onClick={e => e.stopPropagation()} 
       >
-        {(title || description || !hideCloseButton) && (
+        {!fullScreen && (title || description || !hideCloseButton) && (
           <div className="dialog-header" style={{ flexShrink: 0 }}>
             <div>
               {title && <h2 className="dialog-title">{title}</h2>}
@@ -72,7 +81,7 @@ export const Drawer = ({
           </div>
         )}
         
-        <div className="dialog-body" style={{ flex: 1, overflowY: 'auto' }}>
+        <div className={`dialog-body ${fullScreen ? 'p-0 overflow-hidden flex flex-col' : ''}`} style={{ flex: 1, overflowY: fullScreen ? 'hidden' : 'auto' }}>
           {children}
         </div>
 

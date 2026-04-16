@@ -17,6 +17,8 @@ export interface GridTableCardProps<T> {
   actions?: React.ReactNode;
   row: T;
   className?: string;
+  viewLabel?: string;
+  viewIcon?: React.ReactNode;
 }
 
 /**
@@ -35,6 +37,8 @@ export const GridTableCard = <T,>({
   onDelete,
   actions,
   className,
+  viewLabel = "VIEW DETAILS",
+  viewIcon,
 }: GridTableCardProps<T>) => {
   return (
     <div
@@ -115,9 +119,10 @@ export const GridTableCard = <T,>({
       {onView && (
         <div 
           onClick={onView}
-          className="absolute inset-x-0 bottom-0 h-10 flex items-center justify-center bg-[var(--color-accent)] text-white text-xs font-bold opacity-0 translate-y-full group-hover:opacity-100 group-hover:translate-y-0 transition-all cursor-pointer"
+          className="absolute inset-x-0 bottom-0 h-10 flex items-center justify-center gap-2 bg-[var(--color-accent)] text-white text-xs font-bold opacity-0 translate-y-full group-hover:opacity-100 group-hover:translate-y-0 transition-all cursor-pointer"
         >
-          VIEW DETAILS
+          {viewIcon}
+          {viewLabel}
         </div>
       )}
     </div>

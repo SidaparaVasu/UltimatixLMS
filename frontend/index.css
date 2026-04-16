@@ -161,6 +161,11 @@
   -webkit-font-smoothing: antialiased;
 }
 
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
 /* ═══════════════════════════════════════════════
    APP SHELL & LAYOUT
 ═══════════════════════════════════════════════ */
