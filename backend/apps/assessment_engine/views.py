@@ -79,48 +79,79 @@ class AssessmentAttemptViewSet(viewsets.ModelViewSet):
         except ValueError as e:
             return error_response(message=str(e))
 
-    @action(detail=True, methods=['get'], url_path='questions')
-    def get_questions(self, request, pk=None):
+    @action(detail=True, methods=['get'], url_path='next-question')
+    def get_next_question(self, request, pk=None):
         """
-        Returns sanitized questions for the active attempt.
-        Handles randomization if configured.
+        Retrieves the next available question for the linear flow.
+        Starts the question-specific timer.
         """
         service = AttemptService()
         try:
-            mappings = service.get_randomized_questions(pk)
-            # We want just the question data
-            questions = [m.question for m in mappings]
-            serializer = QuestionLearnerSerializer(questions, many=True)
+            answer = service.get_next_question(pk)
+            if not answer:
+                return success_response(message="No more questions in this assessment.", data={"completed": True})
+            
+            from .serializers import UserAnswerLifecycleSerializer
+            serializer = UserAnswerLifecycleSerializer(answer)
             return success_response(data=serializer.data)
         except Exception as e:
             return error_response(message=str(e))
 
-    @action(detail=True, methods=['post'], url_path='submit')
-    def submit(self, request, pk=None):
+    @action(detail=True, methods=['post'], url_path='submit-question')
+    def submit_question(self, request, pk=None):
         """
-        Submits answers and triggers the grading engine.
-        Payload: { answers: [ { question: uuid, selected_option: id, answer_text: str }, ... ] }
+        Submits answer for a single question with hard-timing check.
+        """
+        question_id = request.data.get('question_id')
+        selected_option_ids = request.data.get('selected_options', [])
+        answer_text = request.data.get('answer_text', "")
+        
+        service = AttemptService()
+        try:
+            answer, on_time = service.submit_question_answer(
+                pk, question_id, 
+                selected_option_ids=selected_option_ids,
+                answer_text=answer_text
+            )
+            
+            return success_response(
+                message="Answer recorded." if on_time else "Time limit exceeded. Answer not recorded.",
+                data={"on_time": on_time, "status": answer.status}
+            )
+        except Exception as e:
+            return error_response(message=str(e))
+
+    @action(detail=True, methods=['post'], url_path='finalize')
+    def finalize_attempt(self, request, pk=None):
+        """
+        Explicitly triggers the grading engine once all questions are done.
         """
         attempt = self.get_object()
         if attempt.status == "COMPLETED":
-            return error_response(message="Attempt already submitted.")
+            return error_response(message="Attempt already finalized.")
 
-        # 1. Save answers
-        answers_data = request.data.get('answers', [])
-        for ans_data in answers_data:
-            ans_data['attempt'] = attempt.id
-            serializer = UserAnswerSubmitSerializer(data=ans_data)
-            if serializer.is_valid():
-                serializer.save(attempt=attempt)
-
-        # 2. Trigger Grader
         grader = GradingService()
         try:
             result = grader.grade_attempt(attempt.id)
-            res_serializer = AssessmentResultSerializer(result)
             return success_response(
-                message="Assessment submitted and graded.",
-                data=res_serializer.data
+                message="Assessment finalized and submitted for grading.",
+                data={"status": "COMPLETED"}
             )
         except Exception as e:
-            return error_response(message=f"Grading failed: {str(e)}")
+            return error_response(message=f"Deployment failed: {str(e)}")
+
+    @action(detail=True, methods=['get'], url_path='result')
+    def get_result(self, request, pk=None):
+        """
+        Delayed result API. Only accessible after completion.
+        """
+        attempt = self.get_object()
+        if attempt.status != "COMPLETED":
+            return error_response(message="Result not available until assessment is completed.")
+        
+        try:
+            result = attempt.result
+            serializer = AssessmentResultSerializer(result)
+            return success_response(data=serializer.data)
+        except Exception:
+            return error_response(message="Result record not found.")

@@ -59,7 +59,25 @@ class UserAnswerSubmitSerializer(serializers.ModelSerializer):
     """Used for receiving learner responses."""
     class Meta:
         model = UserAnswer
-        fields = ["question", "selected_option", "answer_text", "uploaded_file"]
+        fields = ["question", "selected_options", "answer_text", "uploaded_file"]
+
+
+class UserAnswerLifecycleSerializer(serializers.ModelSerializer):
+    """Sent to learner when fetching next question."""
+    question = QuestionLearnerSerializer(read_only=True)
+    time_limit_seconds = serializers.SerializerMethodField()
+
+    class Meta:
+        model = UserAnswer
+        fields = ["question", "status", "started_at", "time_limit_seconds"]
+
+    def get_time_limit_seconds(self, obj):
+        # Fetch from the mapping
+        mapping = AssessmentQuestionMapping.objects.filter(
+            assessment=obj.attempt.assessment,
+            question=obj.question
+        ).first()
+        return mapping.time_limit_seconds if mapping else 0
 
 
 class AssessmentResultSerializer(serializers.ModelSerializer):
