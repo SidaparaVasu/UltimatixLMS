@@ -4,6 +4,10 @@ import { CurriculumNode } from '@/components/admin/builder/CurriculumTree';
 
 export const useCurriculumDraft = (initialCourse?: any) => {
   const [nodes, setNodes] = useState<CurriculumNode[]>([]);
+  const [isDirty, setIsDirty] = useState(false);
+
+  const markDirty = () => setIsDirty(true);
+  const resetDirty = () => setIsDirty(false);
   
   // Initialize draft from backend response
   useEffect(() => {
@@ -35,6 +39,7 @@ export const useCurriculumDraft = (initialCourse?: any) => {
       children: [],
     };
     setNodes(prev => [...prev, newNode]);
+    markDirty();
     return newNode;
   };
 
@@ -55,6 +60,7 @@ export const useCurriculumDraft = (initialCourse?: any) => {
       }
       return sec;
     }));
+    markDirty();
   };
 
   const removeNode = (id: string, type: 'SECTION' | 'LESSON', parentId?: string) => {
@@ -71,31 +77,36 @@ export const useCurriculumDraft = (initialCourse?: any) => {
         return sec;
       }));
     }
+    markDirty();
   };
   
   const updateNodeTitle = (id: string, type: 'SECTION' | 'LESSON', title: string, parentId?: string) => {
-      if (type === 'SECTION') {
-        setNodes(prev => prev.map(n => n.id === id ? { ...n, title } : n));
-      } else if (parentId) {
-        setNodes(prev => prev.map(sec => {
-          if (sec.id === parentId) {
-            return {
-              ...sec,
-              children: (sec.children || []).map(c => c.id === id ? { ...c, title } : c)
-            };
-          }
-          return sec;
-        }));
-      }
-  }
+    if (type === 'SECTION') {
+      setNodes(prev => prev.map(n => n.id === id ? { ...n, title } : n));
+    } else if (parentId) {
+      setNodes(prev => prev.map(sec => {
+        if (sec.id === parentId) {
+          return {
+            ...sec,
+            children: (sec.children || []).map(c => c.id === id ? { ...c, title } : c)
+          };
+        }
+        return sec;
+      }));
+    }
+    markDirty();
+  };
 
   // Expects the entire new tree after a drag/drop reorder
   const updateTree = (newTree: CurriculumNode[]) => {
     setNodes(newTree);
+    markDirty();
   };
 
   return {
     nodes,
+    isDirty,
+    resetDirty,
     addSection,
     addLesson,
     removeNode,

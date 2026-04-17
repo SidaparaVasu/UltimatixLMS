@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, PlayCircle, Settings, LayoutTemplate } from 'lucide-react';
+import { ArrowLeft, Save, PlayCircle, Settings, LayoutTemplate, AlertCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { courseApi } from '@/api/course-api';
 import { useCurriculumDraft } from './useCurriculumDraft';
@@ -29,6 +29,18 @@ const CourseBuilderStudio: React.FC = () => {
   const [activePane, setActivePane] = useState<'editor' | 'settings'>('settings');
   const [selectedNode, setSelectedNode] = useState<CurriculumNode | null>(null);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+
+  // ── Unsaved Changes Guard ──────────────────────────────────────────────────
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (draft.isDirty) {
+        e.preventDefault();
+        e.returnValue = ''; // Required for Chrome to show the native dialog
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [draft.isDirty]);
 
   if (isLoading) {
     return (
@@ -136,9 +148,18 @@ const CourseBuilderStudio: React.FC = () => {
                 {course.course_code}
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-              Draft saved locally
+            <p className="text-[11px] flex items-center gap-1.5 transition-colors">
+              {draft.isDirty ? (
+                <>
+                  <AlertCircle size={11} className="text-amber-400" />
+                  <span className="text-amber-400 font-semibold">Changes Pending</span>
+                </>
+              ) : (
+                <>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                  <span className="text-slate-500">Draft saved locally</span>
+                </>
+              )}
             </p>
           </div>
         </div>
