@@ -5,7 +5,7 @@ from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
 from apps.assessment_engine.models import (
     AssessmentMaster, QuestionBank, QuestionOption, 
-    AssessmentQuestionMapping, AssessmentAttempt
+    AssessmentQuestionMapping, AssessmentAttempt, UserAnswer
 )
 from apps.assessment_engine.services import AttemptService
 from apps.course_management.models import CourseCategoryMaster, CourseMaster
@@ -42,7 +42,7 @@ class AttemptLifecycleTest(TestCase):
 
         # Assessment with 1 retake limit (max 1 total attempt)
         self.assessment = AssessmentMaster.objects.create(
-            title="Short Quiz", course=self.course, retake_limit=1
+            title="Linear Quiz", course=self.course, retake_limit=1
         )
         
         self.client = APIClient()
@@ -68,49 +68,63 @@ class AttemptLifecycleTest(TestCase):
     def test_concurrency_recovery(self):
         """Starting a quiz twice while one is active returns the SAME attempt."""
         service = AttemptService()
-        
         attempt1 = service.start_attempt(self.employee.id, self.assessment.id)
         
         # Start again without finishing attempt1
         attempt2 = service.start_attempt(self.employee.id, self.assessment.id)
-        
-        self.assertEqual(attempt1.id, attempt2.id, "System created a new attempt instead of returning active one")
+        self.assertEqual(attempt1.id, attempt2.id)
 
-    def test_data_sanitization_api(self):
-        """Ensure correct answers are not leaked in the questions API."""
+    def test_data_sanitization_lifecycle_api(self):
+        """Ensure correct answers are not leaked in the next-question API."""
         q = QuestionBank.objects.create(question_text="Secret Question?")
         AssessmentQuestionMapping.objects.create(assessment=self.assessment, question=q)
         QuestionOption.objects.create(question=q, option_text="Correct Choice", is_correct=True)
-        QuestionOption.objects.create(question=q, option_text="Wrong Choice", is_correct=False)
 
         service = AttemptService()
         attempt = service.start_attempt(self.employee.id, self.assessment.id)
         
-        url = f"/api/v1/assessment/attempts/{attempt.id}/questions/"
+        url = f"/api/v1/assessment/attempts/{attempt.id}/next-question/"
         self.client.force_authenticate(user=self.user)
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, 200)
         data = response.json()['data']
         
-        # Look deep into options
-        for question in data:
-            for option in question['options']:
-                self.assertNotIn('is_correct', option)
-                self.assertNotIn('feedback_text', option)
+        # Verify sanitization
+        for option in data['question']['options']:
+            self.assertNotIn('is_correct', option)
+            self.assertNotIn('feedback_text', option)
 
-    def test_timer_expiry_manual_check(self):
-        """Check if an attempt is identified as expired."""
-        # Note: Auto-expiry logic usually runs in the service or via a cron/task.
-        # Here we test if we can identify it.
-        attempt = AssessmentAttempt.objects.create(
-            employee=self.employee,
-            assessment=self.assessment,
-            expires_at=timezone.now() - timedelta(minutes=10) # 10 mins ago
+    def test_per_question_timer_enforcement(self):
+        """Verify that a late submission is recorded as TIMED_OUT."""
+        q = QuestionBank.objects.create(question_text="Timed Question")
+        # 5 second limit (very short)
+        AssessmentQuestionMapping.objects.create(
+            assessment=self.assessment, question=q, time_limit_seconds=5
         )
+
+        service = AttemptService()
+        attempt = service.start_attempt(self.employee.id, self.assessment.id)
         
-        # Verification: Is it expired?
-        is_expired = timezone.now() > attempt.expires_at
-        self.assertTrue(is_expired)
+        # 1. Fetch question to start timer
+        ans = service.get_next_question(attempt.id)
+        self.assertEqual(ans.question_id, q.id)
         
-        # TODO: Once we implement the Submit API Guard, test that submission fails here.
+        # 2. Manually backdate started_at to simulate a late submission (10s ago)
+        ans.started_at = timezone.now() - timedelta(seconds=10)
+        ans.save()
+        
+        # 3. Try to submit via API
+        self.client.force_authenticate(user=self.user)
+        url = f"/api/v1/assessment/attempts/{attempt.id}/submit-question/"
+        response = self.client.post(url, {
+            "question_id": str(q.id),
+            "selected_options": []
+        })
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json()['data']['on_time'])
+        
+        # Verify status in DB
+        ans.refresh_from_db()
+        self.assertEqual(ans.status, "TIMED_OUT")

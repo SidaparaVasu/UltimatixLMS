@@ -9,7 +9,7 @@ from apps.assessment_engine.models import (
 from apps.assessment_engine.services import AttemptService, GradingService
 from apps.course_management.models import CourseCategoryMaster, CourseMaster
 from apps.org_management.models import CompanyMaster, BusinessUnitMaster, DepartmentMaster, LocationMaster, JobRoleMaster, EmployeeMaster
-
+from decimal import Decimal
 
 class QuestionIntegrityTest(TestCase):
     def setUp(self):
@@ -54,33 +54,26 @@ class QuestionIntegrityTest(TestCase):
         )
         self.assertEqual(q_desc.question_type, "DESCRIPTIVE")
 
-    def test_answer_shuffle_logic(self):
-        """Verify that randomized quizzes produce different question orderings."""
+    def test_answer_shuffle_logic_shells(self):
+        """Verify that randomized quizzes produce different UserAnswer shell orderings."""
         # Create 5 questions
-        questions = []
         for i in range(5):
             q = QuestionBank.objects.create(question_text=f"Q{i}")
             AssessmentQuestionMapping.objects.create(assessment=self.assessment, question=q, display_order=i)
-            questions.append(q)
 
         service = AttemptService()
         
-        # Create an attempt
-        attempt = AssessmentAttempt.objects.create(
-            employee=self.employee, 
-            assessment=self.assessment,
-            expires_at=timezone.now() + timedelta(hours=1)
-        )
-
-        # Fetch randomized mappings multiple times
+        # Create attempts multiple times
         orderings = []
-        for _ in range(10): # Try multiple times to avoid accidental identical shuffles
-            shuffled = service.get_randomized_questions(attempt.id)
-            orderings.append([m.question.id for m in shuffled])
+        for _ in range(10):
+            attempt = service.start_attempt(self.employee.id, self.assessment.id)
+            orderings.append([a.question_id for a in attempt.answers.all().order_by('id')])
+            # Cleanup for next iteration
+            attempt.delete()
 
-        # At least one pair should be different in a set of 10 for a 5-item list
         unique_orderings = set(tuple(o) for o in orderings)
-        self.assertGreater(len(unique_orderings), 1, "Question order did not change across multiple calls")
+        # Since randomization happens at start_attempt, we expect diversity
+        self.assertGreater(len(unique_orderings), 1)
 
     def test_orphan_protection(self):
         """Ensure QuestionBank record cannot be deleted if linked to a UserAnswer."""
@@ -93,8 +86,8 @@ class QuestionIntegrityTest(TestCase):
             expires_at=timezone.now() + timedelta(hours=1)
         )
         
-        # Record an answer
-        UserAnswer.objects.create(attempt=attempt, question=q, answer_text="Hi")
+        # Record an answer shell
+        UserAnswer.objects.create(attempt=attempt, question=q, status="ATTEMPTED", answer_text="Hi")
 
         # Try to delete the question
         with self.assertRaises(ProtectedError):
@@ -116,13 +109,15 @@ class QuestionIntegrityTest(TestCase):
         )
         
         opt1 = QuestionOption.objects.create(question=q1, option_text="Correct", is_correct=True)
-        UserAnswer.objects.create(attempt=attempt, question=q1, selected_option=opt1)
-        UserAnswer.objects.create(attempt=attempt, question=q2, answer_text="Feedback")
+        ans1 = UserAnswer.objects.create(attempt=attempt, question=q1, status="ATTEMPTED")
+        ans1.selected_options.add(opt1)
+        
+        UserAnswer.objects.create(attempt=attempt, question=q2, status="ATTEMPTED", answer_text="Feedback")
 
         # Grade it
         grader = GradingService()
         result = grader.grade_attempt(attempt.id)
 
         # Total points should be 1.0 (q1). Score should be 1.0. 100%.
-        self.assertEqual(result.total_score, 1.00)
-        self.assertEqual(result.score_percentage, 100.00)
+        self.assertEqual(result.total_score, Decimal("1.00"))
+        self.assertEqual(result.score_percentage, Decimal("100.00"))
