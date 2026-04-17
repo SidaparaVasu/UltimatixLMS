@@ -160,7 +160,16 @@ class CourseContent(models.Model):
         default=CourseContentType.VIDEO
     )
     content_url = models.URLField(max_length=500, blank=True, default="")
+    # Kept for backward compatibility or direct paths, but file_ref is preferred
     file_path = models.CharField(max_length=500, blank=True, default="")
+    file_ref = models.ForeignKey(
+        "file_management.FileRegistry",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="content_usages",
+        help_text="Link to the physical file in the registry."
+    )
     display_order = models.PositiveIntegerField(default=1)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -176,6 +185,14 @@ class CourseResource(models.Model):
     course = models.ForeignKey(CourseMaster, on_delete=models.CASCADE, related_name="resources")
     resource_title = models.CharField(max_length=200)
     resource_url = models.URLField(max_length=500, blank=True, default="")
+    file_ref = models.ForeignKey(
+        "file_management.FileRegistry",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="resource_usages",
+        help_text="Link to the physical file for this resource."
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

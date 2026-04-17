@@ -52,6 +52,8 @@ LOCAL_APPS = [
     "apps.training_planning",
     "apps.course_management",
     "apps.learning_progress",
+    "apps.file_management",
+    "apps.assessment_engine",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -133,6 +135,21 @@ USE_TZ = True
 STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# ---------------------------------------------------------------------------
+# Media files (uploaded by users)
+# ---------------------------------------------------------------------------
+import os
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+
+# File upload settings
+FILE_UPLOAD_MAX_MEMORY_SIZE = 52428800  # 50 MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 52428800  # 50 MB
+
+# Allowed file types for upload
+ALLOWED_UPLOAD_EXTENSIONS = ["pdf", "ppt", "pptx", "mp4", "webm", "mov", "zip"]
+MAX_UPLOAD_SIZE_MB = 50
 
 # ---------------------------------------------------------------------------
 # Django REST Framework

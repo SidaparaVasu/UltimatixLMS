@@ -45,9 +45,16 @@ class CourseSkillMappingSerializer(serializers.ModelSerializer):
 
 
 class CourseContentSerializer(serializers.ModelSerializer):
+    file_url = serializers.SerializerMethodField()
+
     class Meta:
         model = CourseContent
         fields = "__all__"
+
+    def get_file_url(self, obj):
+        if obj.file_ref and obj.file_ref.file:
+            return obj.file_ref.file.url
+        return None
 
 
 class CourseLessonSerializer(serializers.ModelSerializer):
@@ -92,9 +99,16 @@ class CourseDetailSerializer(CourseMasterSerializer):
 
 
 class CourseResourceSerializer(serializers.ModelSerializer):
+    file_url = serializers.SerializerMethodField()
+
     class Meta:
         model = CourseResource
         fields = "__all__"
+
+    def get_file_url(self, obj):
+        if obj.file_ref and obj.file_ref.file:
+            return obj.file_ref.file.url
+        return None
 
 
 class CourseDiscussionReplySerializer(serializers.ModelSerializer):
