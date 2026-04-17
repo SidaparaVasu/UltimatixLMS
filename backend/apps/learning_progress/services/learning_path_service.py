@@ -10,6 +10,7 @@ from ..repositories import (
     UserContentProgressRepository,
     CourseCertificateRepository
 )
+from apps.assessment_engine.models import AssessmentMaster, AssessmentResult
 from ..constants import ProgressStatus, EnrollmentType
 
 
@@ -37,17 +38,17 @@ class UserCourseEnrollmentService(BaseService):
 
     def update_course_progress(self, enrollment_id):
         """
-        Recalculates the master progress percentage for an enrollment.
-        Logic: (Completed Lessons / Total Lessons) * 100
+        Recalculates progress, aware of required assessments.
         """
         enrollment = self.repository.get_by_id(enrollment_id)
         if not enrollment:
             return
 
+        # 1. Lesson-based Progress
         total_lessons = enrollment.course.sections.all().aggregate(
             lesson_count=Count('lessons')
         )['lesson_count'] or 0
-
+        
         if total_lessons == 0:
             return
 
@@ -55,18 +56,31 @@ class UserCourseEnrollmentService(BaseService):
             status=ProgressStatus.COMPLETED
         ).count()
 
-        percentage = (completed_lessons / total_lessons) * 100
-        enrollment.progress_percentage = percentage
-        
-        if percentage >= 100:
+        lesson_percentage = (completed_lessons / total_lessons * 100)
+
+        # 2. Assessment Integrity Check
+        required_assessments = AssessmentMaster.objects.filter(course=enrollment.course)
+        pass_count = AssessmentResult.objects.filter(
+            attempt__employee=enrollment.employee,
+            attempt__assessment__in=required_assessments,
+            status="PASS"
+        ).values('attempt__assessment').distinct().count()
+
+        all_assessments_passed = (pass_count >= required_assessments.count())
+
+        # 3. Decision Logic
+        if lesson_percentage >= 100 and all_assessments_passed:
+            enrollment.progress_percentage = 100.00
             enrollment.status = ProgressStatus.COMPLETED
             enrollment.completed_at = timezone.now()
-            # Here we could trigger certificate generation
-        elif percentage > 0:
+        else:
+            # Cap progress at 99.9% if lessons are done but assessment is missing/failed
+            percentage = min(lesson_percentage, 99.9) if not all_assessments_passed and lesson_percentage >= 100 else lesson_percentage
+            enrollment.progress_percentage = percentage
             enrollment.status = ProgressStatus.IN_PROGRESS
             if not enrollment.started_at:
                 enrollment.started_at = timezone.now()
-        
+
         enrollment.save()
         return enrollment
 
@@ -120,6 +134,21 @@ class UserContentProgressService(BaseService):
                     enroll_service.update_course_progress(enrollment_id)
             
             return content_progress
+
+    def mark_content_completed(self, enrollment_id, content_id):
+        """
+        Explicitly marks a content record as finished (for PDFs/Documents).
+        """
+        with transaction.atomic():
+            from apps.course_management.models import CourseContent
+            content = CourseContent.objects.get(id=content_id)
+            # Reuses heartbeat logic with a dummy '1' playhead
+            return self.record_heartbeat(
+                enrollment_id=enrollment_id,
+                lesson_id=content.lesson_id,
+                content_id=content_id,
+                playhead=1
+            )
 
 
 class CourseCertificateService(BaseService):

@@ -49,6 +49,7 @@ class AssessmentMaster(models.Model):
         max_digits=5, 
         decimal_places=2, 
         default=0.00,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
         help_text="Percentage of question weight to deduct for wrong answers."
     )
     
