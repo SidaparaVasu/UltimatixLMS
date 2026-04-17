@@ -9,6 +9,7 @@ import { SectionEditor } from '@/components/admin/builder/SectionEditor';
 import { LessonEditor } from '@/components/admin/builder/LessonEditor';
 import { ElementProperties } from '@/components/admin/builder/ElementProperties';
 import { CourseMapSettings } from '@/components/admin/builder/CourseMapSettings';
+import { LearnerPreviewPane } from '@/components/admin/builder/preview/LearnerPreviewPane';
 
 const CourseBuilderStudio: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -27,6 +28,7 @@ const CourseBuilderStudio: React.FC = () => {
   // Layout state
   const [activePane, setActivePane] = useState<'editor' | 'settings'>('settings');
   const [selectedNode, setSelectedNode] = useState<CurriculumNode | null>(null);
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
 
   if (isLoading) {
     return (
@@ -101,6 +103,19 @@ const CourseBuilderStudio: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden bg-[#0f111a] text-slate-200 font-sans selection:bg-blue-500/30">
+
+      {/* ── Learner Preview Overlay (fullscreen, replaces IDE) ── */}
+      {isPreviewMode && (
+        <LearnerPreviewPane
+          nodes={draft.nodes}
+          courseTitle={course.course_title}
+          onExitPreview={() => setIsPreviewMode(false)}
+        />
+      )}
+
+      {/* ── IDE (hidden when preview is active) ── */}
+      <div className={isPreviewMode ? 'hidden' : 'contents'}>
+
       {/* ── Studio Header ── */}
       <header className="flex items-center justify-between h-14 px-4 bg-[#1a1d27] border-b border-slate-800/50 shadow-sm shrink-0">
         <div className="flex items-center gap-4">
@@ -129,7 +144,10 @@ const CourseBuilderStudio: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800/50 hover:bg-slate-700 rounded transition border border-transparent hover:border-slate-600">
+          <button
+            onClick={() => setIsPreviewMode(true)}
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800/50 hover:bg-slate-700 rounded transition border border-transparent hover:border-slate-600"
+          >
             <PlayCircle size={14} />
             Preview
           </button>
@@ -209,6 +227,8 @@ const CourseBuilderStudio: React.FC = () => {
         </aside>
 
       </main>
+
+      </div> {/* end IDE wrapper */}
     </div>
   );
 };
