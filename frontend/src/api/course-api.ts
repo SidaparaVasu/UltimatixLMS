@@ -5,7 +5,10 @@ import {
   CourseCategory, 
   CourseDetail, 
   CourseMaster, 
+  CourseSkillMapping,
+  CourseTagMap,
   CurriculumSyncPayload,
+  TagMaster,
 } from "@/types/courses.types";
 
 /**
@@ -156,6 +159,63 @@ export const courseApi = {
   syncCurriculum: async (id: number, data: CurriculumSyncPayload) => {
     try {
       const response = await apiClient.patch(`/courses/courses/${id}/curriculum-sync/`, data);
+      return handleApiResponse(response.data);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  // --- Tags ---
+  getTags: async () => {
+    try {
+      const response = await apiClient.get("/courses/tags/");
+      return handleApiResponse<PaginatedResponse<TagMaster>>(response.data, false);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  createTag: async (data: { tag_name: string; description?: string }) => {
+    try {
+      const response = await apiClient.post("/courses/tags/", data);
+      return handleApiResponse<TagMaster>(response.data);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  // --- Tag Mappings ---
+  addTagMapping: async (data: { course: number; tag: number }) => {
+    try {
+      const response = await apiClient.post("/courses/tag-mappings/", data);
+      return handleApiResponse<CourseTagMap>(response.data);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  removeTagMapping: async (id: number) => {
+    try {
+      const response = await apiClient.delete(`/courses/tag-mappings/${id}/`);
+      return handleApiResponse(response.data);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  // --- Skill Mappings ---
+  addSkillMapping: async (data: { course: number; skill: number; target_level: number }) => {
+    try {
+      const response = await apiClient.post("/courses/skill-mappings/", data);
+      return handleApiResponse<CourseSkillMapping>(response.data);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  removeSkillMapping: async (id: number) => {
+    try {
+      const response = await apiClient.delete(`/courses/skill-mappings/${id}/`);
       return handleApiResponse(response.data);
     } catch (error) {
       return handleApiError(error);

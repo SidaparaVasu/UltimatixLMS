@@ -70,6 +70,13 @@ export interface CourseContent {
   created_at: string;
 }
 
+export interface TagMaster {
+  id: number;
+  tag_name: string;
+  description: string;
+  created_at: string;
+}
+
 export interface CourseTagMap {
   id: number;
   course: number;
