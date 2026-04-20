@@ -1,4 +1,5 @@
 from rest_framework import viewsets, status, filters
+from rest_framework.decorators import action
 from django_filters.rest_framework import DjangoFilterBackend
 from common.response import success_response, created_response, error_response
 from apps.rbac.permissions import HasScopedPermission
@@ -27,7 +28,8 @@ from .serializers import (
     CourseContentSerializer,
     CourseResourceSerializer,
     CourseDiscussionThreadSerializer,
-    CourseDiscussionReplySerializer
+    CourseDiscussionReplySerializer,
+    CurriculumSyncSerializer
 )
 from .services import (
     CourseCategoryService,
@@ -142,6 +144,20 @@ class CourseMasterViewSet(BaseCourseViewSet):
             pk = self.kwargs.get("pk")
             return self.service_class().get_complete_visual_path(pk)
         return super().get_object()
+
+    @action(detail=True, methods=["patch"], url_path="curriculum-sync")
+    def sync_curriculum(self, request, pk=None):
+        """
+        Processes an entire course tree (Sections > Lessons > Content) at once.
+        """
+        serializer = CurriculumSyncSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        try:
+            self.service_class().sync_curriculum_tree(pk, serializer.validated_data)
+            return success_response(message="Course curriculum synchronized successfully.")
+        except Exception as e:
+            return error_response(message=f"Sync failed: {str(e)}")
 
 
 class CourseSectionViewSet(BaseCourseViewSet):

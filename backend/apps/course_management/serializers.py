@@ -119,6 +119,37 @@ class CourseDiscussionReplySerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+# --- STUDIO BULK SYNC SERIALIZERS ---
+
+class CourseContentSyncSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(required=False) # Optional for new content
+    class Meta:
+        model = CourseContent
+        fields = ["id", "content_type", "content_url", "file_ref", "display_order"]
+
+
+class CourseLessonSyncSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(required=False)
+    contents = CourseContentSyncSerializer(many=True, required=False)
+
+    class Meta:
+        model = CourseLesson
+        fields = ["id", "lesson_title", "description", "display_order", "contents"]
+
+
+class CourseSectionSyncSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(required=False)
+    lessons = CourseLessonSyncSerializer(many=True, required=False)
+
+    class Meta:
+        model = CourseSection
+        fields = ["id", "section_title", "display_order", "lessons"]
+
+
+class CurriculumSyncSerializer(serializers.Serializer):
+    sections = CourseSectionSyncSerializer(many=True)
+
+
 class CourseDiscussionThreadSerializer(serializers.ModelSerializer):
     author_name = serializers.CharField(source="created_by.user.get_full_name", read_only=True)
     replies = CourseDiscussionReplySerializer(many=True, read_only=True)
