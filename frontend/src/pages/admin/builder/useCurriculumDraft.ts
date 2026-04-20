@@ -1,8 +1,37 @@
 import { useState, useEffect } from 'react';
-import { CourseMaster, CourseSection, CourseLesson } from '@/types/courses.types';
+import { CourseContent, CourseDetail, CourseSection, CourseLesson } from '@/types/courses.types';
 import { CurriculumNode } from '@/components/admin/builder/CurriculumTree';
 
-export const useCurriculumDraft = (initialCourse?: any) => {
+const mapLessonContentToNode = (contents?: CourseContent[]) => {
+  const primaryContent = contents?.[0];
+
+  if (!primaryContent) {
+    return {};
+  }
+
+  const isDocumentContent = ['PDF', 'PPT', 'DOCUMENT'].includes(primaryContent.content_type);
+
+  return {
+    contentId: primaryContent.id,
+    contentType: primaryContent.content_type,
+    contentUrl: primaryContent.content_url || '',
+    fileRefId: primaryContent.file_ref ?? null,
+    fileUrl: primaryContent.file_url ?? null,
+    filePath: primaryContent.file_path || '',
+    videoUrl: primaryContent.content_type === 'VIDEO' ? primaryContent.content_url || '' : '',
+    docMetadata: isDocumentContent
+      ? {
+          name:
+            primaryContent.file_path?.split('/').pop() ||
+            primaryContent.file_url?.split('/').pop() ||
+            `${primaryContent.content_type.toLowerCase()}-content`,
+          size: 'Unknown size',
+        }
+      : null,
+  };
+};
+
+export const useCurriculumDraft = (initialCourse?: CourseDetail | null) => {
   const [nodes, setNodes] = useState<CurriculumNode[]>([]);
   const [isDirty, setIsDirty] = useState(false);
 
@@ -22,8 +51,7 @@ export const useCurriculumDraft = (initialCourse?: any) => {
           dbId: les.id,
           type: 'LESSON',
           title: les.lesson_title || 'Untitled Lesson',
-          contentType: les.contents && les.contents.length > 0 ? les.contents[0].content_type : undefined,
-          // content_url etc can be added
+          ...mapLessonContentToNode(les.contents),
         }))
       }));
       setNodes(mappedNodes);

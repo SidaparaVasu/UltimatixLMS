@@ -79,12 +79,17 @@ class CourseService(BaseService):
                 if l_id and l_id in existing_lessons:
                     lesson = existing_lessons[l_id]
                     lesson.lesson_title = l_data['lesson_title']
+                    lesson.estimated_duration_minutes = l_data.get(
+                        'estimated_duration_minutes',
+                        lesson.estimated_duration_minutes,
+                    )
                     lesson.display_order = l_idx + 1
                     lesson.save()
                 else:
                     lesson = CourseLesson.objects.create(
                         section=section,
                         lesson_title=l_data['lesson_title'],
+                        estimated_duration_minutes=l_data.get('estimated_duration_minutes', 15),
                         display_order=l_idx + 1
                     )
 

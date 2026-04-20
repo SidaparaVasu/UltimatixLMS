@@ -1,7 +1,7 @@
 import { apiClient } from "./axios-client";
 import { handleApiResponse, handleApiError } from "@/utils/api-utils";
 import { PaginatedResponse } from "./organization-api";
-import { CourseCategory, CourseMaster } from "@/types/courses.types";
+import { CourseCategory, CourseDetail, CourseMaster } from "@/types/courses.types";
 
 /**
  * Course Management API - handles categories, courses, lessons, etc.
@@ -59,7 +59,7 @@ export const courseApi = {
     try {
       // In backend, retrieving a course by ID fetches its complete visual path.
       const response = await apiClient.get(`/courses/courses/${id}/`);
-      return handleApiResponse<any>(response.data, false); // can type properly later
+      return handleApiResponse<CourseDetail>(response.data, false);
     } catch (error) {
       return handleApiError(error);
     }

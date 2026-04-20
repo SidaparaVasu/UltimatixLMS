@@ -31,19 +31,31 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { CourseContentType } from "@/types/courses.types";
 
 export type NodeType = "SECTION" | "LESSON";
-export type ContentType = "VIDEO" | "PDF" | "PPT" | "QUIZ" | "LINK";
+export type ContentType = CourseContentType | "SCORM";
+
+export interface LessonDocumentMetadata {
+  name: string;
+  size: string;
+}
 
 export interface CurriculumNode {
   id: string;
+  dbId?: number;
   type: NodeType;
   title: string;
   contentType?: ContentType;
   children?: CurriculumNode[];
   isExpanded?: boolean;
+  contentId?: number;
+  contentUrl?: string;
+  fileRefId?: number | null;
+  fileUrl?: string | null;
+  filePath?: string;
   videoUrl?: string;
-  docMetadata?: { name: string; size: string } | null;
+  docMetadata?: LessonDocumentMetadata | null;
 }
 
 interface CurriculumTreeProps {

@@ -25,8 +25,8 @@ export interface CourseMaster {
   category_name?: string;
   created_by_name?: string;
   sections?: CourseSection[];
-  tags?: any[];
-  skills?: any[];
+  tags?: CourseTagMap[];
+  skills?: CourseSkillMapping[];
 }
 
 export interface CourseSection {
@@ -50,12 +50,46 @@ export interface CourseLesson {
   contents?: CourseContent[];
 }
 
+export type CourseContentType =
+  | 'VIDEO'
+  | 'PDF'
+  | 'PPT'
+  | 'DOCUMENT'
+  | 'LINK'
+  | 'QUIZ';
+
 export interface CourseContent {
   id: number;
   lesson: number;
-  content_type: 'VIDEO' | 'PDF' | 'QUIZ' | 'LINK' | 'DOCUMENT';
+  content_type: CourseContentType;
   content_url: string;
   file_path: string;
+  file_ref?: number | null;
+  file_url?: string | null;
   display_order: number;
   created_at: string;
+}
+
+export interface CourseTagMap {
+  id: number;
+  course: number;
+  tag: number;
+  tag_name?: string;
+  created_at: string;
+}
+
+export interface CourseSkillMapping {
+  id: number;
+  course: number;
+  skill: number;
+  skill_name?: string;
+  target_level: number;
+  target_level_name?: string;
+  created_at: string;
+}
+
+export interface CourseDetail extends CourseMaster {
+  sections: CourseSection[];
+  tags: CourseTagMap[];
+  skills: CourseSkillMapping[];
 }

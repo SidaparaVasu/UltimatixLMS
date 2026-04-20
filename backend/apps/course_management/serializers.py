@@ -134,7 +134,7 @@ class CourseLessonSyncSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CourseLesson
-        fields = ["id", "lesson_title", "description", "display_order", "contents"]
+        fields = ["id", "lesson_title", "estimated_duration_minutes", "display_order", "contents"]
 
 
 class CourseSectionSyncSerializer(serializers.ModelSerializer):

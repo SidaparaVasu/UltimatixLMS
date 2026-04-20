@@ -132,3 +132,55 @@ class CourseAPITest(APITestCase):
              "category": self.category.id
         })
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_curriculum_sync_accepts_supported_lesson_and_content_fields(self):
+        """Verify curriculum sync matches the real lesson/content model contract."""
+        perm_edit = PermissionMaster.objects.create(
+            permission_group=self.perm_group,
+            permission_name="Edit Courses",
+            permission_code="COURSE_EDIT"
+        )
+        RolePermissionMaster.objects.create(role=self.lms_role, permission=perm_edit)
+
+        url = reverse("courses-sync-curriculum", args=[self.course.id])
+        response = self.client.patch(url, {
+            "sections": [
+                {
+                    "id": self.section.id,
+                    "section_title": "Part 1: Variables",
+                    "display_order": 1,
+                    "lessons": [
+                        {
+                            "id": self.lesson.id,
+                            "lesson_title": "Intro Updated",
+                            "estimated_duration_minutes": 30,
+                            "display_order": 1,
+                            "contents": [
+                                {
+                                    "id": self.content.id,
+                                    "content_type": "VIDEO",
+                                    "content_url": "https://example.com/python-intro",
+                                    "display_order": 1
+                                },
+                                {
+                                    "content_type": "LINK",
+                                    "content_url": "https://docs.example.com/python-intro",
+                                    "display_order": 2
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.lesson.refresh_from_db()
+        self.assertEqual(self.lesson.lesson_title, "Intro Updated")
+        self.assertEqual(self.lesson.estimated_duration_minutes, 30)
+
+        contents = list(self.lesson.contents.order_by("display_order"))
+        self.assertEqual(len(contents), 2)
+        self.assertEqual(contents[0].content_url, "https://example.com/python-intro")
+        self.assertEqual(contents[1].content_type, "LINK")
