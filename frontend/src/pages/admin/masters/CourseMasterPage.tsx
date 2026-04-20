@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { LayoutGrid, PlayCircle, BookOpen } from 'lucide-react';
+import { LayoutGrid, Bolt, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCourses, useCourseCategories, ADMIN_QUERY_KEYS } from '@/queries/admin/useAdminMasters';
 import { courseApi } from '@/api/course-api';
@@ -164,7 +164,7 @@ const CourseMasterPage: React.FC = () => {
               onDelete={() => deleteMutation.mutate(course.id)}
               onView={() => navigate(`/admin/courses/builder/${course.id}`)}
               viewLabel="Build Course"
-              viewIcon={<PlayCircle size={14} />}
+              viewIcon={<Bolt size={14} />}
             />
           ))
         }

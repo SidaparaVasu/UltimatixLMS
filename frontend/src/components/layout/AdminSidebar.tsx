@@ -16,6 +16,7 @@ import {
   Users2,
   Brain,
   BookOpen,
+  Blocks
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { getFullName, getInitials, getPrimaryRoleName } from "@/utils/user.utils";
@@ -54,7 +55,7 @@ export const AdminSidebar = () => {
       title: "Course Management",
       items: [
         { label: "Course Categories", icon: BookOpen, path: "/admin/course-categories", badge: null },
-        { label: "Courses", icon: BookOpen, path: "/admin/courses", badge: null },
+        { label: "Course Catalog", icon: Blocks, path: "/admin/courses", badge: null },
       ]
     },
     {
