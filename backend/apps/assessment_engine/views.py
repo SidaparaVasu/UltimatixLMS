@@ -8,6 +8,7 @@ from .models import (
 )
 from .serializers import (
     AssessmentMasterStudioSerializer, QuestionBankStudioSerializer,
+    QuestionBankWriteSerializer,
     AssessmentAttemptSerializer, UserAnswerSubmitSerializer, 
     AssessmentResultSerializer, QuestionLearnerSerializer
 )
@@ -21,6 +22,13 @@ class AssessmentStudioViewSet(viewsets.ModelViewSet):
     queryset = AssessmentMaster.objects.all()
     serializer_class = AssessmentMasterStudioSerializer
     permission_classes = [permissions.IsAuthenticated] # TODO: Add IsInstructor permission
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        lesson_id = self.request.query_params.get('lesson_id')
+        if lesson_id:
+            qs = qs.filter(lesson_id=lesson_id)
+        return qs
 
     @action(detail=True, methods=['post'], url_path='sync-questions')
     def sync_questions(self, request, pk=None):
@@ -45,6 +53,11 @@ class QuestionBankViewSet(viewsets.ModelViewSet):
     queryset = QuestionBank.objects.all()
     serializer_class = QuestionBankStudioSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action in ('create', 'update', 'partial_update'):
+            return QuestionBankWriteSerializer
+        return QuestionBankStudioSerializer
 
 
 class AssessmentAttemptViewSet(viewsets.ModelViewSet):

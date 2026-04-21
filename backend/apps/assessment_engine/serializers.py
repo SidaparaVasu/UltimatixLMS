@@ -84,3 +84,43 @@ class AssessmentResultSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssessmentResult
         fields = "__all__"
+
+
+# --- WRITABLE SERIALIZERS (Studio — Question create/update with nested options) ---
+
+class QuestionOptionWriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = QuestionOption
+        fields = ["option_text", "is_correct", "display_order", "feedback_text"]
+
+
+class QuestionBankWriteSerializer(serializers.ModelSerializer):
+    options = QuestionOptionWriteSerializer(many=True, required=False)
+
+    class Meta:
+        model = QuestionBank
+        fields = [
+            "id", "question_text", "question_type", "scenario_text",
+            "explanation_text", "difficulty_complexity", "options",
+        ]
+        read_only_fields = ["id"]
+
+    def create(self, validated_data):
+        options_data = validated_data.pop("options", [])
+        question = QuestionBank.objects.create(**validated_data)
+        for i, opt in enumerate(options_data):
+            opt.setdefault("display_order", i + 1)
+            QuestionOption.objects.create(question=question, **opt)
+        return question
+
+    def update(self, instance, validated_data):
+        options_data = validated_data.pop("options", None)
+        for attr, val in validated_data.items():
+            setattr(instance, attr, val)
+        instance.save()
+        if options_data is not None:
+            instance.options.all().delete()
+            for i, opt in enumerate(options_data):
+                opt.setdefault("display_order", i + 1)
+                QuestionOption.objects.create(question=instance, **opt)
+        return instance

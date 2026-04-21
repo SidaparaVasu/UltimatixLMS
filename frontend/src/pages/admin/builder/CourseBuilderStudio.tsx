@@ -30,6 +30,12 @@ const CourseBuilderStudio: React.FC = () => {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  // Track course title separately so edits in CourseMapSettings update the header instantly
+  const [courseTitle, setCourseTitle] = useState(course?.course_title ?? '');
+
+  useEffect(() => {
+    if (course?.course_title) setCourseTitle(course.course_title);
+  }, [course?.course_title]);
 
   const selectedNode = useMemo(() => {
     if (!selectedNodeId) {
@@ -126,10 +132,18 @@ const CourseBuilderStudio: React.FC = () => {
       const isSection = draft.nodes.some(n => n.id === id);
       const type: 'SECTION' | 'LESSON' = isSection ? 'SECTION' : 'LESSON';
       const parentId = isSection ? undefined : getParentSectionId(id);
-
       if (Object.keys(updates).length > 0) {
         draft.updateNode(id, type, updates, parentId);
       }
+  };
+
+  const handleDuplicate = (node: CurriculumNode) => {
+    if (node.type !== 'LESSON') return;
+    draft.duplicateLesson(node.id);
+  };
+
+  const handleCourseUpdated = (updated: import('@/types/courses.types').CourseMaster) => {
+    setCourseTitle(updated.course_title);
   };
 
   const handlePublish = async () => {
@@ -178,7 +192,7 @@ const CourseBuilderStudio: React.FC = () => {
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <h1 className="text-sm font-semibold text-white tracking-tight">
-                {course.course_title}
+                {courseTitle}
               </h1>
               <span className="px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase bg-blue-500/20 text-blue-400">
                 {course.course_code}
@@ -230,7 +244,7 @@ const CourseBuilderStudio: React.FC = () => {
           onAdd={handleCreateNode}
           onReorder={draft.updateTree}
           onDelete={handleDeleteNode}
-          onDuplicate={() => {}} // not yet implemented
+          onDuplicate={handleDuplicate}
         />
 
         {/* Center Pane: Editor */}
@@ -255,7 +269,7 @@ const CourseBuilderStudio: React.FC = () => {
              <div className="h-full w-full">
                {selectedNode.type === 'SECTION' 
                   ? <SectionEditor node={selectedNode} onSave={handleSaveNode} />
-                  : <LessonEditor node={selectedNode} onSave={handleSaveNode} />
+                  : <LessonEditor node={selectedNode} courseId={course.id} onSave={handleSaveNode} />
                }
              </div>
           )}
@@ -282,7 +296,7 @@ const CourseBuilderStudio: React.FC = () => {
             {activePane === 'editor' ? (
               <ElementProperties selectedNode={selectedNode} />
             ) : (
-              <CourseMapSettings course={course} />
+              <CourseMapSettings course={course} onCourseUpdated={handleCourseUpdated} />
             )}
           </div>
         </aside>

@@ -57,6 +57,8 @@ export interface CurriculumNode {
   filePath?: string;
   videoUrl?: string;
   docMetadata?: LessonDocumentMetadata | null;
+  assessmentId?: number;          // persisted AssessmentMaster id for QUIZ lessons
+  requireMarkComplete?: boolean;  // LINK lessons: learner must explicitly mark done
 }
 
 interface CurriculumTreeProps {

@@ -38,7 +38,6 @@ export const useCurriculumDraft = (initialCourse?: CourseDetail | null) => {
 
   const markDirty = () => setIsDirty(true);
   const resetDirty = () => setIsDirty(false);
-  
   // Initialize draft from backend response
   useEffect(() => {
     if (initialCourse && initialCourse.sections) {
@@ -175,6 +174,28 @@ export const useCurriculumDraft = (initialCourse?: CourseDetail | null) => {
     markDirty();
   };
 
+  const duplicateLesson = (lessonId: string) => {
+    setNodes(prev => {
+      const newNodes = JSON.parse(JSON.stringify(prev)) as CurriculumNode[];
+      for (const section of newNodes) {
+        const idx = section.children?.findIndex(c => c.id === lessonId) ?? -1;
+        if (idx === -1) continue;
+        const source = section.children![idx];
+        const copy: CurriculumNode = {
+          ...source,
+          id: `new-les-${Date.now()}`,
+          dbId: undefined,
+          assessmentId: undefined,
+          title: `${source.title} (Copy)`,
+        };
+        section.children!.splice(idx + 1, 0, copy);
+        break;
+      }
+      return newNodes;
+    });
+    markDirty();
+  };
+
   return {
     nodes,
     isDirty,
@@ -184,6 +205,7 @@ export const useCurriculumDraft = (initialCourse?: CourseDetail | null) => {
     removeNode,
     updateNode,
     updateTree,
+    duplicateLesson,
     toCurriculumSyncPayload,
   };
 };
