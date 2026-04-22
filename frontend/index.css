@@ -252,7 +252,7 @@
 .content-inner {
   max-width: 100%;
   min-height: 100vh;
-  padding: 0 var(--space-6);
+  padding: 0 var(--space-10);
   display: flex;
   flex-direction: column;
   padding-top: calc(var(--topnav-h) / 4);
@@ -1333,7 +1333,7 @@
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: rgba(15, 22, 35, 0.6);
+  background: rgba(15, 22, 35, 0.19);
   backdrop-filter: blur(2px);
   display: flex;
 }
