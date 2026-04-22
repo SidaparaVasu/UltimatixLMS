@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, PlayCircle, Settings, LayoutTemplate, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Save, PlayCircle, Settings, LayoutTemplate, AlertCircle, Archive, CheckCircle2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { courseApi } from '@/api/course-api';
+import { CourseMaster, CourseStatus } from '@/types/courses.types';
 import { useCurriculumDraft } from './useCurriculumDraft';
 import { CurriculumTree, CurriculumNode } from '@/components/admin/builder/CurriculumTree';
 import { SectionEditor } from '@/components/admin/builder/SectionEditor';
@@ -10,6 +11,7 @@ import { LessonEditor } from '@/components/admin/builder/LessonEditor';
 import { ElementProperties } from '@/components/admin/builder/ElementProperties';
 import { CourseMapSettings } from '@/components/admin/builder/CourseMapSettings';
 import { LearnerPreviewPane } from '@/components/admin/builder/preview/LearnerPreviewPane';
+import { cn } from '@/utils/cn';
 
 const CourseBuilderStudio: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -30,12 +32,16 @@ const CourseBuilderStudio: React.FC = () => {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
-  // Track course title separately so edits in CourseMapSettings update the header instantly
+  const [isArchiving, setIsArchiving] = useState(false);
+  const [showPublishConfirm, setShowPublishConfirm] = useState(false);
+  // Track course title + status separately so edits propagate to header instantly
   const [courseTitle, setCourseTitle] = useState(course?.course_title ?? '');
+  const [courseStatus, setCourseStatus] = useState<CourseStatus>(course?.status ?? 'DRAFT');
 
   useEffect(() => {
     if (course?.course_title) setCourseTitle(course.course_title);
-  }, [course?.course_title]);
+    if (course?.status) setCourseStatus(course.status);
+  }, [course?.course_title, course?.status]);
 
   const selectedNode = useMemo(() => {
     if (!selectedNodeId) {
@@ -142,41 +148,99 @@ const CourseBuilderStudio: React.FC = () => {
     draft.duplicateLesson(node.id);
   };
 
-  const handleCourseUpdated = (updated: import('@/types/courses.types').CourseMaster) => {
+  const handleCourseUpdated = (updated: CourseMaster) => {
     setCourseTitle(updated.course_title);
+    if (updated.status) setCourseStatus(updated.status);
   };
 
   const handlePublish = async () => {
-    if (!id || !draft.isDirty) {
-      return;
-    }
-
+    if (!id) return;
     setIsPublishing(true);
+    setShowPublishConfirm(false);
     try {
-      const result = await courseApi.syncCurriculum(Number(id), draft.toCurriculumSyncPayload());
-      if (result !== null) {
-        await refetch();
+      // Step 1: sync curriculum if dirty
+      if (draft.isDirty) {
+        const syncResult = await courseApi.syncCurriculum(Number(id), draft.toCurriculumSyncPayload());
+        if (syncResult === null) return; // error already handled by api layer
         draft.resetDirty();
       }
+      // Step 2: transition to PUBLISHED if currently DRAFT
+      if (courseStatus === 'DRAFT') {
+        const updated = await courseApi.updateCourse(Number(id), { status: 'PUBLISHED' as CourseStatus });
+        if (updated) setCourseStatus('PUBLISHED');
+      }
+      await refetch();
     } finally {
       setIsPublishing(false);
     }
   };
 
+  const handleArchive = async () => {
+    if (!id || courseStatus !== 'PUBLISHED') return;
+    setIsArchiving(true);
+    try {
+      const updated = await courseApi.updateCourse(Number(id), { status: 'ARCHIVED' as CourseStatus });
+      if (updated) {
+        setCourseStatus('ARCHIVED');
+        await refetch();
+      }
+    } finally {
+      setIsArchiving(false);
+    }
+  };
+
+  const isArchived = courseStatus === 'ARCHIVED';
+
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden bg-[#0f111a] text-slate-200 font-sans selection:bg-blue-500/30">
+
+      {/* ── Publish Confirmation Modal ── */}
+      {showPublishConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#1a1d27] border border-slate-700 rounded-xl p-6 w-full max-w-sm shadow-2xl space-y-4">
+            <h3 className="text-sm font-bold text-white">Publish Course?</h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              {draft.isDirty
+                ? 'This will save all pending curriculum changes and make the course visible to learners.'
+                : 'This will make the course visible to enrolled learners.'}
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setShowPublishConfirm(false)}
+                className="flex-1 py-2 text-xs font-semibold text-slate-400 bg-slate-800 hover:bg-slate-700 rounded transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePublish}
+                className="flex-1 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded transition"
+              >
+                Confirm Publish
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Learner Preview Overlay (fullscreen, replaces IDE) ── */}
       {isPreviewMode && (
         <LearnerPreviewPane
           nodes={draft.nodes}
-          courseTitle={course.course_title}
+          courseTitle={courseTitle}
           onExitPreview={() => setIsPreviewMode(false)}
         />
       )}
 
       {/* ── IDE (hidden when preview is active) ── */}
       <div className={isPreviewMode ? 'hidden' : 'contents'}>
+
+      {/* ── Archived read-only banner ── */}
+      {isArchived && (
+        <div className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-800/80 border-b border-slate-700 text-slate-400 text-xs font-semibold shrink-0">
+          <Archive size={13} />
+          This course is archived and is read-only. Unarchive it to make edits.
+        </div>
+      )}
 
       {/* ── Studio Header ── */}
       <header className="flex items-center justify-between h-14 px-4 bg-[#1a1d27] border-b border-slate-800/50 shadow-sm shrink-0">
@@ -197,9 +261,18 @@ const CourseBuilderStudio: React.FC = () => {
               <span className="px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase bg-blue-500/20 text-blue-400">
                 {course.course_code}
               </span>
+              {/* Status badge */}
+              <span className={cn(
+                "px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase",
+                courseStatus === 'PUBLISHED' && "bg-emerald-500/20 text-emerald-400",
+                courseStatus === 'DRAFT' && "bg-amber-500/20 text-amber-400",
+                courseStatus === 'ARCHIVED' && "bg-slate-700 text-slate-400",
+              )}>
+                {courseStatus}
+              </span>
             </div>
             <p className="text-[11px] flex items-center gap-1.5 transition-colors">
-              {draft.isDirty ? (
+              {draft.isDirty && !isArchived ? (
                 <>
                   <AlertCircle size={11} className="text-amber-400" />
                   <span className="text-amber-400 font-semibold">Changes Pending</span>
@@ -207,7 +280,9 @@ const CourseBuilderStudio: React.FC = () => {
               ) : (
                 <>
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                  <span className="text-slate-500">Draft saved locally</span>
+                  <span className="text-slate-500">
+                    {isArchived ? 'Archived — read only' : 'Draft saved locally'}
+                  </span>
                 </>
               )}
             </p>
@@ -222,14 +297,60 @@ const CourseBuilderStudio: React.FC = () => {
             <PlayCircle size={14} />
             Preview
           </button>
-          <button
-            onClick={handlePublish}
-            disabled={!draft.isDirty || isPublishing}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed rounded shadow-lg shadow-blue-900/20 transition"
-          >
-            <Save size={14} />
-            {isPublishing ? 'Publishing...' : 'Publish Changes'}
-          </button>
+
+          {/* Archive button — only when PUBLISHED */}
+          {courseStatus === 'PUBLISHED' && (
+            <button
+              onClick={handleArchive}
+              disabled={isArchiving}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-white bg-slate-800/50 hover:bg-slate-700 disabled:opacity-50 rounded transition border border-transparent hover:border-slate-600"
+              title="Archive this course"
+            >
+              <Archive size={14} />
+              {isArchiving ? 'Archiving...' : 'Archive'}
+            </button>
+          )}
+
+          {/* Unarchive button — only when ARCHIVED */}
+          {courseStatus === 'ARCHIVED' && (
+            <button
+              onClick={async () => {
+                setIsArchiving(true);
+                try {
+                  const updated = await courseApi.updateCourse(Number(id), { status: 'PUBLISHED' as CourseStatus });
+                  if (updated) { setCourseStatus('PUBLISHED'); await refetch(); }
+                } finally { setIsArchiving(false); }
+              }}
+              disabled={isArchiving}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-emerald-400 hover:text-white bg-emerald-500/10 hover:bg-emerald-600 disabled:opacity-50 rounded transition border border-emerald-500/30"
+            >
+              <CheckCircle2 size={14} />
+              {isArchiving ? 'Restoring...' : 'Unarchive'}
+            </button>
+          )}
+
+          {/* Publish / Sync button — hidden when ARCHIVED */}
+          {!isArchived && (
+            <button
+              onClick={() => {
+                if (courseStatus === 'DRAFT') {
+                  setShowPublishConfirm(true);
+                } else {
+                  // Already published — just sync curriculum changes
+                  handlePublish();
+                }
+              }}
+              disabled={(!draft.isDirty && courseStatus === 'PUBLISHED') || isPublishing}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed rounded shadow-lg shadow-blue-900/20 transition"
+            >
+              {courseStatus === 'PUBLISHED' ? <Save size={14} /> : <CheckCircle2 size={14} />}
+              {isPublishing
+                ? 'Publishing...'
+                : courseStatus === 'PUBLISHED'
+                  ? 'Sync Changes'
+                  : 'Publish Course'}
+            </button>
+          )}
         </div>
       </header>
 
@@ -241,10 +362,10 @@ const CourseBuilderStudio: React.FC = () => {
           nodes={draft.nodes}
           selectedNodeId={selectedNodeId || undefined}
           onSelect={(node) => { setSelectedNodeId(node.id); setActivePane('editor'); }}
-          onAdd={handleCreateNode}
-          onReorder={draft.updateTree}
-          onDelete={handleDeleteNode}
-          onDuplicate={handleDuplicate}
+          onAdd={isArchived ? () => {} : handleCreateNode}
+          onReorder={isArchived ? () => {} : draft.updateTree}
+          onDelete={isArchived ? () => {} : handleDeleteNode}
+          onDuplicate={isArchived ? () => {} : handleDuplicate}
         />
 
         {/* Center Pane: Editor */}
@@ -269,7 +390,19 @@ const CourseBuilderStudio: React.FC = () => {
              <div className="h-full w-full">
                {selectedNode.type === 'SECTION' 
                   ? <SectionEditor node={selectedNode} onSave={handleSaveNode} />
-                  : <LessonEditor node={selectedNode} courseId={course.id} onSave={handleSaveNode} />
+                  : <LessonEditor
+                      node={selectedNode}
+                      courseId={course.id}
+                      onSave={handleSaveNode}
+                      onRequestPublish={async () => {
+                        // Sync curriculum so the lesson gets a dbId, then refetch
+                        const syncResult = await courseApi.syncCurriculum(Number(id), draft.toCurriculumSyncPayload());
+                        if (syncResult !== null) {
+                          draft.resetDirty();
+                          await refetch();
+                        }
+                      }}
+                    />
                }
              </div>
           )}

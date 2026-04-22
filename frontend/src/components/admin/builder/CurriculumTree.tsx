@@ -46,6 +46,7 @@ export interface CurriculumNode {
   dbId?: number;
   type: NodeType;
   title: string;
+  description?: string;           // section description
   estimatedDurationMinutes?: number;
   contentType?: ContentType;
   children?: CurriculumNode[];
@@ -59,6 +60,21 @@ export interface CurriculumNode {
   docMetadata?: LessonDocumentMetadata | null;
   assessmentId?: number;          // persisted AssessmentMaster id for QUIZ lessons
   requireMarkComplete?: boolean;  // LINK lessons: learner must explicitly mark done
+  quizData?: {                    // cached quiz data for preview rendering
+    questions: Array<{
+      id: string;
+      type: string;
+      prompt: string;
+      scenarioText?: string;
+      options?: Array<{ id: string; text: string; isCorrect: boolean }>;
+    }>;
+    settings: {
+      passingScore: number;
+      timeLimit: number;
+      shuffleQuestions: boolean;
+      attemptLimit: number;
+    };
+  };
 }
 
 interface CurriculumTreeProps {

@@ -92,7 +92,9 @@ class BaseCourseViewSet(viewsets.ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data)
+        # Always treat as partial so PATCH with a subset of fields works correctly
+        partial = kwargs.pop('partial', True)
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         updated = self.service_class().update(pk=instance.pk, **serializer.validated_data)
         return success_response(
@@ -149,7 +151,12 @@ class CourseMasterViewSet(BaseCourseViewSet):
     def sync_curriculum(self, request, pk=None):
         """
         Processes an entire course tree (Sections > Lessons > Content) at once.
+        Blocked for ARCHIVED courses.
         """
+        course = self.get_object()
+        if hasattr(course, 'status') and course.status == 'ARCHIVED':
+            return error_response(message="Cannot modify an archived course.")
+
         serializer = CurriculumSyncSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
@@ -200,6 +207,7 @@ class CourseResourceViewSet(BaseCourseViewSet):
     serializer_class = CourseResourceSerializer
     service_class = CourseResourceService
     model = CourseResource
+    filterset_fields = ["course", "is_active"]
 
 
 class CourseDiscussionThreadViewSet(BaseCourseViewSet):

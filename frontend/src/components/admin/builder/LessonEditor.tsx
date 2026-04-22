@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Save, FileText, Video, Link as LinkIcon, UploadCloud,
   LayoutList, MonitorPlay, Presentation, AlertCircle, Loader2, Clock,
@@ -19,6 +19,7 @@ interface LessonEditorProps {
   node: CurriculumNode;
   courseId?: number;
   onSave: (id: string, updates: Partial<CurriculumNode>) => void;
+  onRequestPublish?: () => Promise<void>; // called when quiz needs lesson persisted first
 }
 
 const isDocumentType = (type: ContentType) =>
@@ -49,7 +50,7 @@ const mapQuizQuestionToPayload = (q: QuizQuestion) => ({
   })),
 });
 
-export const LessonEditor: React.FC<LessonEditorProps> = ({ node, courseId, onSave }) => {
+export const LessonEditor: React.FC<LessonEditorProps> = ({ node, courseId, onSave, onRequestPublish }) => {
   const [title, setTitle] = useState(node.title);
   const [contentType, setContentType] = useState<ContentType>(node.contentType || 'VIDEO');
   const [videoUrl, setVideoUrl] = useState(node.videoUrl || '');
@@ -77,13 +78,21 @@ export const LessonEditor: React.FC<LessonEditorProps> = ({ node, courseId, onSa
   const [isLoadingQuiz, setIsLoadingQuiz] = useState(false);
   const [isSavingQuiz, setIsSavingQuiz] = useState(false);
 
+  // Track whether the user has manually edited the video URL since the node loaded
+  const [videoUrlDirty, setVideoUrlDirty] = useState(false);
+  // Track the last assessment id we fetched to avoid re-fetching on every render
+  const lastFetchedAssessmentId = useRef<number | undefined>(undefined);
+
   const videoInfo = getVideoInfo(videoUrl);
 
   // ── Sync all state when node changes ────────────────────────────────────────
   useEffect(() => {
     setTitle(node.title);
     setContentType(node.contentType || 'VIDEO');
-    setVideoUrl(node.videoUrl || '');
+    // Only reset videoUrl from node if the user hasn't manually edited it
+    if (!videoUrlDirty) {
+      setVideoUrl(node.videoUrl || '');
+    }
     setLinkUrl(node.contentType === 'LINK' ? node.contentUrl || '' : '');
     setRequireMarkComplete(node.requireMarkComplete ?? false);
     setDocFile(node.docMetadata || null);
@@ -95,15 +104,29 @@ export const LessonEditor: React.FC<LessonEditorProps> = ({ node, courseId, onSa
     setDurationError(null);
     setAssessmentId(node.assessmentId);
     setQuizSaveError(null);
+    setVideoUrlDirty(false); // reset dirty flag when switching to a different node
+    lastFetchedAssessmentId.current = undefined; // reset so we re-fetch for the new node
   }, [node]);
 
   // ── Load existing assessment when QUIZ lesson is opened ──────────────────────
   useEffect(() => {
-    if (contentType !== 'QUIZ' || !node.dbId) return;
+    if (contentType !== 'QUIZ') return;
+    if (!node.dbId && !assessmentId) return;
+
+    // Don't re-fetch if we already loaded this exact assessment
+    const targetId = assessmentId;
+    if (targetId && targetId === lastFetchedAssessmentId.current) return;
+
     setIsLoadingQuiz(true);
     setQuizSaveError(null);
-    assessmentApi.getAssessmentForLesson(node.dbId).then(res => {
+
+    const fetchPromise = targetId
+      ? assessmentApi.getAssessmentDetail(targetId)
+      : assessmentApi.getAssessmentForLesson(node.dbId!);
+
+    fetchPromise.then(res => {
       if (res) {
+        lastFetchedAssessmentId.current = res.id;
         setAssessmentId(res.id);
         setAssessmentConfig({
           duration_minutes: res.duration_minutes,
@@ -113,18 +136,20 @@ export const LessonEditor: React.FC<LessonEditorProps> = ({ node, courseId, onSa
           negative_marking_enabled: res.negative_marking_enabled,
           negative_marking_percentage: Number(res.negative_marking_percentage),
         });
-        if (res.questions) {
+        if (res.questions && res.questions.length > 0) {
           setQuizQuestions(res.questions.map(mapBackendToQuizQuestion));
         }
       }
     }).finally(() => setIsLoadingQuiz(false));
-  }, [node.id, contentType, node.dbId]);
+  }, [node.id, node.dbId, contentType, assessmentId]);
 
   const fetchVideoMetadata = async (url: string) => {
     if (!url || !videoInfo) return;
     setIsFetchingMetadata(true);
     const fetchedTitle = await fetchVideoTitle(url);
-    if (fetchedTitle && (!title || title === 'New Lesson' || title === 'Untitled Lesson')) {
+    // Only auto-fill if the title is still a default/empty value — never overwrite user input
+    const isDefaultTitle = !title || title === 'New Lesson' || title === 'Untitled Lesson' || title === node.title;
+    if (fetchedTitle && isDefaultTitle) {
       setTitle(fetchedTitle);
     }
     setIsFetchingMetadata(false);
@@ -133,6 +158,7 @@ export const LessonEditor: React.FC<LessonEditorProps> = ({ node, courseId, onSa
   const resetContentState = (nextType: ContentType) => {
     setContentType(nextType);
     setVideoUrl('');
+    setVideoUrlDirty(false);
     setLinkUrl('');
     setRequireMarkComplete(false);
     setDocFile(null);
@@ -179,8 +205,22 @@ export const LessonEditor: React.FC<LessonEditorProps> = ({ node, courseId, onSa
   const saveQuiz = async (): Promise<number | null> => {
     const lessonDbId = node.dbId;
     const resolvedCourseId = courseId;
+
+    // If lesson isn't persisted yet, trigger curriculum sync first then bail —
+    // the parent will re-render with the new dbId and the user can save again.
     if (!lessonDbId || !resolvedCourseId) {
-      setQuizSaveError('Lesson must be saved to the curriculum before saving quiz content. Click "Publish Changes" first.');
+      if (onRequestPublish) {
+        setQuizSaveError('Saving curriculum first, then saving quiz...');
+        setIsSavingQuiz(true);
+        try {
+          await onRequestPublish();
+        } finally {
+          setIsSavingQuiz(false);
+        }
+        setQuizSaveError('Curriculum saved. Click "Save Lesson Draft" again to save the quiz.');
+      } else {
+        setQuizSaveError('Lesson must be saved to the curriculum before saving quiz content. Click "Publish Changes" first.');
+      }
       return null;
     }
 
@@ -213,7 +253,7 @@ export const LessonEditor: React.FC<LessonEditorProps> = ({ node, courseId, onSa
 
       // 3. Sync question mappings
       const synced = await assessmentApi.syncQuestions(currentAssessmentId, {
-        questions: questionIds.map((id, i) => ({ question_id: id, weight: 1.0 })),
+        questions: questionIds.map((id) => ({ question_id: id, weight: 1.0 })),
       });
       if (!synced) { setQuizSaveError('Failed to sync questions to assessment. Please try again.'); return null; }
 
@@ -233,11 +273,49 @@ export const LessonEditor: React.FC<LessonEditorProps> = ({ node, courseId, onSa
     if (contentType === 'QUIZ') {
       const savedAssessmentId = await saveQuiz();
       if (savedAssessmentId === null) return; // error already set
+
+      // Reload questions from backend so the editor reflects the persisted state
+      lastFetchedAssessmentId.current = undefined; // force re-fetch
+      const reloaded = await assessmentApi.getAssessmentDetail(savedAssessmentId);
+      if (reloaded?.questions) {
+        setQuizQuestions(reloaded.questions.map(mapBackendToQuizQuestion));
+      }
+
       onSave(node.id, {
         title,
         contentType,
         estimatedDurationMinutes: estimatedDuration,
         assessmentId: savedAssessmentId,
+        // Store questions on the node so preview can render them without an extra fetch
+        quizData: {
+          questions: (reloaded?.questions ?? quizQuestions).map(q => ({
+            id: typeof q === 'object' && 'question_text' in q
+              ? (q as BackendQuestion).id
+              : (q as QuizQuestion).id,
+            type: typeof q === 'object' && 'question_text' in q
+              ? (q as BackendQuestion).question_type
+              : (q as QuizQuestion).type,
+            prompt: typeof q === 'object' && 'question_text' in q
+              ? (q as BackendQuestion).question_text
+              : (q as QuizQuestion).prompt,
+            scenarioText: typeof q === 'object' && 'scenario_text' in q
+              ? (q as BackendQuestion).scenario_text
+              : (q as QuizQuestion).scenarioText,
+            options: typeof q === 'object' && 'options' in q
+              ? (q as BackendQuestion).options?.map(o => ({
+                  id: String(o.id),
+                  text: o.option_text,
+                  isCorrect: o.is_correct,
+                }))
+              : (q as QuizQuestion).options,
+          })),
+          settings: {
+            passingScore: assessmentConfig.passing_percentage,
+            timeLimit: assessmentConfig.duration_minutes,
+            shuffleQuestions: assessmentConfig.is_randomized,
+            attemptLimit: assessmentConfig.retake_limit,
+          },
+        },
       });
       return;
     }
@@ -326,10 +404,9 @@ export const LessonEditor: React.FC<LessonEditorProps> = ({ node, courseId, onSa
           <label className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2 block">Content Format</label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full">
             {([
-              { type: 'VIDEO', label: 'MP4 (YouTube)', icon: Video, active: true },
+              { type: 'VIDEO', label: 'Video (YouTube)', icon: Video, active: true },
               { type: 'PDF', label: 'PDF Document', icon: FileText, active: true },
-              { type: 'PPT', label: 'PPT Viewer', icon: Presentation, active: true },
-              { type: 'DOCUMENT', label: 'Document File', icon: FileText, active: true },
+              { type: 'PPT', label: 'PPT Document', icon: Presentation, active: true },
               { type: 'LINK', label: 'External Link', icon: LinkIcon, active: true },
               { type: 'QUIZ', label: 'Assessment', icon: LayoutList, active: true },
               { type: 'SCORM', label: 'SCORM Package', icon: MonitorPlay, active: false },
@@ -378,7 +455,7 @@ export const LessonEditor: React.FC<LessonEditorProps> = ({ node, courseId, onSa
               <input
                 type="url"
                 value={videoUrl}
-                onChange={e => setVideoUrl(e.target.value)}
+                onChange={e => { setVideoUrl(e.target.value); setVideoUrlDirty(true); }}
                 placeholder="https://www.youtube.com/watch?v=..."
                 className="w-full px-4 py-3 bg-[#0a0c10] border border-slate-700 rounded-md text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-medium text-sm"
               />

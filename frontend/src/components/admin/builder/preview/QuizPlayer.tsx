@@ -58,7 +58,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({ quizData, lessonTitle })
   // ── Empty State ─────────────────────────────────────────────────────────────
   if (total === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 rounded-xl bg-slate-900/50 border border-dashed border-slate-700 text-slate-500 gap-3">
+      <div className="flex flex-col items-center justify-center h-64 bg-slate-900/50 border border-dashed border-slate-700 text-slate-500 gap-3">
         <FileText size={36} className="opacity-30" />
         <p className="text-sm font-medium">No questions have been added to this quiz yet.</p>
       </div>
@@ -121,17 +121,14 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({ quizData, lessonTitle })
   // ── PHASE: INTRO ────────────────────────────────────────────────────────────
   if (phase === 'intro') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] rounded-xl bg-gradient-to-br from-slate-900 to-slate-900/50 border border-slate-800 p-10 text-center gap-6">
-        <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
-          <Award size={32} className="text-purple-400" />
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-[400px] bg-gradient-to-br from-slate-900 to-slate-900/50 border border-slate-800 p-10 text-center gap-6">
         <div className="space-y-2">
           <h2 className="text-xl font-bold text-white">{lessonTitle || 'Assessment'}</h2>
           <p className="text-sm text-slate-400">Test your knowledge with this assessment.</p>
         </div>
 
         {/* Quiz stats strip */}
-        <div className="flex items-center gap-6 px-6 py-3 bg-slate-800/50 rounded-xl border border-slate-700">
+        <div className="flex items-center gap-6 px-6 py-3 bg-slate-800/50 rounded-md border border-slate-700">
           <div className="text-center">
             <p className="text-lg font-black text-white">{total}</p>
             <p className="text-[10px] text-slate-500 uppercase tracking-wider">Questions</p>
@@ -151,13 +148,13 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({ quizData, lessonTitle })
         </div>
 
         {/* Preview mode notice */}
-        <div className="px-4 py-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-400 text-[11px] font-bold uppercase tracking-wider">
-          ⚡ Preview Mode — Responses are not scored or saved
+        <div className="px-4 py-2.5 text-amber-400 text-[11px] font-bold uppercase tracking-wider">
+          Preview Mode — Responses are not scored or saved
         </div>
 
         <button
           onClick={() => setPhase('playing')}
-          className="px-8 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl shadow-lg shadow-purple-900/30 transition-all hover:-translate-y-0.5 active:translate-y-0"
+          className="px-8 py-3 bg-accent rounded-md hover:bg-accent text-white font-bold shadow-lg shadow-accent-900/30 transition-all hover:-translate-y-0.5 active:translate-y-0"
         >
           Start Assessment
         </button>
@@ -176,28 +173,29 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({ quizData, lessonTitle })
       <div className="space-y-6">
         {/* Score card */}
         <div className={cn(
-          'rounded-xl border p-8 text-center space-y-4',
+          'rounded-md border p-8 text-center space-y-4',
           passed
             ? 'bg-emerald-950/30 border-emerald-500/30'
             : 'bg-red-950/20 border-red-500/30'
         )}>
           <div className={cn(
-            'w-20 h-20 rounded-full mx-auto flex items-center justify-center text-3xl font-black',
-            passed ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
+            'mx-auto text-3xl font-black',
+            passed ? 'text-emerald-400' : 'text-red-400'
           )}>
             {pct}%
+            <h3 className={cn('text-xl font-bold', passed ? 'text-emerald-400' : 'text-red-400')}>
+              {passed ? 'Passed' : 'Not Passed'}
+            </h3>
           </div>
           <div>
-            <h3 className={cn('text-xl font-bold', passed ? 'text-emerald-400' : 'text-red-400')}>
-              {passed ? '✓ Passed' : '✗ Not Passed'}
-            </h3>
+            
             <p className="text-sm text-slate-400 mt-1">
               {score} of {scorableQuestions} scorable questions correct
               {settings?.passingScore && ` · Passing score: ${settings.passingScore}%`}
             </p>
           </div>
-          <div className="px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-400 text-[11px] font-bold uppercase tracking-wider inline-block">
-            ⚡ Preview Mode — Correct answers shown for author review
+          <div className="px-4 py-2 text-amber-400 text-[11px] font-bold uppercase tracking-wider inline-block">
+            Preview Mode — Correct answers shown for author review
           </div>
         </div>
 
@@ -220,7 +218,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({ quizData, lessonTitle })
 
             return (
               <div key={q.id} className={cn(
-                'rounded-xl border p-5 space-y-3',
+                'rounded-md border p-5 space-y-3',
                 !hasScore
                   ? 'border-slate-800 bg-slate-900/30'
                   : isCorrect
@@ -280,7 +278,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({ quizData, lessonTitle })
 
         <button
           onClick={handleReset}
-          className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-sm font-medium transition-colors"
+          className="flex items-center gap-2 px-6 py-2.5 rounded-md bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-sm font-medium transition-colors"
         >
           <RotateCcw size={14} />
           Retake Preview
@@ -314,7 +312,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({ quizData, lessonTitle })
       </div>
 
       {/* Question card */}
-      <div className="rounded-xl border border-slate-700/80 bg-[#161a25] p-7 space-y-6">
+      <div className="rounded-md border border-slate-700/80 bg-[#161a25] p-7 space-y-6">
         {/* Question type badge */}
         <div className="flex items-center gap-2">
           <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border bg-purple-500/10 border-purple-500/20 text-purple-400">
@@ -348,7 +346,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({ quizData, lessonTitle })
                 key={opt.id}
                 onClick={() => handleMCQ(currentQ.id, opt.id)}
                 className={cn(
-                  'w-full flex items-center gap-4 px-5 py-3.5 rounded-xl border text-sm font-medium text-left transition-all',
+                  'w-full flex items-center gap-4 px-5 py-3.5 rounded-md border text-sm font-medium text-left transition-all',
                   selected
                     ? 'bg-purple-500/10 border-purple-500 text-purple-200 shadow-[0_0_15px_rgba(168,85,247,0.1)]'
                     : 'bg-slate-900/50 border-slate-700 text-slate-300 hover:bg-slate-800 hover:border-slate-600'
@@ -373,7 +371,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({ quizData, lessonTitle })
                 key={opt.id}
                 onClick={() => handleMultiSelect(currentQ.id, opt.id)}
                 className={cn(
-                  'w-full flex items-center gap-4 px-5 py-3.5 rounded-xl border text-sm font-medium text-left transition-all',
+                  'w-full flex items-center gap-4 px-5 py-3.5 rounded-md border text-sm font-medium text-left transition-all',
                   selected
                     ? 'bg-purple-500/10 border-purple-500 text-purple-200 shadow-[0_0_15px_rgba(168,85,247,0.1)]'
                     : 'bg-slate-900/50 border-slate-700 text-slate-300 hover:bg-slate-800 hover:border-slate-600'
@@ -397,13 +395,13 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({ quizData, lessonTitle })
               value={(answers[currentQ.id] as string) || ''}
               onChange={e => handleDescriptive(currentQ.id, e.target.value)}
               placeholder="Write your answer here..."
-              className="w-full bg-[#0a0c10] border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-purple-500 transition-colors resize-none"
+              className="w-full bg-[#0a0c10] border border-slate-700 rounded-md px-4 py-3 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-purple-500 transition-colors resize-none"
             />
           )}
 
           {/* File Upload */}
           {currentQ.type === 'FILE_UPLOAD' && (
-            <div className="flex flex-col items-center justify-center gap-3 p-8 border border-dashed border-slate-700 rounded-xl bg-slate-900/30 text-slate-500">
+            <div className="flex flex-col items-center justify-center gap-3 p-8 border border-dashed border-slate-700 rounded-md bg-slate-900/30 text-slate-500">
               <UploadCloud size={28} className="opacity-30" />
               <p className="text-sm font-medium">File upload is disabled in preview mode.</p>
               <p className="text-[11px] text-slate-600">Students will see a file picker here.</p>
@@ -418,7 +416,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({ quizData, lessonTitle })
                 key={opt.id}
                 onClick={() => handleMCQ(currentQ.id, opt.id)}
                 className={cn(
-                  'w-full flex items-center gap-4 px-5 py-3.5 rounded-xl border text-sm font-medium text-left transition-all',
+                  'w-full flex items-center gap-4 px-5 py-3.5 rounded-md border text-sm font-medium text-left transition-all',
                   selected
                     ? 'bg-purple-500/10 border-purple-500 text-purple-200'
                     : 'bg-slate-900/50 border-slate-700 text-slate-300 hover:bg-slate-800'
@@ -442,7 +440,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({ quizData, lessonTitle })
         <button
           onClick={() => setCurrentIdx(i => Math.max(0, i - 1))}
           disabled={currentIdx === 0}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-sm font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-md bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-sm font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <ChevronLeft size={16} /> Previous
         </button>
@@ -450,14 +448,14 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({ quizData, lessonTitle })
         {isLast ? (
           <button
             onClick={handleSubmit}
-            className="flex items-center gap-2 px-7 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold shadow-lg shadow-purple-900/30 transition-all hover:-translate-y-0.5 active:translate-y-0"
+            className="flex items-center gap-2 px-7 py-2.5 rounded-md bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold shadow-lg shadow-purple-900/30 transition-all hover:-translate-y-0.5 active:translate-y-0"
           >
             Submit Quiz <Award size={16} />
           </button>
         ) : (
           <button
             onClick={() => setCurrentIdx(i => Math.min(total - 1, i + 1))}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-sm font-medium transition-colors"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-md bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-sm font-medium transition-colors"
           >
             Next <ChevronRight size={16} />
           </button>

@@ -9,6 +9,8 @@ export interface CourseCategory {
   course_count?: number; 
 }
 
+export type CourseStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+
 export interface CourseMaster {
   id: number;
   course_title: string;
@@ -17,6 +19,7 @@ export interface CourseMaster {
   description: string;
   difficulty_level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'DOCTOR' | undefined;
   estimated_duration_hours: number;
+  status: CourseStatus;
   created_by?: number;
   is_active: boolean;
   created_at: string;
@@ -27,12 +30,25 @@ export interface CourseMaster {
   sections?: CourseSection[];
   tags?: CourseTagMap[];
   skills?: CourseSkillMapping[];
+  resources?: CourseResource[];
+}
+
+export interface CourseResource {
+  id: number;
+  course: number;
+  resource_title: string;
+  resource_url: string;
+  file_ref?: number | null;
+  file_url?: string | null;
+  is_active: boolean;
+  created_at: string;
 }
 
 export interface CourseSection {
   id: number;
   course: number;
   section_title: string;
+  description: string;
   display_order: number;
   is_active: boolean;
   created_at: string;
@@ -45,9 +61,11 @@ export interface CourseLesson {
   lesson_title: string;
   display_order: number;
   estimated_duration_minutes: number;
+  require_mark_complete: boolean;
   is_active: boolean;
   created_at: string;
   contents?: CourseContent[];
+  assessment_id?: number | null;  // linked AssessmentMaster id if lesson has a quiz
 }
 
 export type CourseContentType =
@@ -113,6 +131,7 @@ export interface CurriculumSyncLessonPayload {
   id?: number;
   lesson_title: string;
   estimated_duration_minutes: number;
+  require_mark_complete: boolean;
   display_order: number;
   contents: CurriculumSyncContentPayload[];
 }
@@ -120,6 +139,7 @@ export interface CurriculumSyncLessonPayload {
 export interface CurriculumSyncSectionPayload {
   id?: number;
   section_title: string;
+  description?: string;
   display_order: number;
   lessons: CurriculumSyncLessonPayload[];
 }

@@ -4,6 +4,20 @@ from apps.skill_management.models import SkillMaster, SkillLevelMaster
 from .constants import DifficultyLevel, CourseContentType
 
 
+class CourseStatus(models.TextChoices):
+    DRAFT = "DRAFT", "Draft"
+    PUBLISHED = "PUBLISHED", "Published"
+    ARCHIVED = "ARCHIVED", "Archived"
+
+
+# Valid status transitions: from_status -> set of allowed to_status
+VALID_STATUS_TRANSITIONS = {
+    CourseStatus.DRAFT: {CourseStatus.PUBLISHED},
+    CourseStatus.PUBLISHED: {CourseStatus.DRAFT, CourseStatus.ARCHIVED},
+    CourseStatus.ARCHIVED: {CourseStatus.PUBLISHED},  # explicit re-activation allowed
+}
+
+
 class CourseCategoryMaster(models.Model):
     """
     Groups courses into logical domains like Programming, HR, etc.
@@ -47,6 +61,12 @@ class CourseMaster(models.Model):
         on_delete=models.SET_NULL, 
         null=True, 
         related_name="authored_courses"
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=CourseStatus.choices,
+        default=CourseStatus.DRAFT,
+        db_index=True,
     )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -116,6 +136,7 @@ class CourseSection(models.Model):
     """
     course = models.ForeignKey(CourseMaster, on_delete=models.CASCADE, related_name="sections")
     section_title = models.CharField(max_length=150)
+    description = models.TextField(blank=True, default="")
     display_order = models.PositiveIntegerField(default=1)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -138,6 +159,10 @@ class CourseLesson(models.Model):
     lesson_title = models.CharField(max_length=200)
     display_order = models.PositiveIntegerField(default=1)
     estimated_duration_minutes = models.PositiveIntegerField(default=15)
+    require_mark_complete = models.BooleanField(
+        default=False,
+        help_text="Learner must explicitly mark this lesson complete (used for LINK-type lessons)."
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

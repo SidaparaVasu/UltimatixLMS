@@ -25,9 +25,47 @@ class QuestionBankStudioSerializer(serializers.ModelSerializer):
 
 
 class AssessmentMasterStudioSerializer(serializers.ModelSerializer):
+    """
+    Full assessment serializer including nested questions for the Studio.
+    """
+    questions = serializers.SerializerMethodField()
+
     class Meta:
         model = AssessmentMaster
         fields = "__all__"
+
+    def get_questions(self, obj):
+        """Return questions ordered by their mapping display_order."""
+        from .models import AssessmentQuestionMapping
+        mappings = AssessmentQuestionMapping.objects.filter(
+            assessment=obj
+        ).select_related('question').prefetch_related(
+            'question__options'
+        ).order_by('display_order')
+
+        result = []
+        for mapping in mappings:
+            q = mapping.question
+            result.append({
+                'id': str(q.id),
+                'question_text': q.question_text,
+                'question_type': q.question_type,
+                'scenario_text': q.scenario_text,
+                'explanation_text': q.explanation_text,
+                'difficulty_complexity': q.difficulty_complexity,
+                'is_active': q.is_active,
+                'options': [
+                    {
+                        'id': opt.id,
+                        'option_text': opt.option_text,
+                        'is_correct': opt.is_correct,
+                        'display_order': opt.display_order,
+                        'feedback_text': opt.feedback_text,
+                    }
+                    for opt in q.options.all().order_by('display_order')
+                ],
+            })
+        return result
 
 
 # --- LEARNER CONTEXT (Students - Sanitized) ---

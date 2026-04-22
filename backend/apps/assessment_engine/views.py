@@ -18,10 +18,12 @@ from .services import AssessmentBuildService, AttemptService, GradingService
 class AssessmentStudioViewSet(viewsets.ModelViewSet):
     """
     Studio API for instructors to manage assessments.
+    Uses the standard success/error response envelope so the frontend
+    handleApiResponse helper can parse results correctly.
     """
     queryset = AssessmentMaster.objects.all()
     serializer_class = AssessmentMasterStudioSerializer
-    permission_classes = [permissions.IsAuthenticated] # TODO: Add IsInstructor permission
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -30,15 +32,53 @@ class AssessmentStudioViewSet(viewsets.ModelViewSet):
             qs = qs.filter(lesson_id=lesson_id)
         return qs
 
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return success_response(data=serializer.data)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return success_response(data=serializer.data)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        return created_response(
+            message="Assessment created successfully.",
+            data=self.get_serializer(instance).data,
+        )
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', True)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        return success_response(
+            message="Assessment updated successfully.",
+            data=self.get_serializer(instance).data,
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.delete()
+        return success_response(message="Assessment deleted successfully.")
+
     @action(detail=True, methods=['post'], url_path='sync-questions')
     def sync_questions(self, request, pk=None):
         """
         Bulk links questions to the assessment.
-        Expects: data: [ { question_id: uuid, weight: 1.0 }, ... ]
+        Expects: { questions: [ { question_id: uuid, weight: 1.0 }, ... ] }
         """
         service = AssessmentBuildService()
         data = request.data.get('questions', [])
-        
         try:
             service.bulk_sync_questions(pk, data)
             return success_response(message="Assessment questions synced successfully.")
@@ -49,6 +89,7 @@ class AssessmentStudioViewSet(viewsets.ModelViewSet):
 class QuestionBankViewSet(viewsets.ModelViewSet):
     """
     API for managing the central question pool.
+    Uses the standard response envelope.
     """
     queryset = QuestionBank.objects.all()
     serializer_class = QuestionBankStudioSerializer
@@ -58,6 +99,26 @@ class QuestionBankViewSet(viewsets.ModelViewSet):
         if self.action in ('create', 'update', 'partial_update'):
             return QuestionBankWriteSerializer
         return QuestionBankStudioSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        return created_response(
+            message="Question created successfully.",
+            data=QuestionBankStudioSerializer(instance).data,
+        )
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', True)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        return success_response(
+            message="Question updated successfully.",
+            data=QuestionBankStudioSerializer(instance).data,
+        )
 
 
 class AssessmentAttemptViewSet(viewsets.ModelViewSet):

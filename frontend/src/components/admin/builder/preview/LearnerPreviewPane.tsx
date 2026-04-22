@@ -3,12 +3,13 @@ import {
   Video, FileText, Presentation, Link as LinkIcon,
   LayoutList, ChevronDown, ChevronUp, CheckCircle, Check,
   MonitorPlay, BookOpen, X, ChevronLeft, ChevronRight,
-  Keyboard
+  Keyboard, Loader2
 } from 'lucide-react';
 import { CurriculumNode } from '@/components/admin/builder/CurriculumTree';
 import { VideoViewer } from './VideoViewer';
 import { DocumentViewer } from './DocumentViewer';
 import { QuizPlayer } from './QuizPlayer';
+import { assessmentApi } from '@/api/assessment-api';
 import { cn } from '@/utils/cn';
 
 interface LearnerPreviewPaneProps {
@@ -62,6 +63,64 @@ const CircularProgress: React.FC<{ pct: number; size?: number; stroke?: number }
       />
     </svg>
   );
+};
+
+/**
+ * Lazily loads quiz data for a lesson node and renders QuizPlayer.
+ * Uses cached quizData from the node if available, otherwise fetches from backend.
+ */
+const QuizLessonPlayer: React.FC<{ lesson: CurriculumNode }> = ({ lesson }) => {
+  const [quizData, setQuizData] = useState(lesson.quizData ?? null);
+  const [loading, setLoading] = useState(!lesson.quizData && !!lesson.assessmentId);
+
+  useEffect(() => {
+    // If quizData is already cached on the node, use it directly
+    if (lesson.quizData) {
+      setQuizData(lesson.quizData);
+      setLoading(false);
+      return;
+    }
+    // Otherwise fetch from backend using assessmentId
+    if (!lesson.assessmentId) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    assessmentApi.getAssessmentDetail(lesson.assessmentId).then(res => {
+      if (res?.questions) {
+        setQuizData({
+          questions: res.questions.map(q => ({
+            id: q.id,
+            type: q.question_type,
+            prompt: q.question_text,
+            scenarioText: q.scenario_text,
+            options: q.options?.map(o => ({
+              id: String(o.id),
+              text: o.option_text,
+              isCorrect: o.is_correct,
+            })),
+          })),
+          settings: {
+            passingScore: Number(res.passing_percentage),
+            timeLimit: res.duration_minutes,
+            shuffleQuestions: res.is_randomized,
+            attemptLimit: res.retake_limit,
+          },
+        });
+      }
+    }).finally(() => setLoading(false));
+  }, [lesson.id, lesson.assessmentId]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-40 text-slate-500 gap-2">
+        <Loader2 size={18} className="animate-spin" />
+        <span className="text-sm">Loading assessment...</span>
+      </div>
+    );
+  }
+
+  return <QuizPlayer quizData={quizData ?? undefined} lessonTitle={lesson.title} />;
 };
 
 /**
@@ -309,22 +368,22 @@ export const LearnerPreviewPane: React.FC<LearnerPreviewPaneProps> = ({
         </aside>
 
         {/* ── Right: Content Area ───────────────────────────────────────────── */}
-        <main className="flex-1 overflow-y-auto no-scrollbar">
+        <main className="flex-1 px-10 overflow-y-auto no-scrollbar">
           {!selectedLesson ? (
             <div className="flex flex-col items-center justify-center h-full text-slate-600 gap-3">
               <BookOpen size={40} className="opacity-20" />
               <p className="text-sm">Select a lesson from the sidebar to begin.</p>
             </div>
           ) : (
-            <div className="max-w-4xl mx-auto px-8 py-10 space-y-8">
+            <div className="max-w-full mx-auto px-8 py-10 space-y-5">
 
               {/* ── Breadcrumb ─────────────────────────────────────────────── */}
               {currentSection && (
-                <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                <div className="flex items-center gap-1 text-[11px] text-slate-500">
                   <span className="truncate max-w-[140px]">{currentSection.title}</span>
-                  <ChevronUp size={12} className="shrink-0" />
+                  <ChevronRight size={12} className="shrink-0" />
                   <span className="text-slate-400 font-medium truncate">{selectedLesson.title}</span>
-                  <span className="ml-auto shrink-0 text-slate-600">
+                  <span className="ml-auto shrink-0 text-slate-300">
                     Lesson {lessonIndexInSection + 1} of {currentSection.children?.length}
                   </span>
                 </div>
@@ -351,7 +410,7 @@ export const LearnerPreviewPane: React.FC<LearnerPreviewPaneProps> = ({
                 <DocumentViewer contentType="DOCUMENT" docMetadata={selectedLesson.docMetadata} fileUrl={selectedLesson.fileUrl} />
               )}
               {selectedLesson.contentType === 'QUIZ' && (
-                <QuizPlayer quizData={(selectedLesson as any).quizData} lessonTitle={selectedLesson.title} />
+                <QuizLessonPlayer lesson={selectedLesson} />
               )}
               {selectedLesson.contentType === 'LINK' && (
                 <div className="flex flex-col items-center justify-center h-64 rounded-xl bg-slate-900/50 border border-dashed border-slate-700 text-slate-400 gap-4 p-6 text-center">

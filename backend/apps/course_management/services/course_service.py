@@ -56,12 +56,14 @@ class CourseService(BaseService):
             if s_id and s_id in existing_sections:
                 section = existing_sections[s_id]
                 section.section_title = s_data['section_title']
+                section.description = s_data.get('description', section.description)
                 section.display_order = s_idx + 1
                 section.save()
             else:
                 section = CourseSection.objects.create(
                     course_id=course_id,
                     section_title=s_data['section_title'],
+                    description=s_data.get('description', ''),
                     display_order=s_idx + 1
                 )
 
@@ -83,6 +85,10 @@ class CourseService(BaseService):
                         'estimated_duration_minutes',
                         lesson.estimated_duration_minutes,
                     )
+                    lesson.require_mark_complete = l_data.get(
+                        'require_mark_complete',
+                        lesson.require_mark_complete,
+                    )
                     lesson.display_order = l_idx + 1
                     lesson.save()
                 else:
@@ -90,6 +96,7 @@ class CourseService(BaseService):
                         section=section,
                         lesson_title=l_data['lesson_title'],
                         estimated_duration_minutes=l_data.get('estimated_duration_minutes', 15),
+                        require_mark_complete=l_data.get('require_mark_complete', False),
                         display_order=l_idx + 1
                     )
 

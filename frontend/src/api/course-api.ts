@@ -221,5 +221,35 @@ export const courseApi = {
       return handleApiError(error);
     }
   },
+
+  // --- Course Resources ---
+  getResources: async (courseId: number) => {
+    try {
+      const response = await apiClient.get("/courses/resources/", {
+        params: { course: courseId, is_active: true },
+      });
+      return handleApiResponse<PaginatedResponse<import('@/types/courses.types').CourseResource>>(response.data, false);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  createResource: async (data: { course: number; resource_title: string; resource_url?: string; file_ref?: number | null }) => {
+    try {
+      const response = await apiClient.post("/courses/resources/", data);
+      return handleApiResponse<import('@/types/courses.types').CourseResource>(response.data);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  deleteResource: async (id: number) => {
+    try {
+      const response = await apiClient.delete(`/courses/resources/${id}/`);
+      return handleApiResponse(response.data);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
 };
 

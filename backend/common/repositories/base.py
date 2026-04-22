@@ -49,7 +49,12 @@ class BaseRepository(Generic[T]):
         if instance:
             for attr, value in data.items():
                 setattr(instance, attr, value)
-            instance.save()
+            # Use update_fields to avoid MySQL strict-mode issues with auto_now fields.
+            # Always include 'updated_at' if the model has it so Django sets it correctly.
+            fields_to_save = list(data.keys())
+            if hasattr(instance, 'updated_at') and 'updated_at' not in fields_to_save:
+                fields_to_save.append('updated_at')
+            instance.save(update_fields=fields_to_save)
         return instance
 
     def delete(self, pk: Any, soft_delete: bool = True) -> bool:

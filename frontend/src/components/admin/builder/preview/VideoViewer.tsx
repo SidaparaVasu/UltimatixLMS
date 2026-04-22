@@ -19,7 +19,7 @@ export const VideoViewer: React.FC<VideoViewerProps> = ({ videoUrl, title }) => 
   // ── Empty State: No URL provided ──────────────────────────────────
   if (!videoUrl) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 rounded-xl bg-slate-900/50 border border-dashed border-slate-700 text-slate-500 gap-3">
+      <div className="flex flex-col items-center justify-center h-64 bg-slate-900/50 border border-dashed border-slate-700 text-slate-500 gap-3">
         <Video size={36} className="opacity-30" />
         <p className="text-sm font-medium">No video content added to this lesson.</p>
       </div>
@@ -29,7 +29,7 @@ export const VideoViewer: React.FC<VideoViewerProps> = ({ videoUrl, title }) => 
   // ── Error State: URL provided but unrecognised ──────────────────────
   if (!videoInfo) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 rounded-xl bg-red-950/20 border border-dashed border-red-500/30 text-red-400 gap-3">
+      <div className="flex flex-col items-center justify-center h-64 bg-red-950/20 border border-dashed border-red-500/30 text-red-400 gap-3">
         <AlertCircle size={36} className="opacity-50" />
         <p className="text-sm font-medium">Unsupported video URL</p>
         <a
@@ -58,7 +58,7 @@ export const VideoViewer: React.FC<VideoViewerProps> = ({ videoUrl, title }) => 
   return (
     <div className="space-y-3">
       {/* Aspect-ratio locked player shell */}
-      <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black shadow-2xl ring-1 ring-slate-800">
+      <div className="relative w-full aspect-video overflow-hidden bg-black">
         <iframe
           src={iframeSrc}
           title={title || 'Video Lesson'}
@@ -66,27 +66,6 @@ export const VideoViewer: React.FC<VideoViewerProps> = ({ videoUrl, title }) => 
           allowFullScreen
           className="absolute inset-0 w-full h-full"
         />
-      </div>
-
-      {/* Provider badge */}
-      <div className="flex items-center gap-2">
-        <span className={`
-          px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest
-          ${videoInfo.type === 'youtube'
-            ? 'bg-red-500/10 text-red-400 border border-red-500/20'
-            : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-          }
-        `}>
-          {videoInfo.type === 'youtube' ? '▶ YouTube' : '◉ Vimeo'}
-        </span>
-        <a
-          href={videoUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-300 transition-colors"
-        >
-          <ExternalLink size={10} /> Open in new tab
-        </a>
       </div>
     </div>
   );

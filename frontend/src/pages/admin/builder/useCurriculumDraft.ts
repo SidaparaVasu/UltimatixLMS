@@ -46,12 +46,15 @@ export const useCurriculumDraft = (initialCourse?: CourseDetail | null) => {
         dbId: sec.id,
         type: 'SECTION',
         title: sec.section_title || 'Untitled Section',
+        description: sec.description || '',
         children: (sec.lessons || []).map((les: CourseLesson) => ({
           id: `lesson-${les.id}`,
           dbId: les.id,
           type: 'LESSON',
           title: les.lesson_title || 'Untitled Lesson',
           estimatedDurationMinutes: les.estimated_duration_minutes ?? 15,
+          requireMarkComplete: les.require_mark_complete ?? false,
+          assessmentId: les.assessment_id ?? undefined,
           ...mapLessonContentToNode(les.contents),
         }))
       }));
@@ -156,11 +159,13 @@ export const useCurriculumDraft = (initialCourse?: CourseDetail | null) => {
       sections: nodes.map((section, sectionIndex) => ({
         ...(section.dbId ? { id: section.dbId } : {}),
         section_title: section.title,
+        description: section.description || '',
         display_order: sectionIndex + 1,
         lessons: (section.children || []).map((lesson, lessonIndex) => ({
           ...(lesson.dbId ? { id: lesson.dbId } : {}),
           lesson_title: lesson.title,
           estimated_duration_minutes: lesson.estimatedDurationMinutes ?? 15,
+          require_mark_complete: lesson.requireMarkComplete ?? false,
           display_order: lessonIndex + 1,
           contents: buildLessonContents(lesson),
         })),

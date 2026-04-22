@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { CourseMaster } from "@/types/courses.types";
+import { CourseMaster, CourseResource } from "@/types/courses.types";
 import { CourseSkillMapping, CourseTagMap } from "@/types/courses.types";
 import {
   Target, Tag as TagIcon, BarChart, Plus, X, Loader2, AlertCircle,
-  Pencil, Check, ChevronDown,
+  Pencil, Check, ChevronDown, Paperclip, Link as LinkIcon, Trash2, UploadCloud,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSkills, useSkillLevels, useTags, useCourseCategories, ADMIN_QUERY_KEYS } from "@/queries/admin/useAdminMasters";
 import { courseApi } from "@/api/course-api";
+import { fileApi } from "@/api/file-api";
 import { skillApi } from "@/api/skill-api";
 import { SearchableDropdown } from "./SearchableDropdown";
 import { cn } from "@/utils/cn";
@@ -41,9 +42,12 @@ export const CourseMapSettings: React.FC<CourseMapSettingsProps> = ({ course, on
   // ── Local mapped state ───────────────────────────────────────────────────
   const [mappedSkills, setMappedSkills] = useState<CourseSkillMapping[]>(course.skills ?? []);
   const [mappedTags, setMappedTags] = useState<CourseTagMap[]>(course.tags ?? []);
+  const [resources, setResources] = useState<CourseResource[]>(course.resources ?? []);
+  const [isLoadingResources, setIsLoadingResources] = useState(false);
 
   useEffect(() => { setMappedSkills(course.skills ?? []); }, [course.skills]);
   useEffect(() => { setMappedTags(course.tags ?? []); }, [course.tags]);
+  useEffect(() => { setResources(course.resources ?? []); }, [course.resources]);
 
   // ── Course metadata edit state ───────────────────────────────────────────
   const [isEditing, setIsEditing] = useState(false);
@@ -186,6 +190,81 @@ export const CourseMapSettings: React.FC<CourseMapSettingsProps> = ({ course, on
       await queryClient.invalidateQueries({ queryKey: ADMIN_QUERY_KEYS.courseTags });
       setSelectedTagId((result as { id: number }).id);
     } else { setTagError("Failed to create tag."); }
+  };
+
+  // ── Resource state ───────────────────────────────────────────────────────
+  const [newResourceTitle, setNewResourceTitle] = useState('');
+  const [newResourceUrl, setNewResourceUrl] = useState('');
+  const [resourceMode, setResourceMode] = useState<'url' | 'file'>('url');
+  const [isAddingResource, setIsAddingResource] = useState(false);
+  const [isUploadingResource, setIsUploadingResource] = useState(false);
+  const [resourceError, setResourceError] = useState<string | null>(null);
+
+  const handleAddResource = async () => {
+    if (!newResourceTitle.trim()) {
+      setResourceError('Resource title is required.');
+      return;
+    }
+    if (resourceMode === 'url' && !newResourceUrl.trim()) {
+      setResourceError('Please enter a URL.');
+      return;
+    }
+    setResourceError(null);
+    setIsAddingResource(true);
+    const result = await courseApi.createResource({
+      course: course.id,
+      resource_title: newResourceTitle.trim(),
+      resource_url: resourceMode === 'url' ? newResourceUrl.trim() : '',
+    });
+    setIsAddingResource(false);
+    if (result === null) {
+      setResourceError('Failed to add resource. Please try again.');
+      return;
+    }
+    setResources(prev => [...prev, result as CourseResource]);
+    setNewResourceTitle('');
+    setNewResourceUrl('');
+  };
+
+  const handleResourceFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !newResourceTitle.trim()) {
+      if (!newResourceTitle.trim()) setResourceError('Enter a title before uploading a file.');
+      e.target.value = '';
+      return;
+    }
+    setResourceError(null);
+    setIsUploadingResource(true);
+    const uploaded = await fileApi.uploadFile(file);
+    if (!uploaded) {
+      setIsUploadingResource(false);
+      setResourceError('File upload failed. Please try again.');
+      e.target.value = '';
+      return;
+    }
+    const result = await courseApi.createResource({
+      course: course.id,
+      resource_title: newResourceTitle.trim(),
+      resource_url: '',
+      file_ref: uploaded.id,
+    });
+    setIsUploadingResource(false);
+    e.target.value = '';
+    if (result === null) {
+      setResourceError('Failed to save resource. Please try again.');
+      return;
+    }
+    setResources(prev => [...prev, result as CourseResource]);
+    setNewResourceTitle('');
+  };
+
+  const handleDeleteResource = async (resource: CourseResource) => {
+    setResources(prev => prev.filter(r => r.id !== resource.id));
+    const result = await courseApi.deleteResource(resource.id);
+    if (result === null) {
+      setResources(prev => [...prev, resource]);
+      setResourceError('Failed to remove resource.');
+    }
   };
 
   return (
@@ -425,6 +504,128 @@ export const CourseMapSettings: React.FC<CourseMapSettingsProps> = ({ course, on
           ) : (
             <p className="text-xs text-slate-500 italic">No course tags applied.</p>
           )}
+        </div>
+
+        {/* ── Course Resources ── */}
+        <div className="space-y-3">
+          <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2 border-b border-slate-800 pb-2">
+            <Paperclip size={12} /> Course Resources
+          </h4>
+
+          {/* Existing resources list */}
+          {resources.length > 0 ? (
+            <div className="space-y-1.5">
+              {resources.map(r => (
+                <div key={r.id} className="flex items-center gap-2 px-2 py-1.5 bg-slate-800/40 border border-slate-700/50 rounded text-[10px]">
+                  {r.resource_url ? (
+                    <LinkIcon size={10} className="text-blue-400 shrink-0" />
+                  ) : (
+                    <Paperclip size={10} className="text-slate-400 shrink-0" />
+                  )}
+                  <span className="flex-1 truncate text-slate-300 font-medium">{r.resource_title}</span>
+                  {r.resource_url && (
+                    <a
+                      href={r.resource_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-400 hover:text-blue-300 shrink-0"
+                      title={r.resource_url}
+                    >
+                      <LinkIcon size={9} />
+                    </a>
+                  )}
+                  <button
+                    onClick={() => handleDeleteResource(r)}
+                    className="text-slate-600 hover:text-red-400 transition-colors shrink-0"
+                  >
+                    <Trash2 size={10} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-500 italic">No resources attached yet.</p>
+          )}
+
+          {resourceError && (
+            <p className="text-[10px] text-red-400 flex items-center gap-1">
+              <AlertCircle size={10} /> {resourceError}
+            </p>
+          )}
+
+          {/* Add resource form */}
+          <div className="space-y-2 pt-1">
+            <input
+              type="text"
+              value={newResourceTitle}
+              onChange={e => setNewResourceTitle(e.target.value)}
+              placeholder="Resource title..."
+              className="w-full px-3 py-1.5 bg-slate-800/50 border border-slate-700 rounded text-xs text-white focus:outline-none focus:border-blue-500 transition"
+            />
+
+            {/* Mode toggle */}
+            <div className="flex gap-1">
+              <button
+                onClick={() => setResourceMode('url')}
+                className={cn(
+                  "flex-1 py-1 text-[10px] font-bold rounded border transition-colors",
+                  resourceMode === 'url'
+                    ? "bg-blue-500/10 border-blue-500 text-blue-400"
+                    : "bg-slate-800/50 border-slate-700 text-slate-500 hover:text-slate-300"
+                )}
+              >
+                URL
+              </button>
+              <button
+                onClick={() => setResourceMode('file')}
+                className={cn(
+                  "flex-1 py-1 text-[10px] font-bold rounded border transition-colors",
+                  resourceMode === 'file'
+                    ? "bg-blue-500/10 border-blue-500 text-blue-400"
+                    : "bg-slate-800/50 border-slate-700 text-slate-500 hover:text-slate-300"
+                )}
+              >
+                File
+              </button>
+            </div>
+
+            {resourceMode === 'url' ? (
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={newResourceUrl}
+                  onChange={e => setNewResourceUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="flex-1 px-3 py-1.5 bg-slate-800/50 border border-slate-700 rounded text-xs text-white focus:outline-none focus:border-blue-500 transition"
+                />
+                <button
+                  onClick={handleAddResource}
+                  disabled={isAddingResource || !newResourceTitle.trim() || !newResourceUrl.trim()}
+                  className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white px-3 rounded flex items-center justify-center transition"
+                >
+                  {isAddingResource ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                </button>
+              </div>
+            ) : (
+              <label className={cn(
+                "flex items-center justify-center gap-2 px-3 py-2 border border-dashed rounded cursor-pointer transition-colors text-[10px] font-semibold",
+                isUploadingResource
+                  ? "border-slate-700 text-slate-600 cursor-not-allowed"
+                  : "border-slate-600 text-slate-400 hover:border-blue-500/50 hover:text-blue-400"
+              )}>
+                <input
+                  type="file"
+                  className="hidden"
+                  disabled={isUploadingResource || !newResourceTitle.trim()}
+                  onChange={handleResourceFileUpload}
+                />
+                {isUploadingResource
+                  ? <><Loader2 size={12} className="animate-spin" /> Uploading...</>
+                  : <><UploadCloud size={12} /> Click to upload file</>
+                }
+              </label>
+            )}
+          </div>
         </div>
 
       </div>
