@@ -149,7 +149,21 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 52428800  # 50 MB
 
 # Allowed file types for upload
 ALLOWED_UPLOAD_EXTENSIONS = ["pdf", "ppt", "pptx", "mp4", "webm", "mov", "zip"]
-MAX_UPLOAD_SIZE_MB = 50
+MAX_UPLOAD_SIZE_MB = 50  # global hard cap
+
+# Per-type size limits (MB) — enforced in FileService.validate_file()
+# Keeps PDF files lean for fast streaming; videos can be larger
+MAX_UPLOAD_SIZE_BY_TYPE_MB = {
+    "pdf":  20,   # PDFs should be compressed before upload
+    "ppt":  50,   # PPT/PPTX — converted to PDF at upload time
+    "pptx": 50,
+    "mp4":  500,
+    "webm": 500,
+    "mov":  500,
+    "zip":  100,
+    "doc":  20,
+    "docx": 20,
+}
 
 # PPT → PDF conversion settings
 # Timeout in seconds for unoconv subprocess (default: 120s for large files)

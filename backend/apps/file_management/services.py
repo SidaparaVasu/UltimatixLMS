@@ -31,20 +31,30 @@ class FileService(BaseService):
 
     def validate_file(self, file_obj):
         """
-        Validates file size and extension against system settings.
+        Validates file extension and size.
+        Uses per-type size limits from MAX_UPLOAD_SIZE_BY_TYPE_MB when available,
+        falling back to the global MAX_UPLOAD_SIZE_MB.
         Returns the lowercase extension on success.
         """
         ext = file_obj.name.split('.')[-1].lower()
+
+        # 1. Extension check
         if ext not in settings.ALLOWED_UPLOAD_EXTENSIONS:
             raise ValidationError(
                 f"File extension '.{ext}' is not allowed. "
                 f"Supported: {', '.join(settings.ALLOWED_UPLOAD_EXTENSIONS)}"
             )
+
+        # 2. Per-type size limit (falls back to global limit)
+        per_type_limits = getattr(settings, 'MAX_UPLOAD_SIZE_BY_TYPE_MB', {})
+        max_mb = per_type_limits.get(ext, settings.MAX_UPLOAD_SIZE_MB)
+
         size_mb = file_obj.size / (1024 * 1024)
-        if size_mb > settings.MAX_UPLOAD_SIZE_MB:
+        if size_mb > max_mb:
             raise ValidationError(
-                f"File size {size_mb:.2f}MB exceeds the limit of {settings.MAX_UPLOAD_SIZE_MB}MB."
+                f"File size {size_mb:.1f}MB exceeds the {max_mb}MB limit for .{ext} files."
             )
+
         return ext
 
     def map_extension_to_type(self, ext):

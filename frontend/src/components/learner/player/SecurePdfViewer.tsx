@@ -1,15 +1,4 @@
-/**
- * Features:
- * - Canvas rendering via react-pdf (PDF.js) — text is pixels, not DOM nodes
- * - Text layer disabled — prevents text selection and copy
- * - Annotation layer disabled — removes links/form fields
- * - Lazy page loading via IntersectionObserver — only renders visible pages
- * - No toolbar — custom minimal controls only (page count, zoom)
- * - DRM restrictions via useDocumentProtection hook
- * - Accepts a Blob URL (from DocumentViewer's secure fetch)
- */
-
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { Loader2, ZoomIn, ZoomOut, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/utils/cn';
@@ -18,14 +7,13 @@ import { useDocumentProtection } from '@/hooks/useDocumentProtection';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
-// ── PDF.js worker ─────────────────────────────────────────────────────────────
-// Use the CDN worker to avoid bundling it (reduces bundle size significantly)
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
+// ── PDF.js worker — CDN to avoid bundling ────────────────────────────────────
+pdfjs.GlobalWorkerOptions.workerSrc =
+  `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface SecurePdfViewerProps {
-  /** Blob URL created from the authenticated file fetch */
   blobUrl: string;
   className?: string;
 }
@@ -37,31 +25,82 @@ const MAX_SCALE = 2.5;
 const SCALE_STEP = 0.25;
 const DEFAULT_SCALE = 1.0;
 
+// Pages within this many viewport-heights of the current view are rendered.
+// Pages outside this window are replaced with placeholders (canvas memory freed).
+const RENDER_WINDOW_VIEWPORTS = 3;
+
+// Pre-load this many pages ahead of the last visible page
+const PRELOAD_AHEAD = 2;
+
+// Horizontal padding inside the scroll container (px each side)
+const HORIZONTAL_PADDING = 32;
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export const SecurePdfViewer = ({ blobUrl, className }: SecurePdfViewerProps) => {
-  const [numPages, setNumPages] = useState<number>(0);
-  const [scale, setScale] = useState<number>(DEFAULT_SCALE);
-  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [numPages, setNumPages] = useState(0);
+  const [scale, setScale] = useState(DEFAULT_SCALE);
+  const [currentPage, setCurrentPage] = useState(1);
   const [isDocLoading, setIsDocLoading] = useState(true);
   const [docError, setDocError] = useState<string | null>(null);
 
-  // Tracks which pages are visible (for lazy rendering)
-  const [visiblePages, setVisiblePages] = useState<Set<number>>(new Set([1]));
+  // Set of page numbers that should be rendered (visible + preload window)
+  const [renderedPages, setRenderedPages] = useState<Set<number>>(new Set([1, 2]));
+
+  // Responsive: actual pixel width available for the page canvas
+  const [containerWidth, setContainerWidth] = useState<number>(0);
+
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const resizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // DRM restrictions
   const protectionRef = useDocumentProtection<HTMLDivElement>();
 
-  // ── Document load handlers ──────────────────────────────────────────────────
+  // ── Responsive container width ────────────────────────────────────────────
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const measure = () => {
+      const width = container.clientWidth - HORIZONTAL_PADDING * 2;
+      setContainerWidth(Math.max(width, 300));
+    };
+
+    // Initial measurement
+    measure();
+
+    // Debounced resize observer — avoids layout thrash on rapid resize
+    resizeObserverRef.current = new ResizeObserver(() => {
+      if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current);
+      resizeTimerRef.current = setTimeout(measure, 100);
+    });
+    resizeObserverRef.current.observe(container);
+
+    return () => {
+      resizeObserverRef.current?.disconnect();
+      if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current);
+    };
+  }, []);
+
+  // ── Computed page width ───────────────────────────────────────────────────
+  // A standard PDF page is 595pt wide. We scale to fit the container at 1x,
+  // then apply the user's zoom scale on top.
+  const pageWidth = useMemo(() => {
+    if (containerWidth === 0) return undefined; // let react-pdf use its default
+    const baseWidth = Math.min(containerWidth, 900); // cap at 900px for readability
+    return baseWidth * scale;
+  }, [containerWidth, scale]);
+
+  // ── Document load handlers ────────────────────────────────────────────────
 
   const onDocumentLoadSuccess = useCallback(({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
     setIsDocLoading(false);
     setDocError(null);
-    // Pre-render first 2 pages
-    setVisiblePages(new Set([1, 2].filter(p => p <= numPages)));
+    setRenderedPages(new Set([1, 2].filter(p => p <= numPages)));
   }, []);
 
   const onDocumentLoadError = useCallback((error: Error) => {
@@ -70,10 +109,13 @@ export const SecurePdfViewer = ({ blobUrl, className }: SecurePdfViewerProps) =>
     console.error('[SecurePdfViewer] PDF load error:', error);
   }, []);
 
-  // ── Lazy page loading via IntersectionObserver ──────────────────────────────
+  // ── Lazy load + unload via IntersectionObserver ───────────────────────────
 
   useEffect(() => {
-    if (numPages === 0) return;
+    if (numPages === 0 || !scrollContainerRef.current) return;
+
+    const scrollEl = scrollContainerRef.current;
+    const viewportHeight = scrollEl.clientHeight;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -82,39 +124,60 @@ export const SecurePdfViewer = ({ blobUrl, className }: SecurePdfViewerProps) =>
           if (!pageNum) return;
 
           if (entry.isIntersecting) {
-            setVisiblePages((prev) => {
-              if (prev.has(pageNum)) return prev;
+            setCurrentPage(pageNum);
+
+            setRenderedPages((prev) => {
               const next = new Set(prev);
-              next.add(pageNum);
-              // Also pre-load next page
-              if (pageNum + 1 <= numPages) next.add(pageNum + 1);
+
+              // Add current + preload window ahead
+              for (let i = pageNum; i <= Math.min(numPages, pageNum + PRELOAD_AHEAD); i++) {
+                next.add(i);
+              }
+
+              // Unload pages outside the render window
+              // Window = RENDER_WINDOW_VIEWPORTS * viewport height above and below
+              const windowPages = Math.ceil(
+                (RENDER_WINDOW_VIEWPORTS * viewportHeight) /
+                // Approximate page height in px (842pt at current scale)
+                Math.max(842 * (pageWidth ? pageWidth / 595 : scale), 200)
+              );
+
+              next.forEach((p) => {
+                if (Math.abs(p - pageNum) > windowPages + PRELOAD_AHEAD) {
+                  next.delete(p);
+                }
+              });
+
               return next;
             });
-            setCurrentPage(pageNum);
           }
         });
       },
       {
-        root: scrollContainerRef.current,
-        rootMargin: '200px 0px',  // pre-load 200px before entering viewport
-        threshold: 0.1,
+        root: scrollEl,
+        rootMargin: '300px 0px',  // pre-load 300px before entering viewport
+        threshold: 0.05,
       }
     );
 
-    // Observe all page placeholder divs
     pageRefs.current.forEach((el) => {
       if (el) observer.observe(el);
     });
 
     return () => observer.disconnect();
-  }, [numPages]);
+  }, [numPages, pageWidth, scale]);
 
-  // ── Zoom controls ───────────────────────────────────────────────────────────
+  // ── Zoom controls ─────────────────────────────────────────────────────────
 
-  const zoomIn = () => setScale((s) => Math.min(s + SCALE_STEP, MAX_SCALE));
-  const zoomOut = () => setScale((s) => Math.max(s - SCALE_STEP, MIN_SCALE));
+  const zoomIn = useCallback(() => {
+    setScale((s) => Math.min(+(s + SCALE_STEP).toFixed(2), MAX_SCALE));
+  }, []);
 
-  // ── Page navigation ─────────────────────────────────────────────────────────
+  const zoomOut = useCallback(() => {
+    setScale((s) => Math.max(+(s - SCALE_STEP).toFixed(2), MIN_SCALE));
+  }, []);
+
+  // ── Page navigation ───────────────────────────────────────────────────────
 
   const goToPage = useCallback((pageNum: number) => {
     const el = pageRefs.current.get(pageNum);
@@ -123,19 +186,27 @@ export const SecurePdfViewer = ({ blobUrl, className }: SecurePdfViewerProps) =>
     }
   }, []);
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  // ── Placeholder dimensions ────────────────────────────────────────────────
+  // Used for unloaded pages to maintain scroll position.
+  // A4 aspect ratio: 595 × 842 pt
+  const placeholderStyle = useMemo(() => {
+    const w = pageWidth ?? 595 * scale;
+    const h = (w / 595) * 842;
+    return { width: w, height: h };
+  }, [pageWidth, scale]);
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div
       ref={protectionRef}
       className={cn('flex flex-col h-full bg-gray-100', className)}
-      // CSS-level text selection disable
-      style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+      style={{ userSelect: 'none', WebkitUserSelect: 'none' } as React.CSSProperties}
     >
       {/* ── Toolbar ── */}
       <div className="flex items-center justify-between px-4 py-2 bg-white border-b border-gray-200 flex-shrink-0">
         {/* Page navigation */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <button
             onClick={() => goToPage(Math.max(1, currentPage - 1))}
             disabled={currentPage <= 1}
@@ -145,7 +216,7 @@ export const SecurePdfViewer = ({ blobUrl, className }: SecurePdfViewerProps) =>
             <ChevronLeft className="h-4 w-4" />
           </button>
 
-          <span className="text-xs text-gray-600 tabular-nums min-w-[60px] text-center">
+          <span className="text-xs text-gray-600 tabular-nums min-w-[56px] text-center">
             {numPages > 0 ? `${currentPage} / ${numPages}` : '—'}
           </span>
 
@@ -160,7 +231,7 @@ export const SecurePdfViewer = ({ blobUrl, className }: SecurePdfViewerProps) =>
         </div>
 
         {/* Zoom controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <button
             onClick={zoomOut}
             disabled={scale <= MIN_SCALE}
@@ -212,7 +283,7 @@ export const SecurePdfViewer = ({ blobUrl, className }: SecurePdfViewerProps) =>
           file={blobUrl}
           onLoadSuccess={onDocumentLoadSuccess}
           onLoadError={onDocumentLoadError}
-          loading={null}  // we handle loading state ourselves
+          loading={null}
           className="flex flex-col items-center py-4 gap-3"
         >
           {Array.from({ length: numPages }, (_, i) => i + 1).map((pageNum) => (
@@ -223,30 +294,28 @@ export const SecurePdfViewer = ({ blobUrl, className }: SecurePdfViewerProps) =>
                 if (el) pageRefs.current.set(pageNum, el);
                 else pageRefs.current.delete(pageNum);
               }}
-              className="relative"
             >
-              {visiblePages.has(pageNum) ? (
+              {renderedPages.has(pageNum) ? (
                 <Page
                   pageNumber={pageNum}
-                  scale={scale}
-                  // Canvas rendering — text is pixels, not DOM nodes
+                  width={pageWidth}
                   renderTextLayer={false}
                   renderAnnotationLayer={false}
                   className="border border-gray-200"
                   loading={
                     <div
                       className="bg-white border border-gray-200 flex items-center justify-center"
-                      style={{ width: 595 * scale, height: 842 * scale }}
+                      style={placeholderStyle}
                     >
                       <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
                     </div>
                   }
                 />
               ) : (
-                // Placeholder div maintains scroll position while page is not rendered
+                // Placeholder — maintains scroll height, canvas memory freed
                 <div
                   className="bg-white border border-gray-200"
-                  style={{ width: 595 * scale, height: 842 * scale }}
+                  style={placeholderStyle}
                 />
               )}
             </div>
