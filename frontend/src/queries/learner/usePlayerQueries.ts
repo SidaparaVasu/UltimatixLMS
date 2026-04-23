@@ -80,7 +80,7 @@ export const useAssessmentByLesson = (lessonId: number, enabled = true) =>
     queryKey: PLAYER_QUERY_KEYS.assessmentByLesson(lessonId),
     queryFn: () => playerApi.getAssessmentByLesson(lessonId),
     enabled: !!lessonId && enabled,
-    staleTime: 60_000,
+    staleTime: 0,  // always refetch — assessment status can change (DRAFT → PUBLISHED)
   });
 
 /**

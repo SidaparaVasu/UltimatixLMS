@@ -3,8 +3,6 @@
  * Extends existing courses.types.ts — do not duplicate shared types.
  */
 
-import { CourseSection, CourseLesson, CourseContent } from './courses.types';
-
 // ─── Progress Status ────────────────────────────────────────────────────────
 
 export type LessonProgressStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
@@ -27,7 +25,7 @@ export interface LessonProgress {
   content_progress: ContentProgress[];
 }
 
-// ─── Detailed Enrollment (returned by GET /learning/my-learning/:id/) ───────
+// ─── Detailed Enrollment ────────────────────────────────────────────────────
 
 export interface DetailedEnrollmentProgress {
   id: number;
@@ -62,7 +60,7 @@ export interface QuestionOption {
   display_order: number;
 }
 
-export type QuestionType = 'MCQ' | 'MSQ' | 'TRUE_FALSE' | 'SHORT_ANSWER' | 'SCENARIO';
+export type QuestionType = 'MCQ' | 'MSQ' | 'TRUE_FALSE' | 'SHORT_ANSWER' | 'DESCRIPTIVE' | 'SCENARIO' | 'FILE_UPLOAD';
 
 export interface QuizQuestion {
   id: string;                // UUID
@@ -77,6 +75,8 @@ export interface UserAnswerLifecycle {
   status: 'NOT_VISITED' | 'ATTEMPTED' | 'TIMED_OUT';
   started_at: string | null;
   time_limit_seconds: number;
+  question_number: number;
+  total_questions: number;
 }
 
 export interface AssessmentAttempt {
@@ -97,6 +97,10 @@ export interface AssessmentInfo {
   retake_limit: number;
   is_randomized: boolean;
   negative_marking_enabled: boolean;
+  // Learner endpoint additions
+  question_count: number;
+  attempts_used: number;
+  attempts_remaining: number;
 }
 
 export interface AttemptResult {
@@ -107,6 +111,11 @@ export interface AttemptResult {
   status: 'PASS' | 'FAIL' | 'PENDING';
   grading_type: string;
   instructor_feedback: string;
+  graded_at: string | null;
+  // Enriched stats
+  total_questions: number;
+  attempted_count: number;
+  correct_count: number;
 }
 
 // ─── Player UI State (used in Zustand store) ─────────────────────────────────

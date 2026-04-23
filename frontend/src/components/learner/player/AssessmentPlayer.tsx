@@ -1,12 +1,17 @@
 /**
- * Full quiz flow within the course player.
- * States: intro → question → result
+ * Full quiz flow: intro → question → finalizing → result
  *
- * Note: "Mark as Complete" for quiz is handled automatically on PASS result.
+ * UX improvements:
+ * - Intro: question count, attempt history (X of Y used), disabled start when exhausted
+ * - Question: "Question X of Y" header + progress bar, per-question timer with urgency
+ * - Result: score ring, stats (attempted/correct/total), feedback, retry or next lesson
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ClipboardList, Clock, CheckCircle, XCircle, ChevronRight, RotateCcw } from 'lucide-react';
+import {
+  ClipboardList, Clock, CheckCircle, XCircle,
+  ChevronRight, RotateCcw, AlertCircle,
+} from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { CourseLesson } from '@/types/courses.types';
 import {
@@ -60,7 +65,6 @@ export const AssessmentPlayer = ({
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isFinalizing = useRef(false);
 
-  // Fetch assessment info for this lesson
   const { data: assessments, isLoading: assessmentLoading } = useAssessmentByLesson(lesson.id);
   const assessment: AssessmentInfo | null = assessments?.[0] ?? null;
 
@@ -68,20 +72,18 @@ export const AssessmentPlayer = ({
   const submitQuestionMutation = useSubmitQuestion();
   const finalizeAttemptMutation = useFinalizeAttempt();
 
-  // Fetch result when in finalizing phase
   const { data: resultData } = useAttemptResult(
     attempt?.id ?? null,
     phase === 'finalizing'
   );
 
-  // When result arrives, transition to result screen
+  // Transition to result when grading completes
   useEffect(() => {
     if (!resultData || phase !== 'finalizing') return;
     setResult(resultData);
     setPhase('result');
     isFinalizing.current = false;
 
-    // If passed, mark lesson complete
     if (resultData.status === 'PASS') {
       const firstContent = lesson.contents?.[0];
       if (firstContent) {
@@ -96,7 +98,6 @@ export const AssessmentPlayer = ({
   // Per-question countdown timer
   useEffect(() => {
     if (timeLeft === null || timeLeft <= 0) return;
-
     timerRef.current = setInterval(() => {
       setTimeLeft((t) => {
         if (t === null || t <= 1) {
@@ -106,13 +107,10 @@ export const AssessmentPlayer = ({
         return t - 1;
       });
     }, 1000);
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [timeLeft !== null && timeLeft > 0 ? 'active' : 'inactive']); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-submit when timer hits 0
+  // Auto-submit on timeout
   useEffect(() => {
     if (timeLeft === 0 && phase === 'question' && currentQuestion) {
       handleSubmitQuestion(true);
@@ -126,7 +124,6 @@ export const AssessmentPlayer = ({
       if (!data) return;
 
       if ('completed' in data && data.completed) {
-        // No more questions — finalize
         if (!isFinalizing.current) {
           isFinalizing.current = true;
           setPhase('finalizing');
@@ -139,12 +136,7 @@ export const AssessmentPlayer = ({
       setCurrentQuestion(qa);
       setSelectedOptions([]);
       setAnswerText('');
-
-      if (qa.time_limit_seconds > 0) {
-        setTimeLeft(qa.time_limit_seconds);
-      } else {
-        setTimeLeft(null);
-      }
+      setTimeLeft(qa.time_limit_seconds > 0 ? qa.time_limit_seconds : null);
     } finally {
       setIsLoadingQuestion(false);
     }
@@ -159,24 +151,21 @@ export const AssessmentPlayer = ({
     await fetchNextQuestion(newAttempt.id);
   }, [assessment, startAttemptMutation, fetchNextQuestion]);
 
-  const handleSubmitQuestion = useCallback(
-    async (timedOut = false) => {
-      if (!attempt || !currentQuestion) return;
-      if (timerRef.current) clearInterval(timerRef.current);
+  const handleSubmitQuestion = useCallback(async (timedOut = false) => {
+    if (!attempt || !currentQuestion) return;
+    if (timerRef.current) clearInterval(timerRef.current);
 
-      await submitQuestionMutation.mutateAsync({
-        attemptId: attempt.id,
-        payload: {
-          question_id: currentQuestion.question.id,
-          selected_options: timedOut ? [] : selectedOptions,
-          answer_text: timedOut ? '' : answerText,
-        },
-      });
+    await submitQuestionMutation.mutateAsync({
+      attemptId: attempt.id,
+      payload: {
+        question_id: currentQuestion.question.id,
+        selected_options: timedOut ? [] : selectedOptions,
+        answer_text: timedOut ? '' : answerText,
+      },
+    });
 
-      await fetchNextQuestion(attempt.id);
-    },
-    [attempt, currentQuestion, selectedOptions, answerText, submitQuestionMutation, fetchNextQuestion]
-  );
+    await fetchNextQuestion(attempt.id);
+  }, [attempt, currentQuestion, selectedOptions, answerText, submitQuestionMutation, fetchNextQuestion]);
 
   const handleRetry = useCallback(() => {
     setPhase('intro');
@@ -206,11 +195,12 @@ export const AssessmentPlayer = ({
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
-  // ── Loading assessment info ───────────────────────────────────────────────────
+  // ── Loading ───────────────────────────────────────────────────────────────
+
   if (assessmentLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-blue-600" />
       </div>
     );
   }
@@ -223,66 +213,74 @@ export const AssessmentPlayer = ({
     );
   }
 
-  // ── Intro Screen ─────────────────────────────────────────────────────────────
+  const attemptsExhausted = assessment.attempts_remaining === 0 && !isAlreadyCompleted;
+
+  // ── Intro Screen ──────────────────────────────────────────────────────────
+
   if (phase === 'intro') {
     return (
       <div className="flex flex-col h-full">
-        <div className="flex-1 flex items-center justify-center p-8">
-          <div className="max-w-md w-full bg-white border border-gray-200 rounded-lg p-8">
-            <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center mb-5">
-              <ClipboardList className="h-5 w-5 text-blue-600" />
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="w-full max-w-lg">
+
+            {/* Header */}
+            <div className="flex items-start gap-4 mb-6">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 leading-snug">
+                  {assessment.title}
+                </h2>
+                {assessment.description && (
+                  <p className="text-sm text-gray-500 mt-1">{assessment.description}</p>
+                )}
+              </div>
             </div>
 
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">{assessment.title}</h2>
-            {assessment.description && (
-              <p className="text-sm text-gray-500 mb-5">{assessment.description}</p>
+            {/* Stats grid */}
+            <div className="grid grid-cols-2 gap-3 mb-5">
+              <StatCard label="Questions" value={String(assessment.question_count)} />
+              <StatCard label="Duration" value={`${assessment.duration_minutes} min`} />
+              <StatCard label="Passing Score" value={`${assessment.passing_percentage}%`} />
+              <StatCard
+                label="Attempts"
+                value={`${assessment.attempts_used} / ${assessment.retake_limit}`}
+                highlight={attemptsExhausted}
+              />
+            </div>
+
+            {/* Negative marking notice */}
+            {assessment.negative_marking_enabled && (
+              <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-md px-3 py-2.5 mb-4">
+                <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-700">
+                  Negative marking is enabled. Incorrect answers will deduct points.
+                </p>
+              </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              <div className="bg-gray-50 rounded-md p-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-0.5">
-                  Duration
-                </p>
-                <p className="text-sm font-semibold text-gray-800">
-                  {assessment.duration_minutes} min
-                </p>
-              </div>
-              <div className="bg-gray-50 rounded-md p-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-0.5">
-                  Passing Score
-                </p>
-                <p className="text-sm font-semibold text-gray-800">
-                  {assessment.passing_percentage}%
-                </p>
-              </div>
-              <div className="bg-gray-50 rounded-md p-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-0.5">
-                  Retake Limit
-                </p>
-                <p className="text-sm font-semibold text-gray-800">
-                  {assessment.retake_limit} attempt{assessment.retake_limit !== 1 ? 's' : ''}
-                </p>
-              </div>
-              {assessment.is_randomized && (
-                <div className="bg-gray-50 rounded-md p-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-0.5">
-                    Questions
-                  </p>
-                  <p className="text-sm font-semibold text-gray-800">Randomized</p>
-                </div>
-              )}
-            </div>
-
+            {/* Already passed */}
             {isAlreadyCompleted && (
-              <div className="flex items-center gap-2 text-sm font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-2.5 rounded-md mb-3">
-                <CheckCircle className="h-4 w-4" />
-                You have already passed this quiz
+              <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-md px-3 py-2.5 mb-4">
+                <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                <p className="text-sm font-medium text-emerald-700">
+                  You have already passed this quiz.
+                </p>
               </div>
             )}
 
+            {/* Attempts exhausted */}
+            {attemptsExhausted && (
+              <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-md px-3 py-2.5 mb-4">
+                <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                <p className="text-sm font-medium text-red-700">
+                  You have used all {assessment.retake_limit} attempt{assessment.retake_limit !== 1 ? 's' : ''}.
+                </p>
+              </div>
+            )}
+
+            {/* Start button */}
             <button
               onClick={handleStartQuiz}
-              disabled={startAttemptMutation.isPending}
+              disabled={startAttemptMutation.isPending || attemptsExhausted}
               className="btn w-full"
             >
               {startAttemptMutation.isPending
@@ -293,6 +291,7 @@ export const AssessmentPlayer = ({
             </button>
           </div>
         </div>
+
         <LessonNavFooter
           lesson={lesson}
           nextLesson={nextLesson}
@@ -302,111 +301,168 @@ export const AssessmentPlayer = ({
     );
   }
 
-  // ── Question Screen ──────────────────────────────────────────────────────────
+  // ── Question Screen ───────────────────────────────────────────────────────
+
   if (phase === 'question') {
     if (isLoadingQuestion || !currentQuestion) {
       return (
         <div className="flex items-center justify-center h-64">
-          <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-blue-600" />
         </div>
       );
     }
 
-    const { question } = currentQuestion;
+    const { question, question_number, total_questions } = currentQuestion;
     const isMultiSelect = question.question_type === 'MSQ';
-    const isTextAnswer = question.question_type === 'SHORT_ANSWER';
-    const canSubmit = isTextAnswer ? answerText.trim().length > 0 : selectedOptions.length > 0;
+    // Types that require a written text answer (no options)
+    const isTextAnswer =
+      question.question_type === 'SHORT_ANSWER' ||
+      question.question_type === 'DESCRIPTIVE';
+    // SCENARIO: show options if they exist, otherwise fall back to textarea
+    const isScenario = question.question_type === 'SCENARIO';
+    const scenarioHasOptions = isScenario && question.options.length > 0;
+    const showTextarea = isTextAnswer || (isScenario && !scenarioHasOptions);
+    const showOptions = !isTextAnswer && (question.options.length > 0);
+    const isFileUpload = question.question_type === 'FILE_UPLOAD';
+    const canSubmit = isFileUpload
+      ? true  // file upload — allow skip
+      : showTextarea
+      ? answerText.trim().length > 0
+      : selectedOptions.length > 0;
+    const progressPct = total_questions > 0 ? ((question_number - 1) / total_questions) * 100 : 0;
+    const isTimerUrgent = timeLeft !== null && timeLeft <= 10;
 
     return (
       <div className="flex flex-col h-full">
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-2xl mx-auto">
-            {/* Timer */}
+        {/* Question header bar */}
+        <div className="px-6 py-3 bg-white border-b border-gray-200 flex-shrink-0">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Question {question_number} of {total_questions}
+            </span>
+
+            {/* Per-question timer */}
             {timeLeft !== null && (
-              <div
+              <span
                 className={cn(
-                  'flex items-center gap-1.5 text-sm font-medium mb-4 w-fit',
-                  timeLeft <= 10 ? 'text-red-600' : 'text-gray-600'
+                  'flex items-center gap-1.5 text-xs font-semibold tabular-nums px-2 py-1 rounded-md',
+                  isTimerUrgent
+                    ? 'bg-red-50 text-red-600 border border-red-200'
+                    : 'bg-gray-50 text-gray-600 border border-gray-200'
                 )}
               >
-                <Clock className="h-4 w-4" />
+                <Clock className="h-3.5 w-3.5" />
                 {formatTime(timeLeft)}
-              </div>
+              </span>
             )}
+          </div>
 
-            {/* Scenario text */}
+          {/* Progress bar */}
+          <div className="h-1 w-full bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-blue-600 rounded-full transition-all duration-300"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Question body */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-2xl mx-auto px-6 py-6">
+            {/* Scenario */}
             {question.scenario_text && (
-              <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-4 text-sm text-gray-700">
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-5 text-sm text-gray-700 leading-relaxed">
                 {question.scenario_text}
               </div>
             )}
 
-            {/* Question */}
-            <p className="text-base font-medium text-gray-900 mb-1">{question.question_text}</p>
+            {/* Question text */}
+            <p className="text-base font-medium text-gray-900 mb-1 leading-snug">
+              {question.question_text}
+            </p>
             <p className="text-xs text-gray-400 mb-5">
               {isMultiSelect
                 ? 'Select all that apply'
-                : isTextAnswer
-                ? 'Type your answer'
+                : showTextarea
+                ? 'Type your answer below'
+                : isFileUpload
+                ? 'File upload (not yet supported — skip this question)'
                 : 'Select one answer'}
             </p>
 
-            {/* Options */}
-            {!isTextAnswer && question.options.length > 0 && (
+            {/* MCQ / MSQ / TRUE_FALSE / SCENARIO (with options) */}
+            {showOptions && (
               <div className="space-y-2">
-                {question.options.map((option) => {
+                {question.options.map((option, idx) => {
                   const isSelected = selectedOptions.includes(option.id);
+                  const label = String.fromCharCode(65 + idx); // A, B, C, D
                   return (
                     <button
                       key={option.id}
                       onClick={() => toggleOption(option.id)}
                       className={cn(
-                        'w-full text-left px-4 py-3 rounded-md border text-sm transition-colors',
+                        'w-full text-left flex items-start gap-3 px-4 py-3 rounded-md border text-sm transition-colors',
                         isSelected
-                          ? 'border-blue-500 bg-blue-50 text-blue-800'
+                          ? 'border-blue-500 bg-blue-50 text-blue-900'
                           : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
                       )}
                     >
-                      <div className="flex items-start gap-3">
-                        <span
-                          className={cn(
-                            'flex-shrink-0 w-4 h-4 mt-0.5 rounded-full border-2 flex items-center justify-center',
-                            isSelected ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
-                          )}
-                        >
-                          {isSelected && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                          )}
-                        </span>
-                        {option.option_text}
-                      </div>
+                      {/* Option label circle */}
+                      <span
+                        className={cn(
+                          'flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs font-bold mt-0.5',
+                          isSelected
+                            ? 'border-blue-500 bg-blue-500 text-white'
+                            : 'border-gray-300 text-gray-400'
+                        )}
+                      >
+                        {label}
+                      </span>
+                      <span className="flex-1 leading-snug">{option.option_text}</span>
                     </button>
                   );
                 })}
               </div>
             )}
 
-            {/* Text answer */}
-            {isTextAnswer && (
+            {/* Short answer / Descriptive / Scenario (no options) textarea */}
+            {showTextarea && (
               <textarea
                 value={answerText}
                 onChange={(e) => setAnswerText(e.target.value)}
-                placeholder="Type your answer here..."
-                rows={4}
+                placeholder={
+                  question.question_type === 'DESCRIPTIVE'
+                    ? 'Write your detailed answer here...'
+                    : 'Type your answer here...'
+                }
+                rows={question.question_type === 'DESCRIPTIVE' ? 8 : 5}
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-md text-sm text-gray-800 focus:outline-none focus:border-blue-500 resize-none"
               />
+            )}
+
+            {/* File upload — not yet supported */}
+            {isFileUpload && (
+              <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-md px-3 py-3 text-sm text-amber-700">
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                File upload questions are not supported in the player yet. You may skip this question.
+              </div>
             )}
           </div>
         </div>
 
-        {/* Submit bar */}
-        <div className="px-6 py-4 bg-white border-t border-gray-200 flex items-center justify-end">
+        {/* Submit footer */}
+        <div className="px-6 py-4 bg-white border-t border-gray-200 flex items-center justify-between flex-shrink-0">
+          <span className="text-xs text-gray-400">
+            {isMultiSelect ? 'You can select multiple options' : ''}
+          </span>
           <button
             onClick={() => handleSubmitQuestion(false)}
             disabled={!canSubmit || submitQuestionMutation.isPending}
             className="btn"
           >
-            {submitQuestionMutation.isPending ? 'Saving...' : 'Next'}
+            {submitQuestionMutation.isPending ? 'Saving...' : (
+              question_number === total_questions ? 'Submit Quiz' : 'Next'
+            )}
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
@@ -414,81 +470,172 @@ export const AssessmentPlayer = ({
     );
   }
 
-  // ── Finalizing ───────────────────────────────────────────────────────────────
+  // ── Finalizing ────────────────────────────────────────────────────────────
+
   if (phase === 'finalizing') {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center h-full">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-blue-600" />
           <p className="text-sm text-gray-500">Grading your answers...</p>
         </div>
       </div>
     );
   }
 
-  // ── Result Screen ────────────────────────────────────────────────────────────
+  // ── Result Screen ─────────────────────────────────────────────────────────
+
   if (phase === 'result' && result) {
     const isPassed = result.status === 'PASS';
-    const scorePercent = parseFloat(result.score_percentage);
+    const isPending = result.status === 'PENDING';
+    const scorePercent = Math.round(parseFloat(result.score_percentage));
+    const passingPct = parseFloat(assessment.passing_percentage);
+
+    // Circumference for the score ring
+    const radius = 40;
+    const circumference = 2 * Math.PI * radius;
+    const strokeDashoffset = circumference - (scorePercent / 100) * circumference;
 
     return (
       <div className="flex flex-col h-full">
-        <div className="flex-1 flex items-center justify-center p-8">
-          <div className="max-w-md w-full bg-white border border-gray-200 rounded-lg p-8 text-center">
-            <div
-              className={cn(
-                'w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5',
-                isPassed ? 'bg-emerald-50' : 'bg-red-50'
-              )}
-            >
-              {isPassed ? (
-                <CheckCircle className="h-7 w-7 text-emerald-500" />
-              ) : (
-                <XCircle className="h-7 w-7 text-red-500" />
-              )}
-            </div>
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-lg mx-auto px-6 py-8">
 
-            <h2 className="text-xl font-semibold text-gray-900 mb-1">
-              {isPassed ? 'Quiz Passed' : 'Quiz Failed'}
-            </h2>
-            <p className="text-sm text-gray-500 mb-6">
-              {isPassed
-                ? 'Well done. You have successfully completed this quiz.'
-                : 'You did not meet the passing score. Review the material and try again.'}
-            </p>
+            {/* Score ring */}
+            <div className="flex flex-col items-center mb-8">
+              <div className="relative w-28 h-28 mb-4">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                  {/* Track */}
+                  <circle
+                    cx="50" cy="50" r={radius}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="8"
+                    className="text-gray-100"
+                  />
+                  {/* Progress */}
+                  <circle
+                    cx="50" cy="50" r={radius}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={strokeDashoffset}
+                    className={cn(
+                      'transition-all duration-700',
+                      isPassed ? 'text-emerald-500' : isPending ? 'text-amber-400' : 'text-red-500'
+                    )}
+                  />
+                </svg>
+                {/* Score text */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span
+                    className={cn(
+                      'text-2xl font-bold tabular-nums',
+                      isPassed ? 'text-emerald-600' : isPending ? 'text-amber-500' : 'text-red-500'
+                    )}
+                    style={{ fontFamily: 'var(--font-mono)' }}
+                  >
+                    {scorePercent}%
+                  </span>
+                </div>
+              </div>
 
-            <div className="bg-gray-50 rounded-lg p-5 mb-6">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">
-                Your Score
-              </p>
-              <p
+              {/* Status badge */}
+              <div
                 className={cn(
-                  'text-4xl font-bold',
-                  isPassed ? 'text-emerald-600' : 'text-red-500'
+                  'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold',
+                  isPassed
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    : isPending
+                    ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                    : 'bg-red-50 text-red-700 border border-red-200'
                 )}
-                style={{ fontFamily: 'var(--font-mono)' }}
               >
-                {Math.round(scorePercent)}%
-              </p>
-              <p className="text-xs text-gray-400 mt-1">
-                Passing score: {assessment.passing_percentage}%
+                {isPassed ? (
+                  <CheckCircle className="h-4 w-4" />
+                ) : isPending ? (
+                  <Clock className="h-4 w-4" />
+                ) : (
+                  <XCircle className="h-4 w-4" />
+                )}
+                {isPassed ? 'Passed' : isPending ? 'Pending Review' : 'Failed'}
+              </div>
+
+              <p className="text-sm text-gray-500 mt-2 text-center">
+                {isPassed
+                  ? 'Well done. You have successfully completed this quiz.'
+                  : isPending
+                  ? 'Your answers are being reviewed by an instructor.'
+                  : `You needed ${passingPct}% to pass. Review the material and try again.`}
               </p>
             </div>
 
-            {result.instructor_feedback && (
-              <div className="text-left bg-blue-50 border border-blue-200 rounded-md p-3 mb-5 text-sm text-gray-700">
-                <p className="font-medium text-gray-800 mb-1 text-xs uppercase tracking-wide">
-                  Feedback
+            {/* Stats row */}
+            <div className="grid grid-cols-3 gap-3 mb-6">
+              <div className="bg-gray-50 border border-gray-200 rounded-md p-3 text-center">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">
+                  Total
                 </p>
-                {result.instructor_feedback}
+                <p className="text-xl font-bold text-gray-800" style={{ fontFamily: 'var(--font-mono)' }}>
+                  {result.total_questions}
+                </p>
+              </div>
+              <div className="bg-gray-50 border border-gray-200 rounded-md p-3 text-center">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">
+                  Attempted
+                </p>
+                <p className="text-xl font-bold text-gray-800" style={{ fontFamily: 'var(--font-mono)' }}>
+                  {result.attempted_count}
+                </p>
+              </div>
+              <div className="bg-gray-50 border border-gray-200 rounded-md p-3 text-center">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">
+                  Correct
+                </p>
+                <p
+                  className={cn(
+                    'text-xl font-bold',
+                    result.correct_count > 0 ? 'text-emerald-600' : 'text-gray-800'
+                  )}
+                  style={{ fontFamily: 'var(--font-mono)' }}
+                >
+                  {result.correct_count}
+                </p>
+              </div>
+            </div>
+
+            {/* Passing score reference */}
+            <div className="flex items-center justify-between text-xs text-gray-400 mb-6 px-1">
+              <span>Your score: <span className="font-semibold text-gray-600">{scorePercent}%</span></span>
+              <span>Passing score: <span className="font-semibold text-gray-600">{passingPct}%</span></span>
+            </div>
+
+            {/* Instructor feedback */}
+            {result.instructor_feedback && (
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-5">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-400 mb-1">
+                  Instructor Feedback
+                </p>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  {result.instructor_feedback}
+                </p>
               </div>
             )}
 
-            {!isPassed && (
+            {/* Actions */}
+            {!isPassed && !isPending && assessment.attempts_remaining > 0 && (
               <button onClick={handleRetry} className="btn btn-secondary w-full">
                 <RotateCcw className="h-4 w-4" />
-                Try Again
+                Try Again ({assessment.attempts_remaining} attempt{assessment.attempts_remaining !== 1 ? 's' : ''} remaining)
               </button>
+            )}
+
+            {!isPassed && !isPending && assessment.attempts_remaining === 0 && (
+              <p className="text-center text-xs text-gray-400">
+                No attempts remaining.
+              </p>
             )}
           </div>
         </div>
@@ -500,3 +647,39 @@ export const AssessmentPlayer = ({
 
   return null;
 };
+
+// ── Helper component ──────────────────────────────────────────────────────────
+
+function StatCard({
+  label,
+  value,
+  highlight = false,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        'rounded-md p-3 border',
+        highlight
+          ? 'bg-red-50 border-red-200'
+          : 'bg-gray-50 border-gray-200'
+      )}
+    >
+      <p className={cn(
+        'text-[10px] font-semibold uppercase tracking-wide mb-0.5',
+        highlight ? 'text-red-400' : 'text-gray-400'
+      )}>
+        {label}
+      </p>
+      <p className={cn(
+        'text-sm font-semibold',
+        highlight ? 'text-red-700' : 'text-gray-800'
+      )}>
+        {value}
+      </p>
+    </div>
+  );
+}

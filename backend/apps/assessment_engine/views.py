@@ -7,10 +7,11 @@ from .models import (
     AssessmentMaster, QuestionBank, AssessmentAttempt, AssessmentResult
 )
 from .serializers import (
-    AssessmentMasterStudioSerializer, QuestionBankStudioSerializer,
-    QuestionBankWriteSerializer,
-    AssessmentAttemptSerializer, UserAnswerSubmitSerializer, 
-    AssessmentResultSerializer, QuestionLearnerSerializer
+    AssessmentMasterStudioSerializer, AssessmentLearnerSerializer,
+    QuestionBankStudioSerializer, QuestionBankWriteSerializer,
+    AssessmentAttemptSerializer, UserAnswerSubmitSerializer,
+    AssessmentResultSerializer, QuestionLearnerSerializer,
+    UserAnswerLifecycleSerializer,
 )
 from .services import AssessmentBuildService, AttemptService, GradingService
 
@@ -163,9 +164,10 @@ class AssessmentAttemptViewSet(viewsets.ModelViewSet):
         try:
             answer = service.get_next_question(pk)
             if not answer:
-                return success_response(message="No more questions in this assessment.", data={"completed": True})
-            
-            from .serializers import UserAnswerLifecycleSerializer
+                return success_response(
+                    message="No more questions in this assessment.",
+                    data={"completed": True}
+                )
             serializer = UserAnswerLifecycleSerializer(answer)
             return success_response(data=serializer.data)
         except Exception as e:
@@ -229,3 +231,39 @@ class AssessmentAttemptViewSet(viewsets.ModelViewSet):
             return success_response(data=serializer.data)
         except Exception:
             return error_response(message="Result record not found.")
+
+
+class AssessmentLearnerViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Safe read-only endpoint for learners to fetch assessment metadata.
+
+    GET /api/v1/assessment/learner/?lesson_id=<id>
+      Returns assessment info for a lesson: title, duration, passing %,
+      retake limit, question count, attempts used/remaining.
+      No questions, no correct answers exposed.
+    """
+    queryset = AssessmentMaster.objects.filter(status__in=['PUBLISHED', 'DRAFT'])
+    serializer_class = AssessmentLearnerSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        lesson_id = self.request.query_params.get('lesson_id')
+        if lesson_id:
+            qs = qs.filter(lesson_id=lesson_id)
+        return qs
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
+        return success_response(data=serializer.data)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return success_response(data=serializer.data)

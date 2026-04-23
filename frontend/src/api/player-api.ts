@@ -78,12 +78,13 @@ export const playerApi = {
   // ─── Assessment / Quiz APIs ─────────────────────────────────────────────────
 
   /**
-   * Get assessment info by lesson id.
-   * Endpoint: GET /api/v1/assessment/studio/?lesson_id=:id
+   * Get assessment metadata for a lesson (learner-safe — no questions/answers).
+   * Includes attempt history (attempts_used, attempts_remaining) for the current user.
+   * Endpoint: GET /api/v1/assessment/learner/?lesson_id=:id
    */
   getAssessmentByLesson: async (lessonId: number) => {
     try {
-      const response = await apiClient.get("/assessment/studio/", {
+      const response = await apiClient.get("/assessment/learner/", {
         params: { lesson_id: lessonId },
       });
       return handleApiResponse<AssessmentInfo[]>(response.data, false);
