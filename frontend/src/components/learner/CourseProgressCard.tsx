@@ -67,7 +67,7 @@ export const CourseProgressCard = ({ enrollment, className }: CourseProgressCard
       </div>
 
       {/* ── Progress bar (only when started) ── */}
-      {enrollment.status !== "NOT_STARTED" && (
+      {enrollment.status !== "NOT_STARTED" ? (
         <div className="mb-4 space-y-1.5">
           <div className="flex justify-between text-[11px] text-gray-400 font-medium">
             <span>Progress</span>
@@ -87,6 +87,8 @@ export const CourseProgressCard = ({ enrollment, className }: CourseProgressCard
             />
           </div>
         </div>
+      ) : (
+        <div className="mb-4 h-7"></div>
       )}
 
       {/* ── Enrolled date ── */}
