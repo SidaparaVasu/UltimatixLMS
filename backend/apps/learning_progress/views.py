@@ -2,6 +2,8 @@ from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
+from django.utils import timezone
+from datetime import timedelta
 from .models import (
     LearningPathMaster,
     UserCourseEnrollment,
@@ -21,6 +23,7 @@ from .services import (
     UserContentProgressService,
     CourseCertificateService
 )
+from .constants import ProgressStatus
 from common.response import success_response, error_response
 
 
@@ -87,6 +90,53 @@ class UserProgressViewSet(viewsets.ModelViewSet):
         )
         serializer = self.get_serializer(enrollment)
         return success_response(data=serializer.data, status_code=201)
+
+    @action(detail=False, methods=["get"])
+    def summary(self, request):
+        """
+        GET /api/v1/learning/my-learning/summary/
+
+        Returns enrollment counts and certificate count for the current employee.
+        Used by the employee dashboard.
+        """
+        employee = None
+        if hasattr(request.user, 'employee_record'):
+            employee = request.user.employee_record.first()
+
+        if not employee:
+            return error_response(
+                message="Employee profile not found for this user.",
+                status_code=status.HTTP_404_NOT_FOUND
+            )
+
+        enrollments = UserCourseEnrollment.objects.filter(employee=employee)
+
+        in_progress = enrollments.filter(status=ProgressStatus.IN_PROGRESS).count()
+        completed = enrollments.filter(status=ProgressStatus.COMPLETED).count()
+        not_started = enrollments.filter(status=ProgressStatus.NOT_STARTED).count()
+
+        # Overdue: mandatory/TNI courses not completed within 30 days of enrollment
+        overdue_threshold = timezone.now() - timedelta(days=30)
+        overdue = enrollments.filter(
+            status__in=[ProgressStatus.NOT_STARTED, ProgressStatus.IN_PROGRESS],
+            enrollment_type__in=["MANDATORY", "TNI_ASSIGNED"],
+            enrolled_at__lt=overdue_threshold
+        ).count()
+
+        certificates_earned = CourseCertificate.objects.filter(
+            enrollment__employee=employee
+        ).count()
+
+        return success_response(
+            message="Enrollment summary retrieved successfully.",
+            data={
+                "in_progress": in_progress,
+                "completed": completed,
+                "not_started": not_started,
+                "overdue": overdue,
+                "certificates_earned": certificates_earned,
+            }
+        )
 
 
 class HeartbeatViewSet(viewsets.ViewSet):
