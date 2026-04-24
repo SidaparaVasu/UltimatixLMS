@@ -1,52 +1,113 @@
 import React from 'react';
-import { Check, Play, Award, HelpCircle, Bell, TriangleAlert, BookOpen, Star } from 'lucide-react';
+import { Check, Play, Award, HelpCircle, Bell, TriangleAlert, BookOpen, Star, Clock } from 'lucide-react';
+import { useMyEnrollments } from '@/queries/learner/useLearnerQueries';
+import { formatDistanceToNow } from 'date-fns';
+
+// ---------------------------------------------------------------------------
+// Activity Feed — wired to real enrollment history
+// ---------------------------------------------------------------------------
 
 export const ActivityFeed: React.FC = () => {
-  const activities = [
-    { type: 'complete', icon: Check, title: 'Completed course', course: 'Project Management Foundation', time: '2h ago' },
-    { type: 'started', icon: Play, title: 'Started module', course: 'Advanced Python Decorators', time: '5h ago' },
-    { type: 'cert', icon: Award, title: 'Earned certificate', course: 'Cloud Security Audit Q1', time: 'Yesterday' },
-    { type: 'assessment', icon: HelpCircle, title: 'Attempted assessment', course: 'InfoSec Awareness', time: '2 days ago' },
-    { type: 'complete', icon: Check, title: 'Completed', course: 'Anti-Bribery & Compliance Module 3', time: '2 days ago' },
-  ];
+  const { data: enrollmentsData, isLoading } = useMyEnrollments();
+  const enrollments = enrollmentsData?.results || [];
+
+  // Build activity items from enrollment data
+  const activities = enrollments
+    .filter((e) => e.started_at || e.completed_at)
+    .sort((a, b) => {
+      const aTime = new Date(a.completed_at || a.started_at || a.enrolled_at).getTime();
+      const bTime = new Date(b.completed_at || b.started_at || b.enrolled_at).getTime();
+      return bTime - aTime;
+    })
+    .slice(0, 5)
+    .map((e) => {
+      if (e.status === 'COMPLETED' && e.completed_at) {
+        return {
+          icon: Check,
+          type: 'complete',
+          title: 'Completed course',
+          course: e.course_title,
+          time: formatDistanceToNow(new Date(e.completed_at), { addSuffix: true }),
+        };
+      }
+      if (e.status === 'IN_PROGRESS' && e.started_at) {
+        return {
+          icon: Play,
+          type: 'started',
+          title: 'Started course',
+          course: e.course_title,
+          time: formatDistanceToNow(new Date(e.started_at), { addSuffix: true }),
+        };
+      }
+      return {
+        icon: BookOpen,
+        type: 'enrolled',
+        title: 'Enrolled in',
+        course: e.course_title,
+        time: formatDistanceToNow(new Date(e.enrolled_at), { addSuffix: true }),
+      };
+    });
 
   return (
     <div className="activity-panel anim delay-5">
       <div className="panel-head">
         <span className="panel-title">Recent Activity</span>
-        <span className="panel-link">View All</span>
       </div>
-      <div className="activity-list">
-        {activities.map((act, i) => (
-          <div key={i} className="activity-item">
-            <div className={`activity-icon act-${act.type}`}>
-              <act.icon size={16} />
+
+      {isLoading ? (
+        <div style={{ padding: 'var(--space-5)' }}>
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="activity-item">
+              <div className="pulse" style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--color-border)', flexShrink: 0 }} />
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div className="pulse" style={{ height: 10, width: '70%', background: 'var(--color-border)', borderRadius: 4 }} />
+                <div className="pulse" style={{ height: 10, width: '40%', background: 'var(--color-border)', borderRadius: 4 }} />
+              </div>
             </div>
-            <div className="activity-text">
-              {act.title} <strong>{act.course}</strong>
+          ))}
+        </div>
+      ) : activities.length === 0 ? (
+        <div style={{ padding: 'var(--space-6)', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>
+          No activity yet. Start a course to see your progress here.
+        </div>
+      ) : (
+        <div className="activity-list">
+          {activities.map((act, i) => (
+            <div key={i} className="activity-item">
+              <div className={`activity-icon act-${act.type}`}>
+                <act.icon size={16} />
+              </div>
+              <div className="activity-text">
+                {act.title} <strong>{act.course}</strong>
+              </div>
+              <div className="activity-time">{act.time}</div>
             </div>
-            <div className="activity-time">{act.time}</div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
 
+// ---------------------------------------------------------------------------
+// Notification Panel
+// ---------------------------------------------------------------------------
+
 export const NotificationPanel: React.FC = () => {
   const notifications = [
-    { title: 'New Course Assigned', body: 'Workplace Safety Essentials has been assigned by your manager.', unread: true, icon: BookOpen, type: 'assign' },
-    { title: 'Compliance Deadline Approaching', body: 'Info Security Awareness is due in 5 days. 88% completed.', unread: true, icon: TriangleAlert, type: 'alert' },
-    { title: 'Certificate Expiry Notice', body: 'ITIL v4 Foundation certificate expires in 45 days. Renew now.', unread: false, icon: Award, type: 'cert' },
-    { title: 'Training Reminder', body: 'Leadership Workshop starts on 4 April. Confirm attendance.', unread: false, icon: Clock, type: 'reminder' },
-    { title: 'Badge Earned', body: 'Compliance Hero badge awarded for completing 3 compliance modules.', unread: false, icon: Star, type: 'achievement' },
+    {
+      title: 'Notifications coming soon',
+      body: 'In-app notifications will be available in a future update.',
+      unread: false,
+      icon: Bell,
+      type: 'assign',
+    },
   ];
 
   return (
     <div className="activity-panel anim delay-6">
       <div className="panel-head">
         <span className="panel-title">Notifications</span>
-        <span className="panel-link">Mark all read</span>
       </div>
       <div className="activity-list">
         {notifications.map((notif, i) => (
@@ -65,6 +126,3 @@ export const NotificationPanel: React.FC = () => {
     </div>
   );
 };
-
-// Internal icon hack to fix the Clock import from lucide-react (it was Clock in HTML icons)
-import { Clock } from 'lucide-react';

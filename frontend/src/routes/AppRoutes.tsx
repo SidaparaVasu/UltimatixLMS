@@ -80,7 +80,7 @@ export const AppRoutes = () => {
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
             {/* Admin Routes Namespace (Protected by RoleGuard) */}
-            <Route element={<RoleGuard allowedRoles={['ADMIN', 'SUPER_ADMIN', 'HR', 'LMS_ADMIN']} />}>
+            <Route element={<RoleGuard allowedRoles={['LMS_ADMIN', 'HR']} />}>
               <Route element={<AdminLayout />}>
                 <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
                 <Route path="/admin/users" element={<ComingSoon />} />

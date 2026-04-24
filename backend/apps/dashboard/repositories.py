@@ -259,42 +259,47 @@ class DashboardRepository(BaseRepository):
             completion_query = completion_query.filter(employee__company_id=company_id)
         
         # Aggregate by time bucket
+        # Note: pass tzinfo=datetime.timezone.utc to avoid timezone conversion
         from django.db.models.functions import TruncDate, TruncWeek, TruncMonth, TruncYear
-        
+        import datetime as dt
+
         if filter_type == "daily":
-            trunc_func = TruncDate
-            time_field = 'attempt_time'
-            completion_time_field = 'completed_at'
+            login_trunc = TruncDate('attempt_time')
+            completion_trunc = TruncDate('completed_at')
         elif filter_type == "weekly":
-            trunc_func = TruncWeek
-            time_field = 'attempt_time'
-            completion_time_field = 'completed_at'
+            login_trunc = TruncWeek('attempt_time', tzinfo=dt.timezone.utc)
+            completion_trunc = TruncWeek('completed_at', tzinfo=dt.timezone.utc)
         elif filter_type == "monthly":
-            trunc_func = TruncMonth
-            time_field = 'attempt_time'
-            completion_time_field = 'completed_at'
+            login_trunc = TruncMonth('attempt_time', tzinfo=dt.timezone.utc)
+            completion_trunc = TruncMonth('completed_at', tzinfo=dt.timezone.utc)
         else:  # annual
-            trunc_func = TruncYear
-            time_field = 'attempt_time'
-            completion_time_field = 'completed_at'
+            login_trunc = TruncYear('attempt_time', tzinfo=dt.timezone.utc)
+            completion_trunc = TruncYear('completed_at', tzinfo=dt.timezone.utc)
         
         # Aggregate logins
         login_data = login_query.annotate(
-            bucket=trunc_func(time_field)
+            bucket=login_trunc
         ).values('bucket').annotate(
             count=Count('id')
         ).order_by('bucket')
-        
+
         # Aggregate completions
         completion_data = completion_query.annotate(
-            bucket=trunc_func(completion_time_field)
+            bucket=completion_trunc
         ).values('bucket').annotate(
             count=Count('id')
         ).order_by('bucket')
-        
-        # Convert to dict for easy lookup
-        login_dict = {item['bucket'].strftime(date_format): item['count'] for item in login_data}
-        completion_dict = {item['bucket'].strftime(date_format): item['count'] for item in completion_data}
+        # (can occur when Trunc returns NULL for timezone-aware datetimes with no data)
+        login_dict = {
+            item['bucket'].strftime(date_format): item['count']
+            for item in login_data
+            if item['bucket'] is not None
+        }
+        completion_dict = {
+            item['bucket'].strftime(date_format): item['count']
+            for item in completion_data
+            if item['bucket'] is not None
+        }
         
         # Generate all buckets in range
         result = []
