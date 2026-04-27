@@ -14,7 +14,8 @@ from .models import (
     CourseContent,
     CourseResource,
     CourseDiscussionThread,
-    CourseDiscussionReply
+    CourseDiscussionReply,
+    CourseParticipant,
 )
 from .serializers import (
     CourseCategorySerializer,
@@ -29,7 +30,9 @@ from .serializers import (
     CourseResourceSerializer,
     CourseDiscussionThreadSerializer,
     CourseDiscussionReplySerializer,
-    CurriculumSyncSerializer
+    CurriculumSyncSerializer,
+    CourseParticipantSerializer,
+    CourseParticipantBulkInviteSerializer,
 )
 from .services import (
     CourseCategoryService,
@@ -42,7 +45,8 @@ from .services import (
     CourseContentService,
     CourseResourceService,
     CourseDiscussionThreadService,
-    CourseDiscussionReplyService
+    CourseDiscussionReplyService,
+    CourseParticipantService,
 )
 
 
@@ -166,6 +170,50 @@ class CourseMasterViewSet(BaseCourseViewSet):
         except Exception as e:
             return error_response(message=f"Sync failed: {str(e)}")
 
+    @action(detail=True, methods=["get", "post"], url_path="participants")
+    def participants(self, request, pk=None):
+        """
+        GET  /courses/{id}/participants/  — list all invited participants.
+        POST /courses/{id}/participants/  — bulk-invite employees by ID list.
+        """
+        course = self.get_object()
+
+        if request.method == "GET":
+            qs = CourseParticipant.objects.filter(course=course).select_related(
+                "employee__user", "invited_by"
+            )
+            serializer = CourseParticipantSerializer(qs, many=True)
+            return success_response(data=serializer.data)
+
+        # POST — bulk invite
+        serializer = CourseParticipantBulkInviteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # Resolve the requesting employee (invited_by)
+        invited_by = getattr(request.user, "employee_record", None)
+        invited_by_instance = invited_by.first() if invited_by else None
+
+        created, skipped = CourseParticipantService().bulk_invite(
+            course=course,
+            employee_ids=serializer.validated_data["employee_ids"],
+            invited_by=invited_by_instance,
+        )
+        return created_response(
+            message=f"{created} participant(s) invited. {skipped} already existed.",
+            data={"invited": created, "skipped": skipped},
+        )
+
+    @action(detail=True, methods=["delete"], url_path=r"participants/(?P<participant_id>\d+)")
+    def remove_participant(self, request, pk=None, participant_id=None):
+        """DELETE /courses/{id}/participants/{participant_id}/ — remove a participant."""
+        course = self.get_object()
+        try:
+            participant = CourseParticipant.objects.get(id=participant_id, course=course)
+            participant.delete()
+            return success_response(message="Participant removed successfully.")
+        except CourseParticipant.DoesNotExist:
+            return error_response(message="Participant not found.")
+
 
 class CourseSectionViewSet(BaseCourseViewSet):
     queryset = CourseSection.objects.all()
@@ -226,3 +274,15 @@ class CourseDiscussionReplyViewSet(BaseCourseViewSet):
     model = CourseDiscussionReply
     VIEW_PERMISSION = "COURSE_FORUM_VIEW"
     EDIT_PERMISSION = "COURSE_FORUM_CONTRIBUTE"
+
+
+class CourseParticipantViewSet(BaseCourseViewSet):
+    """
+    Standalone viewset for managing individual course participants.
+    Bulk invite is handled via CourseMasterViewSet.participants action.
+    """
+    queryset = CourseParticipant.objects.select_related("employee__user", "course")
+    serializer_class = CourseParticipantSerializer
+    service_class = CourseParticipantService
+    model = CourseParticipant
+    filterset_fields = ["course", "employee", "notification_sent"]

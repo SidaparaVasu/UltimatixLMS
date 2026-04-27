@@ -9,7 +9,8 @@ from .course_repository import (
     CourseContentRepository,
     CourseResourceRepository,
     CourseDiscussionThreadRepository,
-    CourseDiscussionReplyRepository
+    CourseDiscussionReplyRepository,
+    CourseParticipantRepository,
 )
 
 
@@ -24,5 +25,6 @@ __all__ = [
     "CourseContentRepository",
     "CourseResourceRepository",
     "CourseDiscussionThreadRepository",
-    "CourseDiscussionReplyRepository"
+    "CourseDiscussionReplyRepository",
+    "CourseParticipantRepository",
 ]

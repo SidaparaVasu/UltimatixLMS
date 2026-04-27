@@ -10,7 +10,8 @@ from ..models import (
     CourseContent,
     CourseResource,
     CourseDiscussionThread,
-    CourseDiscussionReply
+    CourseDiscussionReply,
+    CourseParticipant,
 )
 from django.db.models import Count
 
@@ -74,3 +75,24 @@ class CourseDiscussionThreadRepository(BaseRepository[CourseDiscussionThread]):
 
 class CourseDiscussionReplyRepository(BaseRepository[CourseDiscussionReply]):
     model = CourseDiscussionReply
+
+
+class CourseParticipantRepository(BaseRepository[CourseParticipant]):
+    model = CourseParticipant
+
+    def bulk_get_or_create(self, course, employee_ids, invited_by=None):
+        """
+        Creates CourseParticipant rows for each employee_id that doesn't already exist.
+        Returns (created_count, skipped_count).
+        """
+        existing_ids = set(
+            self.model.objects.filter(course=course, employee_id__in=employee_ids)
+            .values_list("employee_id", flat=True)
+        )
+        new_ids = [eid for eid in employee_ids if eid not in existing_ids]
+        if new_ids:
+            self.model.objects.bulk_create([
+                self.model(course=course, employee_id=eid, invited_by=invited_by)
+                for eid in new_ids
+            ])
+        return len(new_ids), len(employee_ids) - len(new_ids)

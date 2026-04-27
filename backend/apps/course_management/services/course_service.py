@@ -10,7 +10,8 @@ from ..repositories import (
     CourseContentRepository,
     CourseResourceRepository,
     CourseDiscussionThreadRepository,
-    CourseDiscussionReplyRepository
+    CourseDiscussionReplyRepository,
+    CourseParticipantRepository,
 )
 from django.db import transaction
 from ..models import CourseSection, CourseLesson, CourseContent
@@ -167,3 +168,19 @@ class CourseDiscussionThreadService(BaseService):
 
 class CourseDiscussionReplyService(BaseService):
     repository_class = CourseDiscussionReplyRepository
+
+
+class CourseParticipantService(BaseService):
+    repository_class = CourseParticipantRepository
+
+    def bulk_invite(self, course, employee_ids: list, invited_by=None):
+        """
+        Invites a list of employees to a course.
+        Silently skips employees who are already participants.
+        Returns (created_count, skipped_count).
+        """
+        return self.repository.bulk_get_or_create(
+            course=course,
+            employee_ids=employee_ids,
+            invited_by=invited_by,
+        )

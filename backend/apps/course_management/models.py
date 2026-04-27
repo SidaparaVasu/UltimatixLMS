@@ -56,6 +56,25 @@ class CourseMaster(models.Model):
         default=DifficultyLevel.BEGINNER
     )
     estimated_duration_hours = models.PositiveIntegerField(default=0)
+    start_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date from which the course becomes accessible to participants.",
+    )
+    end_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date after which the course is no longer accessible.",
+    )
+    show_marks_to_learners = models.BooleanField(
+        default=False,
+        db_column="show_marks_to_learner",
+        help_text="If enabled, learners can see their assessment scores after completion.",
+    )
+    # Legacy columns present in DB — kept for backward compatibility.
+    # `status` (DRAFT/PUBLISHED/ARCHIVED) is the canonical visibility control.
+    is_published = models.BooleanField(default=False, db_index=True)
+    is_visible = models.BooleanField(default=False)
     created_by = models.ForeignKey(
         EmployeeMaster, 
         on_delete=models.SET_NULL, 
@@ -250,3 +269,49 @@ class CourseDiscussionReply(models.Model):
 
     class Meta:
         db_table = "course_discussion_reply"
+
+
+class CourseParticipant(models.Model):
+    """
+    Admin-managed invite list for a course.
+    Tracks which employees have been explicitly invited to a course.
+    Actual enrollment progress is tracked separately via UserCourseEnrollment.
+    """
+    course = models.ForeignKey(
+        CourseMaster,
+        on_delete=models.CASCADE,
+        related_name="participants",
+    )
+    employee = models.ForeignKey(
+        EmployeeMaster,
+        on_delete=models.CASCADE,
+        related_name="course_invitations",
+    )
+    invited_by = models.ForeignKey(
+        EmployeeMaster,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sent_course_invitations",
+        help_text="Admin/instructor who added this participant.",
+    )
+    invited_at = models.DateTimeField(auto_now_add=True)
+    notification_sent = models.BooleanField(
+        default=False,
+        db_column="invite_acknowledged",
+        help_text="Whether an invitation email has been dispatched. "
+                  "Will be set to True once the notification module is active.",
+    )
+
+    class Meta:
+        db_table = "course_participant"
+        unique_together = ["course", "employee"]
+        verbose_name = "Course Participant"
+        verbose_name_plural = "Course Participants"
+        indexes = [
+            models.Index(fields=["course"], name="idx_crs_participant_course"),
+            models.Index(fields=["employee"], name="idx_crs_participant_emp"),
+        ]
+
+    def __str__(self):
+        return f"{self.employee} → {self.course.course_code}"

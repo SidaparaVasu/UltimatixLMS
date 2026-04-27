@@ -129,7 +129,7 @@ const ADMIN_NAV: NavSection[] = [
     title: "Learning",
     items: [
       { label: "Courses",                  icon: BookOpen,      path: "/admin/courses" },
-      { label: "Categories",               icon: BookMarked,    path: "/admin/course-categories" },
+      { label: "Course Categories",               icon: BookMarked,    path: "/admin/course-categories" },
       { label: "Competencies & Skills",    icon: GraduationCap, path: "/admin/competency" },
     ],
   },

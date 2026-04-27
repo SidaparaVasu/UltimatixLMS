@@ -11,7 +11,8 @@ from .views import (
     CourseSkillMappingViewSet,
     CourseResourceViewSet,
     CourseDiscussionThreadViewSet,
-    CourseDiscussionReplyViewSet
+    CourseDiscussionReplyViewSet,
+    CourseParticipantViewSet,
 )
 
 router = DefaultRouter()
@@ -26,6 +27,7 @@ router.register(r"skill-mappings", CourseSkillMappingViewSet, basename="course_s
 router.register(r"resources", CourseResourceViewSet, basename="course_resources")
 router.register(r"discussion-threads", CourseDiscussionThreadViewSet, basename="course_discussions")
 router.register(r"discussion-replies", CourseDiscussionReplyViewSet, basename="course_discussion_replies")
+router.register(r"participants", CourseParticipantViewSet, basename="course_participants")
 
 urlpatterns = [
     path("", include(router.urls)),

@@ -9,7 +9,8 @@ from .course_service import (
     CourseContentService,
     CourseResourceService,
     CourseDiscussionThreadService,
-    CourseDiscussionReplyService
+    CourseDiscussionReplyService,
+    CourseParticipantService,
 )
 
 
@@ -24,5 +25,6 @@ __all__ = [
     "CourseContentService",
     "CourseResourceService",
     "CourseDiscussionThreadService",
-    "CourseDiscussionReplyService"
+    "CourseDiscussionReplyService",
+    "CourseParticipantService",
 ]

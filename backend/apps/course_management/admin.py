@@ -10,7 +10,8 @@ from .models import (
     CourseContent,
     CourseResource,
     CourseDiscussionThread,
-    CourseDiscussionReply
+    CourseDiscussionReply,
+    CourseParticipant,
 )
 
 
@@ -87,3 +88,10 @@ class CourseDiscussionThreadAdmin(admin.ModelAdmin):
     list_filter = ("course", "created_at")
     search_fields = ("thread_title", "created_by__employee_code")
     inlines = [CourseDiscussionReplyInline]
+
+
+@admin.register(CourseParticipant)
+class CourseParticipantAdmin(admin.ModelAdmin):
+    list_display = ("employee", "course", "invited_by", "invited_at", "notification_sent")
+    list_filter = ("course", "notification_sent")
+    search_fields = ("employee__employee_code", "course__course_code")

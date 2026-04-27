@@ -5,6 +5,8 @@ import {
   CourseCategory, 
   CourseDetail, 
   CourseMaster, 
+  CourseParticipant,
+  CourseParticipantBulkInvitePayload,
   CourseSkillMapping,
   CourseTagMap,
   CurriculumSyncPayload,
@@ -246,6 +248,49 @@ export const courseApi = {
   deleteResource: async (id: number) => {
     try {
       const response = await apiClient.delete(`/courses/resources/${id}/`);
+      return handleApiResponse(response.data);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  // --- Participants ---
+
+  /**
+   * List all invited participants for a course.
+   * GET /courses/{courseId}/participants/
+   */
+  getParticipants: async (courseId: number) => {
+    try {
+      const response = await apiClient.get(`/courses/courses/${courseId}/participants/`);
+      return handleApiResponse<CourseParticipant[]>(response.data, false);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  /**
+   * Bulk-invite employees to a course by their IDs.
+   * POST /courses/{courseId}/participants/
+   */
+  inviteParticipants: async (courseId: number, payload: CourseParticipantBulkInvitePayload) => {
+    try {
+      const response = await apiClient.post(`/courses/courses/${courseId}/participants/`, payload);
+      return handleApiResponse<{ invited: number; skipped: number }>(response.data);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  /**
+   * Remove a single participant from a course.
+   * DELETE /courses/{courseId}/participants/{participantId}/
+   */
+  removeParticipant: async (courseId: number, participantId: number) => {
+    try {
+      const response = await apiClient.delete(
+        `/courses/courses/${courseId}/participants/${participantId}/`
+      );
       return handleApiResponse(response.data);
     } catch (error) {
       return handleApiError(error);
