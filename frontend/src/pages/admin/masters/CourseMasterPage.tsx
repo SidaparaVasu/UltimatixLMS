@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { useCourses, useCourseCategories, ADMIN_QUERY_KEYS } from '@/queries/admin/useAdminMasters';
+import { useCourses, useCourseCategories, useEmployees, ADMIN_QUERY_KEYS } from '@/queries/admin/useAdminMasters';
 import { courseApi } from '@/api/course-api';
 import { CourseMaster } from '@/types/courses.types';
 import { useAdminCRUD } from '@/hooks/admin/useAdminCRUD';
 import { AdminMasterLayout } from '@/components/admin/layout/AdminMasterLayout';
 import { CourseListCard } from '@/components/admin/CourseListCard';
+import { CourseParticipantsModal } from '@/components/admin/CourseParticipantsModal';
 import { AdminInput, AdminSelect, AdminToggle, DialogFooterActions } from '@/components/admin/form';
 import { Dialog } from '@/components/ui/dialog';
 
@@ -69,8 +70,9 @@ const CourseMasterPage: React.FC = () => {
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => courseApi.deleteCourse(id),
+  const toggleActiveMutation = useMutation({
+    mutationFn: (course: CourseMaster) =>
+      courseApi.updateCourse(course.id, { is_active: !course.is_active }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ADMIN_QUERY_KEYS.courses });
     },
@@ -93,8 +95,38 @@ const CourseMasterPage: React.FC = () => {
     }),
   });
 
-  /* ── Participants modal placeholder state ── */
-  const [participantsCourseId, setParticipantsCourseId] = useState<number | null>(null);
+  /* ── Participants modal state ── */
+  const [participantsCourse, setParticipantsCourse] = useState<CourseMaster | null>(null);
+
+  /* Fetch participants for the selected course */
+  const { data: participantsData, isLoading: isLoadingParticipants } = useQuery({
+    queryKey: ['course-participants', participantsCourse?.id],
+    queryFn: () => courseApi.getParticipants(participantsCourse!.id),
+    enabled: participantsCourse !== null,
+  });
+  const existingParticipants = (participantsData as any) ?? [];
+
+  /* Fetch all employees for the combobox */
+  const { data: employeesRes } = useEmployees({ page_size: 500 });
+  const allEmployees = employeesRes?.results ?? [];
+
+  const inviteMutation = useMutation({
+    mutationFn: ({ courseId, ids }: { courseId: number; ids: number[] }) =>
+      courseApi.inviteParticipants(courseId, { employee_ids: ids }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['course-participants', participantsCourse?.id] });
+      queryClient.invalidateQueries({ queryKey: ADMIN_QUERY_KEYS.courses });
+    },
+  });
+
+  const removeParticipantMutation = useMutation({
+    mutationFn: ({ courseId, participantId }: { courseId: number; participantId: number }) =>
+      courseApi.removeParticipant(courseId, participantId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['course-participants', participantsCourse?.id] });
+      queryClient.invalidateQueries({ queryKey: ADMIN_QUERY_KEYS.courses });
+    },
+  });
 
   /* ── Search ── */
   const [searchTerm, setSearchTerm] = useState('');
@@ -197,9 +229,9 @@ const CourseMasterPage: React.FC = () => {
               course={course}
               categoryName={categories.find((c) => c.id === course.category)?.category_name}
               onEdit={() => crud.openDialog(course)}
-              onDelete={() => deleteMutation.mutate(course.id)}
+              onToggleActive={() => toggleActiveMutation.mutate(course)}
               onBuild={() => navigate(`/admin/courses/builder/${course.id}`)}
-              onParticipants={() => setParticipantsCourseId(course.id)}
+              onParticipants={() => setParticipantsCourse(course)}
             />
           ))
         )}
@@ -314,43 +346,27 @@ const CourseMasterPage: React.FC = () => {
         </div>
       </Dialog>
 
-      {/* ── Participants modal placeholder ── */}
-      <Dialog
-        open={participantsCourseId !== null}
-        onOpenChange={() => setParticipantsCourseId(null)}
-        title="Invite Participants"
-        description="Manage participants for this course."
-        maxWidth="480px"
-        footer={
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button
-              onClick={() => setParticipantsCourseId(null)}
-              style={{
-                padding: '8px 16px',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--color-border)',
-                background: 'transparent',
-                cursor: 'pointer',
-                fontSize: 'var(--text-sm)',
-                fontWeight: 600,
-              }}
-            >
-              Close
-            </button>
-          </div>
-        }
-      >
-        <div
-          style={{
-            padding: 'var(--space-8)',
-            textAlign: 'center',
-            color: 'var(--color-text-muted)',
-            fontSize: 'var(--text-sm)',
+      {/* ── Participants modal ── */}
+      {participantsCourse && (
+        <CourseParticipantsModal
+          open={participantsCourse !== null}
+          onClose={() => setParticipantsCourse(null)}
+          courseId={participantsCourse.id}
+          courseTitle={participantsCourse.course_title}
+          allEmployees={allEmployees}
+          existingParticipants={Array.isArray(existingParticipants) ? existingParticipants : []}
+          isLoadingParticipants={isLoadingParticipants}
+          onSave={async (ids) => {
+            await inviteMutation.mutateAsync({ courseId: participantsCourse.id, ids });
           }}
-        >
-          Participant invite UI will be implemented soon.
-        </div>
-      </Dialog>
+          onRemoveParticipant={async (participantId) => {
+            await removeParticipantMutation.mutateAsync({
+              courseId: participantsCourse.id,
+              participantId,
+            });
+          }}
+        />
+      )}
     </AdminMasterLayout>
   );
 };

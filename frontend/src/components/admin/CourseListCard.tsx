@@ -1,8 +1,8 @@
 import React from 'react';
 import {
   BookOpen, Clock, LayoutList, FileText,
-  CalendarDays, Users, Pencil, CircleX,
-  Bolt, Eye, EyeOff, UserPlus,
+  CalendarDays, Users, Pencil,
+  Bolt, Eye, EyeOff, UserPlus, ToggleLeft, ToggleRight,
 } from 'lucide-react';
 import { CourseMaster } from '@/types/courses.types';
 import { TableStatusBadge } from '@/components/ui/table';
@@ -97,14 +97,14 @@ export interface CourseListCardProps {
   course: CourseMaster;
   categoryName?: string;
   onEdit: () => void;
-  onDelete: () => void;
+  onToggleActive: () => void;
   onBuild: () => void;
   onParticipants: () => void;
 }
 
 /* ── Component ────────────────────────────────────────────────────────────── */
 export const CourseListCard: React.FC<CourseListCardProps> = ({
-  course, categoryName, onEdit, onDelete, onBuild, onParticipants,
+  course, categoryName, onEdit, onToggleActive, onBuild, onParticipants,
 }) => {
   const diffStyle   = DIFFICULTY_STYLE[course.difficulty_level ?? ''] ?? DIFFICULTY_STYLE.BEGINNER;
   const statusStyle = STATUS_STYLE[course.status] ?? STATUS_STYLE.DRAFT;
@@ -226,9 +226,11 @@ export const CourseListCard: React.FC<CourseListCardProps> = ({
           onClick={onParticipants}
         />
         <ActionBtn
-          icon={CircleX} title="Deactivate course"
-          color="var(--color-danger)" hoverBg="rgba(163,45,45,0.08)"
-          onClick={onDelete}
+          icon={course.is_active ? ToggleRight : ToggleLeft}
+          title={course.is_active ? 'Deactivate course' : 'Activate course'}
+          color={course.is_active ? 'var(--color-success)' : 'var(--color-text-muted)'}
+          hoverBg={course.is_active ? 'rgba(26,158,58,0.08)' : 'var(--color-surface-alt)'}
+          onClick={onToggleActive}
         />
 
         {/* Build button */}
