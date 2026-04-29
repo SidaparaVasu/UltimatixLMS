@@ -110,6 +110,17 @@ export interface RatingNested {
   submitted_at: string | null;
 }
 
+/** Extended self-rating with observations and accomplishments */
+export interface SelfRatingDetail {
+  id: number;
+  rated_level: SkillLevelNested;
+  status: RatingStatus;
+  submitted_at: string | null;
+  observations: string;
+  accomplishments: string;
+}
+
+
 /**
  * One row in the composite skill matrix view.
  * Returned by GET /api/v1/skills/my-skill-matrix/
@@ -152,6 +163,10 @@ export interface TrainingNeed {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  /** Gap info from the latest SkillGapSnapshot */
+  gap_value: number | null;
+  required_level_name: string | null;
+  current_level_name: string | null;
 }
 
 /**
@@ -205,6 +220,14 @@ export interface ManagerRatingSubmitPayload {
 export interface ManagerSubmitSummary {
   submitted_count: number;
   skills_updated: number;
+  gaps_found: number;
+  training_needs_created: number;
+}
+
+/** Response from self-rating submit/ */
+export interface SelfRatingSubmitResult {
+  ratings: EmployeeSkillRating[];
+  bypassed_manager_review: boolean;
   gaps_found: number;
   training_needs_created: number;
 }

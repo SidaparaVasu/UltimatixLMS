@@ -35,6 +35,7 @@ const MyLearningPage = lazy(() => import('@/pages/learner/MyLearningPage'));
 const CoursePlayerPage = lazy(() => import('@/pages/learner/CoursePlayerPage'));
 const SelfTNIRatingPage = lazy(() => import('@/pages/learner/SelfTNIRatingPage'));
 const MySkillMatrixPage = lazy(() => import('@/pages/learner/MySkillMatrixPage'));
+const TrainingNeedsPage = lazy(() => import('@/pages/admin/tni/TrainingNeedsPage'));
 
 // Placeholder for pages that are not yet implemented
 const ComingSoon = () => (
@@ -97,6 +98,9 @@ export const AppRoutes = () => {
                 <Route path="/admin/course-categories" element={<CourseCategoryPage />} />
                 <Route path="/admin/courses" element={<CourseMasterPage />} />
                 <Route path="/admin/settings" element={<ComingSoon />} />
+                <Route path="/admin/tni" element={<TrainingNeedsPage />} />
+                <Route path="/admin/training-plans" element={<ComingSoon />} />
+                <Route path="/admin/skill-gap" element={<ComingSoon />} />
               </Route>
               
               {/* Studio runs outside of standard AdminLayout for full screen */}

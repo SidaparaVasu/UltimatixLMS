@@ -44,10 +44,11 @@ const EMPLOYEE_NAV: NavSection[] = [
   {
     title: "General",
     items: [
-      { label: "Overview",        icon: LayoutDashboard, path: "/dashboard" },
-      { label: "My Learning",     icon: Star,            path: "/my-learning", badge: null },
-      { label: "Explore Courses", icon: BookOpen,        path: "/courses" },
-      { label: "Skill Matrix",    icon: GraduationCap,   path: "/skills" },
+      { label: "Overview",          icon: LayoutDashboard, path: "/dashboard" },
+      { label: "My Learning",       icon: Star,            path: "/my-learning", badge: null },
+      { label: "Explore Courses",   icon: BookOpen,        path: "/courses" },
+      { label: "Skill Assessment",  icon: ClipboardList,   path: "/my-tni" },
+      { label: "Skill Matrix",      icon: GraduationCap,   path: "/my-skills" },
     ],
   },
   {
@@ -68,7 +69,7 @@ const EMPLOYEE_NAV: NavSection[] = [
   {
     title: "Account",
     items: [
-      { label: "My Profile", icon: User,       path: "/profile" },
+      { label: "My Profile", icon: User,        path: "/profile" },
       { label: "Security",   icon: ShieldCheck, path: "/security" },
     ],
   },
@@ -94,9 +95,9 @@ const HR_NAV: NavSection[] = [
   {
     title: "Management",
     items: [
-      { label: "TNI",             icon: ClipboardList,   path: "/admin/tni" },
-      { label: "Training Plans",  icon: GraduationCap,   path: "/admin/training-plans" },
-      { label: "Skill Gap",       icon: BarChart2,       path: "/admin/skill-gap" },
+      { label: "Training Needs",    icon: ClipboardList,  path: "/admin/tni" },
+      { label: "Training Plans",    icon: GraduationCap,  path: "/admin/training-plans" },
+      { label: "Skill Gap",         icon: BarChart2,      path: "/admin/skill-gap" },
     ],
   },
   {

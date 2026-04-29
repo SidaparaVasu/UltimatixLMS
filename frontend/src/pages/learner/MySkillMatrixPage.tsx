@@ -22,14 +22,14 @@ const StatCard: React.FC<{
     background: 'var(--color-surface)',
     border: '1px solid var(--color-border)',
     borderRadius: 'var(--radius-lg)',
-    display: 'flex', flexDirection: 'column', gap: 'var(--space-1)',
+    display: 'flex', alignItems: 'center', flexDirection: 'column', gap: 'var(--space-1)',
   }}>
     <span style={{ fontSize: '24px', fontWeight: 700, color: 'var(--color-text-primary)', lineHeight: 1 }}>
       {value}
     </span>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: '4px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', }}>
+      <span style={{ fontSize: '14px', color: 'var(--color-text-muted)' }}>{label}</span>
       {severity && <SkillGapBadge severity={severity} compact />}
-      <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{label}</span>
     </div>
   </div>
 );

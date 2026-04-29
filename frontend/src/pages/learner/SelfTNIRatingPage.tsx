@@ -198,8 +198,14 @@ export default function SelfTNIRatingPage() {
     saveDraftMutation.mutate(payload, {
       onSuccess: () => {
         submitMutation.mutate(undefined, {
-          onSuccess: () => {
+          onSuccess: (result) => {
             setShowSubmitConfirm(false);
+            if (result?.bypassed_manager_review) {
+              showNotification(
+                `Submitted. No reporting manager found — gap analysis ran automatically. ${result.gaps_found} gap(s) found.`,
+                'info',
+              );
+            }
             window.location.reload();
           },
         });
@@ -347,9 +353,10 @@ export default function SelfTNIRatingPage() {
           padding: 'var(--space-12) var(--space-8)', textAlign: 'center',
           background: 'var(--color-surface)', border: '1px dashed var(--color-border)',
           borderRadius: 'var(--radius-lg)', color: 'var(--color-text-muted)',
+          marginBottom: 'var(--space-4)',
         }}>
-          <ClipboardList size={36} style={{ opacity: 0.3, marginBottom: 'var(--space-3)' }} />
-          <p style={{ fontSize: '14px', fontWeight: 500, margin: '0 0 4px' }}>No skills mapped to your role</p>
+          <ClipboardList size={36} style={{ opacity: 0.3, margin: '3px auto' }} />
+          <p style={{ fontSize: '14px', fontWeight: 500, margin: '0 0 3px' }}>No skills mapped to your role</p>
           <p style={{ fontSize: '13px', margin: 0 }}>Ask your admin to map skills to your job role.</p>
         </div>
       ) : (

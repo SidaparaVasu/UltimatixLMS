@@ -25,6 +25,7 @@ import {
   TrainingNeedApproval,
   ManagerSubmitSummary,
   SelfRatingBulkSavePayload,
+  SelfRatingSubmitResult,
   ManagerRatingSubmitPayload,
   ApprovalFinalizePayload,
   SkillRatingListParams,
@@ -103,13 +104,13 @@ export const tniApi = {
   /**
    * POST /skills/skill-ratings/submit/
    * Bulk submit all DRAFT self-ratings for the current user.
-   * Validates that all job-role-required skills are rated first.
-   * Submitted ratings are immutable.
+   * If the employee has no direct reporting manager, gap analysis runs
+   * automatically and bypassed_manager_review will be true in the response.
    */
   submitSelfRatings: async () => {
     try {
       const response = await apiClient.post('/skills/skill-ratings/submit/');
-      return handleApiResponse<EmployeeSkillRating[]>(response.data);
+      return handleApiResponse<SelfRatingSubmitResult>(response.data);
     } catch (error) {
       return handleApiError(error);
     }
@@ -187,10 +188,34 @@ export const tniApi = {
   // -------------------------------------------------------------------------
 
   /**
+   * POST /tni/tni-needs/{id}/approve/
+   * Approve a training need directly. Updates status → APPROVED.
+   */
+  approveTrainingNeed: async (needId: number, comments?: string) => {
+    try {
+      const response = await apiClient.post(`/tni/tni-needs/${needId}/approve/`, { comments: comments ?? '' });
+      return handleApiResponse<TrainingNeed>(response.data);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  /**
+   * POST /tni/tni-needs/{id}/reject/
+   * Reject a training need. Comments are required.
+   */
+  rejectTrainingNeed: async (needId: number, comments: string) => {
+    try {
+      const response = await apiClient.post(`/tni/tni-needs/${needId}/reject/`, { comments });
+      return handleApiResponse<TrainingNeed>(response.data);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  /**
+   * @deprecated Use approveTrainingNeed / rejectTrainingNeed instead.
    * POST /tni/approvals/{id}/finalize/
-   * Approve or reject a training need.
-   * Requires TNI_APPROVE permission.
-   * Comments are required when rejecting.
    */
   finalizeApproval: async (approvalId: number, payload: ApprovalFinalizePayload) => {
     try {
