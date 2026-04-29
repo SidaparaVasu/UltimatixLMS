@@ -186,6 +186,52 @@ class SkillMatrixRowSerializer(serializers.Serializer):
     )
 
 
+class SelfRatingDetailSerializer(serializers.ModelSerializer):
+    """
+    Extended self-rating nested object — includes observations and accomplishments
+    so the manager can read the employee's context while reviewing.
+    """
+    rated_level = SkillLevelNestedSerializer(read_only=True)
+
+    class Meta:
+        model  = EmployeeSkillRating
+        fields = ["id", "rated_level", "status", "submitted_at", "observations", "accomplishments"]
+
+
+class ManagerRatingDetailSerializer(serializers.ModelSerializer):
+    """
+    Extended manager-rating nested object — includes notes and status.
+    """
+    rated_level = SkillLevelNestedSerializer(read_only=True)
+
+    class Meta:
+        model  = EmployeeSkillRating
+        fields = ["id", "rated_level", "status", "submitted_at", "notes"]
+
+
+class ManagerReviewRowSerializer(serializers.Serializer):
+    """
+    Read-only composite row returned by /skills/skill-ratings/manager-review-matrix/.
+
+    Assembles one row per skill the employee has self-rated, enriched with:
+      - required level from the employee's job role (null for extra skills)
+      - the employee's full self-rating (including observations + accomplishments)
+      - the manager's existing rating for this skill (null if not yet rated)
+      - live gap preview: compares manager's current rating against required level
+      - category grouping
+      - is_role_skill flag to distinguish job-role skills from extra self-rated skills
+    """
+    skill_id          = serializers.IntegerField()
+    skill_name        = serializers.CharField()
+    skill_code        = serializers.CharField()
+    category_id       = serializers.IntegerField(allow_null=True)
+    category_name     = serializers.CharField(allow_null=True)
+    is_role_skill     = serializers.BooleanField()
+    required_level    = SkillLevelNestedSerializer(allow_null=True)
+    self_rating       = SelfRatingDetailSerializer(allow_null=True)
+    manager_rating    = ManagerRatingDetailSerializer(allow_null=True)
+
+
 # ---------------------------------------------------------------------------
 # Action input serializers
 # ---------------------------------------------------------------------------

@@ -8,7 +8,8 @@ from .models import (
     EmployeeSkill,
     EmployeeSkillHistory,
     EmployeeSkillAssessment,
-    EmployeeSkillRating
+    EmployeeSkillRating,
+    EmployeeSkillRatingHistory,
 )
 
 
@@ -76,3 +77,11 @@ class EmployeeSkillRatingAdmin(admin.ModelAdmin):
     list_display = ("employee", "skill", "rated_by", "rating_type", "rated_level", "status", "submitted_at")
     search_fields = ("skill", "skill__skill_name")
     list_filter = ("rating_type", "rated_level", "submitted_at", "status")
+
+
+@admin.register(EmployeeSkillRatingHistory)
+class EmployeeSkillRatingHistoryAdmin(admin.ModelAdmin):
+    list_display = ("employee", "skill", "rating_type", "rated_by", "old_level", "new_level", "old_status", "new_status", "changed_at")
+    search_fields = ("employee__employee_code", "skill__skill_name")
+    list_filter = ("rating_type", "new_status", "changed_at")
+    readonly_fields = ("employee", "skill", "rating_type", "rated_by", "old_level", "new_level", "old_status", "new_status", "notes_snapshot", "changed_at")

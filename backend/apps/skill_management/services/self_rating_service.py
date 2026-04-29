@@ -182,7 +182,17 @@ class SelfRatingService:
         Validates that all job-role-required skills are rated first.
         Sets status → SUBMITTED and records submitted_at timestamp.
 
-        Returns the list of submitted EmployeeSkillRating instances.
+        If the employee has no direct reporting manager, the manager review
+        step is automatically bypassed: self-rated levels are pushed directly
+        into EmployeeSkill (identified_by=SELF) and gap analysis runs immediately.
+
+        Returns a dict:
+            {
+                "submitted": [EmployeeSkillRating, ...],
+                "bypassed_manager_review": bool,
+                "gaps_found": int,          # only set when bypassed
+                "training_needs_created": int,  # only set when bypassed
+            }
 
         Raises ValidationError if:
           - No DRAFT ratings exist
@@ -216,4 +226,55 @@ class SelfRatingService:
             )
             submitted.append(updated)
 
-        return submitted
+        # 4. Check if employee has a direct reporting manager
+        has_manager = self._has_direct_manager(employee_id)
+
+        if has_manager:
+            # Normal flow — manager will review and trigger gap analysis
+            return {
+                "submitted": submitted,
+                "bypassed_manager_review": False,
+                "gaps_found": 0,
+                "training_needs_created": 0,
+            }
+
+        # 5. No manager — auto-bypass: push self-rated levels and run gap analysis
+        from ..repositories import EmployeeSkillRepository
+        from ..models import SkillIdentifiedBy
+        from apps.tni_management.services import TNIEngineService
+
+        emp_skill_repo = EmployeeSkillRepository()
+        for rating in submitted:
+            emp_skill_repo.model.objects.update_or_create(
+                employee_id=employee_id,
+                skill_id=rating.skill_id,
+                defaults={
+                    "current_level_id": rating.rated_level_id,
+                    "identified_by": SkillIdentifiedBy.SELF,
+                    "is_active": True,
+                },
+            )
+
+        identified_needs = TNIEngineService().analyze_employee_gaps(employee_id)
+
+        return {
+            "submitted": submitted,
+            "bypassed_manager_review": True,
+            "gaps_found": len(identified_needs),
+            "training_needs_created": len(identified_needs),
+        }
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _has_direct_manager(self, employee_id):
+        """
+        Returns True if the employee has at least one active direct reporting
+        manager set in EmployeeReportingManager.
+        """
+        from apps.org_management.models import EmployeeReportingManager
+        return EmployeeReportingManager.objects.filter(
+            employee_id=employee_id,
+            relationship_type="DIRECT",
+        ).exists()

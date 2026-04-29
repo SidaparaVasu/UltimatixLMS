@@ -31,6 +31,7 @@ from .serializers import (
     EmployeeSkillRatingSerializer,
     EmployeeSkillRatingHistorySerializer,
     SkillMatrixRowSerializer,
+    ManagerReviewRowSerializer,
     SelfRatingBulkSaveSerializer,
     ManagerRatingSubmitSerializer,
 )
@@ -286,6 +287,167 @@ class EmployeeSkillRatingViewSet(viewsets.GenericViewSet):
         serializer = self.get_serializer(qs, many=True)
         return success_response(data=serializer.data)
 
+    # ── Team pending review (manager) ────────────────────────────────────
+    @action(detail=False, methods=["get"], url_path="team-pending-review")
+    def team_pending_review(self, request):
+        """
+        Returns direct reports who have submitted self-ratings
+        and are awaiting manager review (no submitted manager rating yet).
+        """
+        manager, err = _get_employee_or_error(request.user)
+        if err:
+            return err
+
+        service = ManagerRatingService()
+        employees = service.get_pending_review_employees(manager_id=manager.id)
+
+        from apps.org_management.serializers import EmployeeManagerOptionSerializer
+        serializer = EmployeeManagerOptionSerializer(employees, many=True)
+        return success_response(data=serializer.data)
+
+    # ── All direct reports who have submitted self-ratings ────────────────
+    @action(detail=False, methods=["get"], url_path="team-submitted")
+    def team_submitted(self, request):
+        """
+        Returns ALL direct reports who have submitted a self-rating,
+        regardless of whether the manager has reviewed them yet.
+        Used to populate the employee selector in the manager review page.
+        """
+        manager, err = _get_employee_or_error(request.user)
+        if err:
+            return err
+
+        from apps.org_management.models import EmployeeReportingManager, EmployeeMaster
+        from .models import SkillRatingType, SkillRatingStatus
+
+        direct_report_ids = EmployeeReportingManager.objects.filter(
+            manager_id=manager.id,
+            relationship_type="DIRECT",
+        ).values_list("employee_id", flat=True)
+
+        employees_with_self_rating = (
+            EmployeeSkillRating.objects.filter(
+                employee_id__in=direct_report_ids,
+                rating_type=SkillRatingType.SELF,
+                status=SkillRatingStatus.SUBMITTED,
+            )
+            .values_list("employee_id", flat=True)
+            .distinct()
+        )
+
+        employees = EmployeeMaster.objects.filter(id__in=employees_with_self_rating)
+
+        from apps.org_management.serializers import EmployeeManagerOptionSerializer
+        serializer = EmployeeManagerOptionSerializer(employees, many=True)
+        return success_response(data=serializer.data)
+
+    # ── Manager review matrix ─────────────────────────────────────────────
+    @extend_schema(
+        parameters=[OpenApiParameter("employee_id", int, description="Employee ID to review", required=True)]
+    )
+    @action(detail=False, methods=["get"], url_path="manager-review-matrix")
+    def manager_review_matrix(self, request):
+        """
+        Composite review matrix for a manager reviewing a specific employee.
+
+        Returns one row per skill the employee has self-rated, enriched with:
+          - required level from the employee's job role
+          - full self-rating (including observations + accomplishments)
+          - manager's existing rating for this skill (null if not yet rated)
+          - category grouping
+          - is_role_skill flag
+
+        Query param: ?employee_id=<int>  (required)
+        """
+        from apps.org_management.models import EmployeeMaster
+        from .models import (
+            JobRoleSkillRequirement,
+            SkillCategorySkillMap,
+            SkillRatingType,
+            SkillRatingStatus,
+        )
+        from .serializers import ManagerReviewRowSerializer
+
+        employee_id = request.query_params.get("employee_id")
+        if not employee_id:
+            return error_response(message="employee_id query parameter is required.")
+
+        try:
+            employee_id = int(employee_id)
+        except (TypeError, ValueError):
+            return error_response(message="employee_id must be an integer.")
+
+        employee = EmployeeMaster.objects.filter(id=employee_id).first()
+        if not employee:
+            return error_response(message="Employee not found.")
+
+        # 1. All SUBMITTED self-ratings for this employee
+        self_ratings = {
+            r.skill_id: r
+            for r in EmployeeSkillRating.objects.filter(
+                employee_id=employee_id,
+                rating_type=SkillRatingType.SELF,
+                status=SkillRatingStatus.SUBMITTED,
+            ).select_related("skill", "rated_level")
+        }
+
+        if not self_ratings:
+            return success_response(data=[])
+
+        # 2. Manager's existing ratings for this employee (any status)
+        manager_ratings = {
+            r.skill_id: r
+            for r in EmployeeSkillRating.objects.filter(
+                employee_id=employee_id,
+                rating_type=SkillRatingType.MANAGER,
+            ).select_related("rated_level")
+        }
+
+        # 3. Required levels from job role — keyed by skill_id
+        role_requirements = {
+            req.skill_id: req.required_level
+            for req in JobRoleSkillRequirement.objects.filter(
+                job_role_id=employee.job_role_id,
+                is_active=True,
+            ).select_related("required_level")
+        } if employee.job_role_id else {}
+
+        # 4. Category mapping for all self-rated skills
+        all_skill_ids = list(self_ratings.keys())
+        category_map = {}
+        for mapping in SkillCategorySkillMap.objects.filter(
+            skill_id__in=all_skill_ids,
+            is_active=True,
+        ).select_related("category"):
+            if mapping.skill_id not in category_map:
+                category_map[mapping.skill_id] = mapping.category
+
+        # 5. Assemble rows — one per self-rated skill
+        rows = []
+        for skill_id, self_rating in self_ratings.items():
+            skill         = self_rating.skill
+            required_lvl  = role_requirements.get(skill_id)
+            manager_rating = manager_ratings.get(skill_id)
+            category      = category_map.get(skill_id)
+
+            rows.append({
+                "skill_id":       skill.id,
+                "skill_name":     skill.skill_name,
+                "skill_code":     skill.skill_code,
+                "category_id":    category.id if category else None,
+                "category_name":  category.category_name if category else None,
+                "is_role_skill":  skill_id in role_requirements,
+                "required_level": required_lvl,
+                "self_rating":    self_rating,
+                "manager_rating": manager_rating,
+            })
+
+        # Sort: role skills first, then alphabetically by skill name
+        rows.sort(key=lambda r: (not r["is_role_skill"], r["skill_name"]))
+
+        serializer = ManagerReviewRowSerializer(rows, many=True)
+        return success_response(data=serializer.data)
+
     # ── Save draft (self) ─────────────────────────────────────────────────
     @action(detail=False, methods=["post"], url_path="save-draft")
     def save_draft(self, request):
@@ -311,19 +473,47 @@ class EmployeeSkillRatingViewSet(viewsets.GenericViewSet):
     # ── Submit (self) ─────────────────────────────────────────────────────
     @action(detail=False, methods=["post"], url_path="submit")
     def submit(self, request):
-        """Bulk submit all DRAFT self-ratings for the current user."""
+        """
+        Bulk submit all DRAFT self-ratings for the current user.
+
+        If the employee has no direct reporting manager, the manager review
+        step is automatically bypassed: self-rated levels are pushed into
+        EmployeeSkill and gap analysis runs immediately.
+        """
         employee, err = _get_employee_or_error(request.user)
         if err:
             return err
 
         service = SelfRatingService()
-        submitted = service.submit_all(
+        result = service.submit_all(
             employee_id=employee.id,
             job_role_id=employee.job_role_id,
         )
+
+        submitted = result["submitted"]
+        bypassed  = result["bypassed_manager_review"]
+
+        if bypassed:
+            message = (
+                f"{len(submitted)} skill rating(s) submitted. "
+                f"No reporting manager found — gap analysis ran automatically. "
+                f"{result['gaps_found']} gap(s) found, "
+                f"{result['training_needs_created']} training need(s) created."
+            )
+        else:
+            message = (
+                f"{len(submitted)} skill rating(s) submitted successfully. "
+                f"Awaiting manager review."
+            )
+
         return success_response(
-            message=f"{len(submitted)} skill rating(s) submitted successfully.",
-            data=EmployeeSkillRatingSerializer(submitted, many=True).data,
+            message=message,
+            data={
+                "ratings": EmployeeSkillRatingSerializer(submitted, many=True).data,
+                "bypassed_manager_review": bypassed,
+                "gaps_found": result["gaps_found"],
+                "training_needs_created": result["training_needs_created"],
+            },
         )
 
     # ── Save draft (manager) ──────────────────────────────────────────────
