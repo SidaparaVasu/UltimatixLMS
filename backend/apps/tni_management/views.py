@@ -29,6 +29,7 @@ from .services import (
     TNIAnalysisService,
     TNIEngineService
 )
+from .constants import TNIStatus, TNIApprovalStatus
 
 
 class BaseTNIViewSet(viewsets.ModelViewSet):
@@ -142,6 +143,82 @@ class TrainingNeedViewSet(BaseTNIViewSet):
 
         serializer = self.get_serializer(qs, many=True)
         return success_response(data=serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="approve")
+    def approve(self, request, pk=None):
+        """
+        Approve a training need directly.
+        Updates TrainingNeed.status → APPROVED and creates a TrainingNeedApproval record.
+        """
+        from apps.org_management.models import EmployeeMaster
+        from django.utils import timezone
+
+        approver = EmployeeMaster.objects.filter(user=request.user).first()
+        if not approver:
+            return error_response(message="Approver profile not found.")
+
+        need = self.get_object()
+        if need.status not in [TNIStatus.PENDING]:
+            return error_response(message=f"Cannot approve a need with status '{need.status}'.")
+
+        comments = request.data.get("comments", "")
+
+        # Update the training need status
+        need.status = TNIStatus.APPROVED
+        need.save(update_fields=["status", "updated_at"])
+
+        # Create approval record for audit trail
+        TrainingNeedApproval.objects.create(
+            training_need=need,
+            approver=approver,
+            approval_status=TNIApprovalStatus.APPROVED,
+            comments=comments,
+            actioned_at=timezone.now(),
+        )
+
+        return success_response(
+            message="Training need approved.",
+            data=self.get_serializer(need).data,
+        )
+
+    @action(detail=True, methods=["post"], url_path="reject")
+    def reject(self, request, pk=None):
+        """
+        Reject a training need directly.
+        Updates TrainingNeed.status → REJECTED and creates a TrainingNeedApproval record.
+        """
+        from apps.org_management.models import EmployeeMaster
+        from django.utils import timezone
+
+        approver = EmployeeMaster.objects.filter(user=request.user).first()
+        if not approver:
+            return error_response(message="Approver profile not found.")
+
+        need = self.get_object()
+        if need.status not in [TNIStatus.PENDING]:
+            return error_response(message=f"Cannot reject a need with status '{need.status}'.")
+
+        comments = request.data.get("comments", "")
+        if not comments.strip():
+            return error_response(message="Comments are required when rejecting a training need.")
+
+        # Update the training need status
+        need.status = TNIStatus.REJECTED
+        need.save(update_fields=["status", "updated_at"])
+
+        # Create approval record for audit trail
+        TrainingNeedApproval.objects.create(
+            training_need=need,
+            approver=approver,
+            approval_status=TNIApprovalStatus.REJECTED,
+            comments=comments,
+            actioned_at=timezone.now(),
+        )
+
+        return success_response(
+            message="Training need rejected.",
+            data=self.get_serializer(need).data,
+        )
 
 
 
