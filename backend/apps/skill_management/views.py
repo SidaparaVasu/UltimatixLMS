@@ -1,5 +1,6 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from common.response import success_response, created_response, error_response
 from apps.rbac.permissions import HasScopedPermission
@@ -12,7 +13,8 @@ from .models import (
     EmployeeSkill,
     EmployeeSkillHistory,
     EmployeeSkillAssessment,
-    EmployeeSkillAssessment
+    EmployeeSkillRating,
+    EmployeeSkillRatingHistory,
 )
 from .serializers import (
     SkillCategorySerializer,
@@ -26,6 +28,11 @@ from .serializers import (
     EmployeeSkillBulkSyncSerializer,
     JobRoleSkillBulkSyncSerializer,
     JobRoleSkillRequirementSerializer,
+    EmployeeSkillRatingSerializer,
+    EmployeeSkillRatingHistorySerializer,
+    SkillMatrixRowSerializer,
+    SelfRatingBulkSaveSerializer,
+    ManagerRatingSubmitSerializer,
 )
 from .services import (
     SkillCategoryService,
@@ -35,7 +42,9 @@ from .services import (
     JobRoleSkillService,
     EmployeeSkillService,
     EmployeeSkillHistoryService,
-    EmployeeSkillAssessmentService
+    EmployeeSkillAssessmentService,
+    SelfRatingService,
+    ManagerRatingService,
 )
 
 
@@ -198,5 +207,347 @@ class EmployeeSkillAssessmentViewSet(BaseSkillViewSet):
     service_class = EmployeeSkillAssessmentService
     model = EmployeeSkillAssessment
     required_permission = "SKILL_ASSESSMENT_MANAGE"
+
+
+# ---------------------------------------------------------------------------
+# Helper: resolve EmployeeMaster from request.user
+# ---------------------------------------------------------------------------
+
+def _get_employee_or_error(user):
+    """
+    Returns (employee, None) on success or (None, error_response) on failure.
+    Avoids repeating this lookup in every action.
+    """
+    from apps.org_management.models import EmployeeMaster
+    employee = EmployeeMaster.objects.filter(user=user).first()
+    if not employee:
+        return None, error_response(message="Employee profile not found for the current user.")
+    return employee, None
+
+
+# ---------------------------------------------------------------------------
+# EmployeeSkillRatingViewSet
+# ---------------------------------------------------------------------------
+
+class EmployeeSkillRatingViewSet(viewsets.GenericViewSet):
+    """
+    Handles the TNI self-rating and manager-rating workflow.
+
+    Endpoints:
+      GET    /skills/skill-ratings/              — list ratings (filtered by query params)
+      POST   /skills/skill-ratings/save-draft/   — bulk upsert DRAFT self-ratings
+      POST   /skills/skill-ratings/submit/       — bulk submit all DRAFT self-ratings
+      POST   /skills/skill-ratings/manager-save/ — bulk upsert DRAFT manager ratings
+      POST   /skills/skill-ratings/manager-submit/ — submit manager ratings + run gap analysis
+      GET    /skills/skill-ratings/history/      — rating history for an employee
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class   = EmployeeSkillRatingSerializer
+
+    def get_queryset(self):
+        return EmployeeSkillRating.objects.select_related(
+            "employee", "skill", "rated_by", "rated_level"
+        ).all()
+
+    # ── List ──────────────────────────────────────────────────────────────
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("employee_id",  int,  description="Filter by employee ID"),
+            OpenApiParameter("rating_type",  str,  description="SELF or MANAGER"),
+            OpenApiParameter("status",       str,  description="DRAFT or SUBMITTED"),
+        ]
+    )
+    def list(self, request):
+        from .repositories import EmployeeSkillRatingRepository
+        repo = EmployeeSkillRatingRepository()
+
+        employee_id = request.query_params.get("employee_id")
+        rating_type = request.query_params.get("rating_type")
+        status_val  = request.query_params.get("status")
+
+        # Default: show the current user's own ratings
+        if not employee_id:
+            employee, err = _get_employee_or_error(request.user)
+            if err:
+                return err
+            employee_id = employee.id
+
+        qs = repo.get_for_employee(
+            employee_id=employee_id,
+            rating_type=rating_type,
+            status=status_val,
+        ).select_related("skill", "rated_level", "rated_by")
+
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(qs, many=True)
+        return success_response(data=serializer.data)
+
+    # ── Save draft (self) ─────────────────────────────────────────────────
+    @action(detail=False, methods=["post"], url_path="save-draft")
+    def save_draft(self, request):
+        """Bulk upsert DRAFT self-ratings for the current user."""
+        employee, err = _get_employee_or_error(request.user)
+        if err:
+            return err
+
+        serializer = SelfRatingBulkSaveSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        service = SelfRatingService()
+        results = service.save_draft_bulk(
+            employee_id=employee.id,
+            rated_by_id=employee.id,
+            ratings=serializer.validated_data["ratings"],
+        )
+        return success_response(
+            message=f"{len(results)} skill rating(s) saved as draft.",
+            data=EmployeeSkillRatingSerializer(results, many=True).data,
+        )
+
+    # ── Submit (self) ─────────────────────────────────────────────────────
+    @action(detail=False, methods=["post"], url_path="submit")
+    def submit(self, request):
+        """Bulk submit all DRAFT self-ratings for the current user."""
+        employee, err = _get_employee_or_error(request.user)
+        if err:
+            return err
+
+        service = SelfRatingService()
+        submitted = service.submit_all(
+            employee_id=employee.id,
+            job_role_id=employee.job_role_id,
+        )
+        return success_response(
+            message=f"{len(submitted)} skill rating(s) submitted successfully.",
+            data=EmployeeSkillRatingSerializer(submitted, many=True).data,
+        )
+
+    # ── Save draft (manager) ──────────────────────────────────────────────
+    @action(detail=False, methods=["post"], url_path="manager-save")
+    def manager_save(self, request):
+        """Bulk upsert DRAFT manager ratings for a given employee."""
+        manager, err = _get_employee_or_error(request.user)
+        if err:
+            return err
+
+        serializer = ManagerRatingSubmitSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        service = ManagerRatingService()
+        results = service.save_draft_bulk(
+            manager_id=manager.id,
+            employee_id=serializer.validated_data["employee_id"],
+            ratings=serializer.validated_data["ratings"],
+        )
+        return success_response(
+            message=f"{len(results)} manager rating(s) saved as draft.",
+            data=EmployeeSkillRatingSerializer(results, many=True).data,
+        )
+
+    # ── Submit (manager) — triggers gap analysis ──────────────────────────
+    @action(detail=False, methods=["post"], url_path="manager-submit")
+    def manager_submit(self, request):
+        """
+        Submit manager ratings for an employee.
+        Pushes identified levels into EmployeeSkill and runs gap analysis.
+        Returns a summary of gaps found and training needs created.
+        """
+        manager, err = _get_employee_or_error(request.user)
+        if err:
+            return err
+
+        serializer = ManagerRatingSubmitSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        employee_id = serializer.validated_data["employee_id"]
+
+        # Save any ratings included in this request first
+        if serializer.validated_data.get("ratings"):
+            ManagerRatingService().save_draft_bulk(
+                manager_id=manager.id,
+                employee_id=employee_id,
+                ratings=serializer.validated_data["ratings"],
+            )
+
+        # Then submit all drafts and run gap analysis
+        service = ManagerRatingService()
+        summary = service.submit_all(
+            manager_id=manager.id,
+            employee_id=employee_id,
+        )
+        return success_response(
+            message=(
+                f"Ratings submitted. "
+                f"{summary['gaps_found']} gap(s) found, "
+                f"{summary['training_needs_created']} training need(s) created."
+            ),
+            data=summary,
+        )
+
+    # ── Rating history ────────────────────────────────────────────────────
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("employee_id",  int, description="Employee ID (defaults to current user)"),
+            OpenApiParameter("rating_type",  str, description="SELF or MANAGER"),
+            OpenApiParameter("skill_id",     int, description="Filter by skill"),
+        ]
+    )
+    @action(detail=False, methods=["get"], url_path="history")
+    def history(self, request):
+        """Return rating history for an employee."""
+        from .repositories import EmployeeSkillRatingHistoryRepository
+        repo = EmployeeSkillRatingHistoryRepository()
+
+        employee_id = request.query_params.get("employee_id")
+        if not employee_id:
+            employee, err = _get_employee_or_error(request.user)
+            if err:
+                return err
+            employee_id = employee.id
+
+        qs = repo.get_for_employee(
+            employee_id=employee_id,
+            rating_type=request.query_params.get("rating_type"),
+            skill_id=request.query_params.get("skill_id"),
+        ).select_related("skill", "old_level", "new_level", "rated_by")
+
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = EmployeeSkillRatingHistorySerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = EmployeeSkillRatingHistorySerializer(qs, many=True)
+        return success_response(data=serializer.data)
+
+
+# ---------------------------------------------------------------------------
+# SkillMatrixViewSet
+# ---------------------------------------------------------------------------
+
+class SkillMatrixViewSet(viewsets.GenericViewSet):
+    """
+    Read-only composite view that assembles the skill matrix for an employee.
+
+    GET /skills/my-skill-matrix/
+        Returns all job-role-required skills for the current user, enriched with:
+          - required level (from JobRoleSkillRequirement)
+          - current level + identified_by (from EmployeeSkill)
+          - self-rating (from EmployeeSkillRating SELF)
+          - manager-rating (from EmployeeSkillRating MANAGER)
+          - gap_value and gap_severity
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class   = SkillMatrixRowSerializer
+
+    @extend_schema(responses={200: SkillMatrixRowSerializer(many=True)})
+    def list(self, request):
+        employee, err = _get_employee_or_error(request.user)
+        if err:
+            return err
+
+        rows = self._build_matrix(employee)
+        serializer = self.get_serializer(rows, many=True)
+        return success_response(data=serializer.data)
+
+    # ── Internal builder ──────────────────────────────────────────────────
+
+    def _build_matrix(self, employee):
+        from .models import (
+            JobRoleSkillRequirement,
+            EmployeeSkill,
+            EmployeeSkillRating,
+            SkillCategorySkillMap,
+            SkillRatingType,
+        )
+
+        # 1. Required skills for this job role
+        requirements = (
+            JobRoleSkillRequirement.objects
+            .filter(job_role_id=employee.job_role_id, is_active=True)
+            .select_related("skill", "required_level")
+        )
+
+        # 2. Current finalized skills keyed by skill_id
+        current_skills = {
+            es.skill_id: es
+            for es in EmployeeSkill.objects.filter(
+                employee=employee, is_active=True
+            ).select_related("current_level")
+        }
+
+        # 3. Self-ratings keyed by skill_id
+        self_ratings = {
+            r.skill_id: r
+            for r in EmployeeSkillRating.objects.filter(
+                employee=employee,
+                rating_type=SkillRatingType.SELF,
+            ).select_related("rated_level")
+        }
+
+        # 4. Manager-ratings keyed by skill_id
+        manager_ratings = {
+            r.skill_id: r
+            for r in EmployeeSkillRating.objects.filter(
+                employee=employee,
+                rating_type=SkillRatingType.MANAGER,
+            ).select_related("rated_level")
+        }
+
+        # 5. Category mapping: skill_id → first category found
+        category_map = {}
+        for mapping in SkillCategorySkillMap.objects.filter(
+            skill_id__in=[r.skill_id for r in requirements],
+            is_active=True,
+        ).select_related("category"):
+            if mapping.skill_id not in category_map:
+                category_map[mapping.skill_id] = mapping.category
+
+        # 6. Assemble rows
+        rows = []
+        for req in requirements:
+            skill        = req.skill
+            req_level    = req.required_level
+            emp_skill    = current_skills.get(skill.id)
+            self_rating  = self_ratings.get(skill.id)
+            mgr_rating   = manager_ratings.get(skill.id)
+            category     = category_map.get(skill.id)
+
+            # Gap calculation
+            if emp_skill and req_level:
+                gap_value = req_level.level_rank - emp_skill.current_level.level_rank
+                gap_value = max(gap_value, 0)  # no negative gaps
+                if gap_value == 0:
+                    gap_severity = "NONE"
+                elif gap_value == 1:
+                    gap_severity = "MINOR"
+                else:
+                    gap_severity = "CRITICAL"
+            elif req_level:
+                gap_value    = None
+                gap_severity = "NOT_RATED"
+            else:
+                gap_value    = None
+                gap_severity = None
+
+            rows.append({
+                "skill_id":       skill.id,
+                "skill_name":     skill.skill_name,
+                "skill_code":     skill.skill_code,
+                "category_id":    category.id if category else None,
+                "category_name":  category.category_name if category else None,
+                "required_level": req_level,
+                "current_level":  emp_skill.current_level if emp_skill else None,
+                "identified_by":  emp_skill.identified_by if emp_skill else None,
+                "self_rating":    self_rating,
+                "manager_rating": mgr_rating,
+                "gap_value":      gap_value,
+                "gap_severity":   gap_severity,
+            })
+
+        return rows
 
 

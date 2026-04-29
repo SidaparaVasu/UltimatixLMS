@@ -114,6 +114,37 @@ class TrainingNeedViewSet(BaseTNIViewSet):
             data=TrainingNeedSerializer(result, many=True).data
         )
 
+    @extend_schema(responses={200: TrainingNeedSerializer(many=True)})
+    @action(detail=False, methods=["get"], url_path="my-needs")
+    def my_needs(self, request):
+        """
+        Returns training needs for the currently authenticated employee.
+        Supports optional ?status= filter.
+        """
+        from apps.org_management.models import EmployeeMaster
+        employee = EmployeeMaster.objects.filter(user=request.user).first()
+        if not employee:
+            return error_response(message="Employee profile not found.")
+
+        qs = TrainingNeed.objects.filter(
+            employee=employee,
+            is_active=True,
+        ).select_related("skill")
+
+        status_filter = request.query_params.get("status")
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(qs, many=True)
+        return success_response(data=serializer.data)
+
+
+
 
 class SkillGapSnapshotViewSet(BaseTNIViewSet):
     queryset = SkillGapSnapshot.objects.all()

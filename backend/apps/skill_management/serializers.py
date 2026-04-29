@@ -7,7 +7,9 @@ from .models import (
     JobRoleSkillRequirement,
     EmployeeSkill,
     EmployeeSkillHistory,
-    EmployeeSkillAssessment
+    EmployeeSkillAssessment,
+    EmployeeSkillRating,
+    EmployeeSkillRatingHistory,
 )
 
 
@@ -103,3 +105,110 @@ class JobRoleSkillBulkSyncSerializer(serializers.Serializer):
 class EmployeeSkillBulkSyncSerializer(serializers.Serializer):
     employee_id = serializers.IntegerField()
     skills = SkillRequirementItemSerializer(many=True)
+
+
+# ---------------------------------------------------------------------------
+# EmployeeSkillRating serializers
+# ---------------------------------------------------------------------------
+
+class EmployeeSkillRatingSerializer(serializers.ModelSerializer):
+    """
+    Full read/write serializer for EmployeeSkillRating rows.
+    Used for list, retrieve, and create/update actions.
+    """
+    skill_name      = serializers.CharField(source="skill.skill_name",           read_only=True)
+    rated_level_name = serializers.CharField(source="rated_level.level_name",    read_only=True)
+    rated_level_rank = serializers.IntegerField(source="rated_level.level_rank", read_only=True)
+    rated_by_name   = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = EmployeeSkillRating
+        fields = "__all__"
+
+    def get_rated_by_name(self, obj):
+        try:
+            profile = obj.rated_by.user.profile
+            return f"{profile.first_name} {profile.last_name}".strip()
+        except Exception:
+            return str(obj.rated_by.employee_code)
+
+
+class EmployeeSkillRatingHistorySerializer(serializers.ModelSerializer):
+    """Read-only serializer for the rating audit log."""
+    skill_name      = serializers.CharField(source="skill.skill_name",           read_only=True)
+    old_level_name  = serializers.CharField(source="old_level.level_name",       read_only=True)
+    new_level_name  = serializers.CharField(source="new_level.level_name",       read_only=True)
+    rated_by_name   = serializers.CharField(source="rated_by.employee_code",     read_only=True)
+
+    class Meta:
+        model  = EmployeeSkillRatingHistory
+        fields = "__all__"
+
+
+# ---------------------------------------------------------------------------
+# Skill Matrix serializers  (composite read-only view)
+# ---------------------------------------------------------------------------
+
+class SkillLevelNestedSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = SkillLevelMaster
+        fields = ["id", "level_name", "level_rank"]
+
+
+class RatingNestedSerializer(serializers.ModelSerializer):
+    rated_level = SkillLevelNestedSerializer(read_only=True)
+
+    class Meta:
+        model  = EmployeeSkillRating
+        fields = ["id", "rated_level", "status", "submitted_at"]
+
+
+class SkillMatrixRowSerializer(serializers.Serializer):
+    """
+    Read-only composite row returned by /skills/my-skill-matrix/.
+    Combines: skill info + required level + current level + self-rating
+              + manager-rating + gap value + gap severity.
+    """
+    skill_id        = serializers.IntegerField()
+    skill_name      = serializers.CharField()
+    skill_code      = serializers.CharField()
+    category_id     = serializers.IntegerField(allow_null=True)
+    category_name   = serializers.CharField(allow_null=True)
+    required_level  = SkillLevelNestedSerializer(allow_null=True)
+    current_level   = SkillLevelNestedSerializer(allow_null=True)
+    identified_by   = serializers.CharField(allow_null=True)
+    self_rating     = RatingNestedSerializer(allow_null=True)
+    manager_rating  = RatingNestedSerializer(allow_null=True)
+    gap_value       = serializers.IntegerField(allow_null=True)
+    gap_severity    = serializers.ChoiceField(
+        choices=["NONE", "MINOR", "CRITICAL", "NOT_RATED"],
+        allow_null=True,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Action input serializers
+# ---------------------------------------------------------------------------
+
+class SelfRatingItemSerializer(serializers.Serializer):
+    skill_id        = serializers.IntegerField()
+    level_id        = serializers.IntegerField()
+    observations    = serializers.CharField(required=False, allow_blank=True, default="")
+    accomplishments = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class SelfRatingBulkSaveSerializer(serializers.Serializer):
+    """Input for POST /skills/skill-ratings/save-draft/ (bulk upsert)."""
+    ratings = SelfRatingItemSerializer(many=True)
+
+
+class ManagerRatingItemSerializer(serializers.Serializer):
+    skill_id = serializers.IntegerField()
+    level_id = serializers.IntegerField()
+    notes    = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class ManagerRatingSubmitSerializer(serializers.Serializer):
+    """Input for POST /skills/skill-ratings/manager-submit/."""
+    employee_id = serializers.IntegerField()
+    ratings     = ManagerRatingItemSerializer(many=True)
