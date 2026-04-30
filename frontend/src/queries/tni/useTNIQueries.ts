@@ -14,11 +14,13 @@ import {
 // ---------------------------------------------------------------------------
 
 export const TNI_QUERY_KEYS = {
-  mySkillMatrix:      ['tni', 'my-skill-matrix'],
-  skillRatings:       (params?: SkillRatingListParams) => ['tni', 'skill-ratings', params],
-  skillRatingHistory: (params?: SkillRatingHistoryParams) => ['tni', 'skill-rating-history', params],
-  trainingNeeds:      (params?: TrainingNeedListParams) => ['tni', 'training-needs', params],
-  myTrainingNeeds:    (params?: { status?: string }) => ['tni', 'my-training-needs', params],
+  mySkillMatrix:        ['tni', 'my-skill-matrix'],
+  skillRatings:         (params?: SkillRatingListParams) => ['tni', 'skill-ratings', params],
+  skillRatingHistory:   (params?: SkillRatingHistoryParams) => ['tni', 'skill-rating-history', params],
+  trainingNeeds:        (params?: TrainingNeedListParams) => ['tni', 'training-needs', params],
+  myTrainingNeeds:      (params?: { status?: string }) => ['tni', 'my-training-needs', params],
+  teamSubmitted:        ['tni', 'team-submitted'],
+  managerReviewMatrix:  (employeeId: number) => ['tni', 'manager-review-matrix', employeeId],
 };
 
 // ---------------------------------------------------------------------------
@@ -30,6 +32,21 @@ export const useMySkillMatrix = () =>
   useQuery({
     queryKey: TNI_QUERY_KEYS.mySkillMatrix,
     queryFn:  tniApi.getMySkillMatrix,
+  });
+
+/** All direct reports who have submitted a self-rating (reviewed or not) */
+export const useTeamSubmitted = () =>
+  useQuery({
+    queryKey: TNI_QUERY_KEYS.teamSubmitted,
+    queryFn:  tniApi.getTeamSubmitted,
+  });
+
+/** Composite manager review matrix for a specific employee */
+export const useManagerReviewMatrix = (employeeId: number | null) =>
+  useQuery({
+    queryKey: TNI_QUERY_KEYS.managerReviewMatrix(employeeId ?? 0),
+    queryFn:  () => tniApi.getManagerReviewMatrix(employeeId!),
+    enabled:  !!employeeId,
   });
 
 // ---------------------------------------------------------------------------

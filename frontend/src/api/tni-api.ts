@@ -19,6 +19,8 @@ import { handleApiResponse, handleApiError } from '@/utils/api-utils';
 import { PaginatedResponse } from './organization-api';
 import {
   SkillMatrixRow,
+  ManagerReviewRow,
+  TeamMemberOption,
   EmployeeSkillRating,
   EmployeeSkillRatingHistory,
   TrainingNeed,
@@ -47,6 +49,40 @@ export const tniApi = {
     try {
       const response = await apiClient.get('/skills/my-skill-matrix/');
       return handleApiResponse<SkillMatrixRow[]>(response.data, false);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  // -------------------------------------------------------------------------
+  // Manager — team helpers
+  // -------------------------------------------------------------------------
+
+  /**
+   * GET /skills/skill-ratings/team-submitted/
+   * Returns ALL direct reports who have submitted a self-rating (reviewed or not).
+   */
+  getTeamSubmitted: async () => {
+    try {
+      const response = await apiClient.get('/skills/skill-ratings/team-submitted/');
+      return handleApiResponse<TeamMemberOption[]>(response.data, false);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  /**
+   * GET /skills/skill-ratings/manager-review-matrix/?employee_id=X
+   * Composite review matrix for a manager reviewing a specific employee.
+   * Returns one row per self-rated skill with required level, self-rating
+   * (including observations + accomplishments), and manager's existing rating.
+   */
+  getManagerReviewMatrix: async (employeeId: number) => {
+    try {
+      const response = await apiClient.get('/skills/skill-ratings/manager-review-matrix/', {
+        params: { employee_id: employeeId },
+      });
+      return handleApiResponse<ManagerReviewRow[]>(response.data, false);
     } catch (error) {
       return handleApiError(error);
     }

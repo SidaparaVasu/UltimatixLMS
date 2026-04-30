@@ -120,6 +120,40 @@ export interface SelfRatingDetail {
   accomplishments: string;
 }
 
+/** Extended manager-rating with notes */
+export interface ManagerRatingDetail {
+  id: number;
+  rated_level: SkillLevelNested;
+  status: RatingStatus;
+  submitted_at: string | null;
+  notes: string;
+}
+
+/**
+ * One row in the manager review matrix.
+ * Returned by GET /api/v1/skills/skill-ratings/manager-review-matrix/?employee_id=X
+ */
+export interface ManagerReviewRow {
+  skill_id: number;
+  skill_name: string;
+  skill_code: string;
+  category_id: number | null;
+  category_name: string | null;
+  /** true = required by job role, false = extra skill the employee added */
+  is_role_skill: boolean;
+  required_level: SkillLevelNested | null;
+  self_rating: SelfRatingDetail | null;
+  manager_rating: ManagerRatingDetail | null;
+}
+
+/** Team member with submitted self-ratings */
+export interface TeamMemberOption {
+  id: number;
+  employee_code: string;
+  full_name: string;
+  email: string;
+}
+
 
 /**
  * One row in the composite skill matrix view.
