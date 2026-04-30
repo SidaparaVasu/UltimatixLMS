@@ -57,7 +57,7 @@ export const Dialog = ({
           </button>
         </div>
         
-        <div className="dialog-body">
+        <div className="dialog-body no-scrollbar">
           {children}
         </div>
 
