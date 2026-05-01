@@ -16,7 +16,10 @@ import {
   Users2,
   Brain,
   BookOpen,
-  Blocks
+  Blocks,
+  ClipboardList,
+  CalendarDays,
+  CheckCircle,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { getFullName, getInitials, getPrimaryRoleName } from "@/utils/user.utils";
@@ -49,6 +52,14 @@ export const AdminSidebar = () => {
       title: "Skill Management",
       items: [
         { label: "Competency & Skills", icon: Brain, path: "/admin/competency", badge: null },
+      ]
+    },
+    {
+      title: "Training",
+      items: [
+        { label: "Training Plans",    icon: ClipboardList, path: "/admin/training-plans",    badge: null },
+        { label: "Training Calendar", icon: CalendarDays,  path: "/admin/training-calendar", badge: null },
+        { label: "Approvals",         icon: CheckCircle,   path: "/admin/approvals",         badge: null },
       ]
     },
     {
@@ -103,7 +114,9 @@ export const AdminSidebar = () => {
                 to={item.path}
                 className={cn(
                   "nav-item",
-                  location.pathname === item.path && "active"
+                  (location.pathname === item.path ||
+                    (item.path !== '/admin' && location.pathname.startsWith(item.path))
+                  ) && "active"
                 )}
               >
                 <item.icon size={18} />

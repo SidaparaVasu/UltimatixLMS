@@ -36,7 +36,11 @@ const CoursePlayerPage = lazy(() => import('@/pages/learner/CoursePlayerPage'));
 const SelfTNIRatingPage = lazy(() => import('@/pages/learner/SelfTNIRatingPage'));
 const MySkillMatrixPage = lazy(() => import('@/pages/learner/MySkillMatrixPage'));
 const ManagerTNIRatingPage = lazy(() => import('@/pages/manager/ManagerTNIRatingPage'));
-const TrainingNeedsPage = lazy(() => import('@/pages/admin/tni/TrainingNeedsPage'));
+const TrainingNeedsPage    = lazy(() => import('@/pages/admin/tni/TrainingNeedsPage'));
+const TrainingPlansPage    = lazy(() => import('@/pages/admin/training/TrainingPlansPage'));
+const TrainingPlanFormPage = lazy(() => import('@/pages/admin/training/TrainingPlanFormPage'));
+const TrainingCalendarPage = lazy(() => import('@/pages/admin/training/TrainingCalendarPage'));
+const ApprovalsPage        = lazy(() => import('@/pages/admin/training/ApprovalsPage'));
 
 // Placeholder for pages that are not yet implemented
 const ComingSoon = () => (
@@ -100,7 +104,11 @@ export const AppRoutes = () => {
                 <Route path="/admin/courses" element={<CourseMasterPage />} />
                 <Route path="/admin/settings" element={<ComingSoon />} />
                 <Route path="/admin/tni" element={<TrainingNeedsPage />} />
-                <Route path="/admin/training-plans" element={<ComingSoon />} />
+                <Route path="/admin/training-plans" element={<TrainingPlansPage />} />
+                <Route path="/admin/training-plans/new" element={<TrainingPlanFormPage />} />
+                <Route path="/admin/training-plans/:id/edit" element={<TrainingPlanFormPage />} />
+                <Route path="/admin/training-calendar" element={<TrainingCalendarPage />} />
+                <Route path="/admin/approvals" element={<ApprovalsPage />} />
                 <Route path="/admin/skill-gap" element={<ComingSoon />} />
               </Route>
               
