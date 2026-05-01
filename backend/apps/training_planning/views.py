@@ -42,6 +42,10 @@ class BaseTPViewSet(viewsets.ModelViewSet):
     model = None
     permission_classes = [HasScopedPermission]
 
+    def _get_employee(self, request):
+        from apps.org_management.models import EmployeeMaster
+        return EmployeeMaster.objects.filter(user=request.user).first()
+
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
         page = self.paginate_queryset(queryset)
@@ -67,7 +71,8 @@ class BaseTPViewSet(viewsets.ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data)
+        partial = kwargs.pop('partial', False)
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         updated = self.service_class().update(pk=instance.pk, **serializer.validated_data)
         return success_response(
@@ -89,6 +94,24 @@ class TrainingPlanViewSet(BaseTPViewSet):
     service_class = TrainingPlanService
     model = TrainingPlan
     required_permission = "PLAN_MANAGE"
+
+    def create(self, request, *args, **kwargs):
+        employee = self._get_employee(request)
+        if not employee:
+            return error_response(
+                message="Employee profile not found for this user.",
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = self.service_class().create(
+            created_by=employee,
+            **serializer.validated_data
+        )
+        return created_response(
+            message="Training Plan created successfully.",
+            data=self.get_serializer(instance).data
+        )
 
 
 class TrainingPlanItemViewSet(BaseTPViewSet):
@@ -129,6 +152,24 @@ class TrainingCalendarViewSet(BaseTPViewSet):
     service_class = TrainingCalendarService
     model = TrainingCalendar
     required_permission = "SESSION_SCHEDULE"
+
+    def create(self, request, *args, **kwargs):
+        employee = self._get_employee(request)
+        if not employee:
+            return error_response(
+                message="Employee profile not found for this user.",
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = self.service_class().create(
+            created_by=employee,
+            **serializer.validated_data
+        )
+        return created_response(
+            message="Training Calendar created successfully.",
+            data=self.get_serializer(instance).data
+        )
 
 
 class TrainingSessionViewSet(BaseTPViewSet):

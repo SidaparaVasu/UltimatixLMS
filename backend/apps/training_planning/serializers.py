@@ -13,6 +13,7 @@ from .models import (
 
 class TrainingPlanSerializer(serializers.ModelSerializer):
     department_name  = serializers.CharField(source="department.department_name", read_only=True)
+    created_by       = serializers.PrimaryKeyRelatedField(read_only=True)
     created_by_name  = serializers.CharField(source="created_by.user.get_full_name", read_only=True)
     skill_names      = serializers.SerializerMethodField()
     items_count      = serializers.SerializerMethodField()
@@ -52,6 +53,7 @@ class TrainingPlanApprovalSerializer(serializers.ModelSerializer):
 
 class TrainingCalendarSerializer(serializers.ModelSerializer):
     department_name = serializers.CharField(source="department.department_name", read_only=True)
+    created_by      = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = TrainingCalendar

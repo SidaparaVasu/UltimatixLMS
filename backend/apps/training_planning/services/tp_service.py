@@ -17,6 +17,24 @@ from ..constants import TrainingPlanStatus, TrainingApprovalStatus, EnrollmentSt
 class TrainingPlanService(BaseService):
     repository_class = TrainingPlanRepository
 
+    @transaction.atomic
+    def create(self, **data):
+        # M2M fields cannot be passed to model.objects.create — handle separately
+        skills = data.pop('skills', None)
+        instance = self.repository.create(**data)
+        if skills is not None:
+            instance.skills.set(skills)
+        return instance
+
+    @transaction.atomic
+    def update(self, pk, **data):
+        # M2M fields cannot be handled by setattr + save — handle separately
+        skills = data.pop('skills', None)
+        instance = self.repository.update(pk=pk, **data)
+        if skills is not None and instance:
+            instance.skills.set(skills)
+        return instance
+
 
 class TrainingPlanItemService(BaseService):
     repository_class = TrainingPlanItemRepository
