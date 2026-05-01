@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Trash2 } from 'lucide-react';
+import { Trash2, AlertCircle } from 'lucide-react';
 import {
   useTrainingPlan,
   useTrainingPlanItems,
@@ -12,7 +12,7 @@ import {
 import { useSkills } from '@/queries/admin/useAdminMasters';
 import { useDepartmentOptions } from '@/queries/admin/useAdminMasters';
 import { useCourses } from '@/queries/admin/useAdminMasters';
-import { TrainingPlanStatus, CreateTrainingPlanPayload, UpdateTrainingPlanPayload } from '@/types/training.types';
+import { TrainingPlanStatus, CreateTrainingPlanPayload } from '@/types/training.types';
 
 // ── Status badge config ────────────────────────────────────────────────────
 
@@ -219,7 +219,9 @@ export default function TrainingPlanFormPage() {
   };
 
   // ── Read-only mode ─────────────────────────────────────────────────────
-  const isReadOnly = plan?.status === 'PENDING_APPROVAL' || plan?.status === 'APPROVED';
+  const isReadOnly  = plan?.status === 'PENDING_APPROVAL' || plan?.status === 'APPROVED';
+  const wasRejected = plan?.status === 'DRAFT' && !!plan?.last_rejection;
+  const rejection   = plan?.last_rejection ?? null;
 
   // ── Save items helper ──────────────────────────────────────────────────
   const saveNewItems = async (savedPlanId: number) => {
@@ -372,6 +374,112 @@ export default function TrainingPlanFormPage() {
           fontWeight: 500,
         }}>
           This plan is in <strong>{currentStatus.replace('_', ' ')}</strong> status and cannot be edited.
+        </div>
+      )}
+
+      {/* Rejection banner — shown when plan is back to DRAFT after being rejected */}
+      {plan?.status === 'DRAFT' && plan?.last_rejection && (
+        <div
+          style={{
+            display: 'flex',
+            gap: '12px',
+            background: 'rgba(220, 38, 38, 0.05)',
+            border: '1px solid rgba(220, 38, 38, 0.2)',
+            borderRadius: 'var(--radius-md)',
+            padding: '14px 16px',
+            marginBottom: '20px',
+          }}
+        >
+          {/* Icon */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'rgba(220,38,38,0.1)',
+              borderRadius: '50%',
+              width: '28px',
+              height: '28px',
+              flexShrink: 0,
+            }}
+          >
+            <AlertCircle size={16} style={{ color: '#dc2626' }} />
+          </div>
+
+          {/* Content */}
+          <div style={{ flex: 1 }}>
+            {/* Title */}
+            <p
+              style={{
+                margin: 0,
+                fontSize: '14px',
+                fontWeight: 600,
+                color: '#991b1b',
+              }}
+            >
+              Plan Rejected
+            </p>
+
+            {/* Reason */}
+            {plan.last_rejection.comments && (
+              <p
+                style={{
+                  margin: '6px 0 0',
+                  fontSize: '13px',
+                  color: 'var(--color-text)',
+                  lineHeight: 1.5,
+                }}
+              >
+                <span style={{ fontWeight: 500 }}>Reason:</span>{' '}
+                {plan.last_rejection.comments}
+              </p>
+            )}
+
+            {/* Meta Info */}
+            {(plan.last_rejection.approver_name ||
+              plan.last_rejection.rejected_at) && (
+              <p
+                style={{
+                  margin: '6px 0 0',
+                  fontSize: '12px',
+                  color: 'var(--color-text-muted)',
+                }}
+              >
+                {plan.last_rejection.approver_name && (
+                  <>
+                    Rejected by{' '}
+                    <strong style={{ color: '#991b1b' }}>
+                      {plan.last_rejection.approver_name}
+                    </strong>
+                  </>
+                )}
+                {plan.last_rejection.rejected_at && (
+                  <>
+                    {' '}
+                    on{' '}
+                    {new Date(
+                      plan.last_rejection.rejected_at
+                    ).toLocaleDateString('en-IN', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })}
+                  </>
+                )}
+              </p>
+            )}
+
+            {/* Action Hint */}
+            <p
+              style={{
+                margin: '8px 0 0',
+                fontSize: '12px',
+                color: 'var(--color-text-muted)',
+              }}
+            >
+              Please update the plan and resubmit for review.
+            </p>
+          </div>
         </div>
       )}
 

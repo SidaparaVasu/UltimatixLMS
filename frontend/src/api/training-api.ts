@@ -127,6 +127,19 @@ export const trainingApi = {
     }
   },
 
+  // Finalize by plan ID — resolves the pending approval record automatically
+  finalizeApprovalByPlan: async (planId: number, payload: FinalizeApprovalPayload) => {
+    try {
+      const response = await apiClient.post(`${BASE}/plan-approvals/finalize-by-plan/`, {
+        plan_id: planId,
+        ...payload,
+      });
+      return handleApiResponse<TrainingPlanApproval>(response.data);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
   // ── Calendars ─────────────────────────────────────────────────────────────
 
   getCalendars: async (params?: TrainingCalendarListParams) => {

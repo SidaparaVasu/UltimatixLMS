@@ -8,7 +8,7 @@ import { TableCell, TableActionCell, TableActionButton } from '@/components/ui/t
 import { useDepartmentOptions } from '@/queries/admin/useAdminMasters';
 import {
   useTrainingPlans,
-  useFinalizeApproval,
+  useFinalizeApprovalByPlan,
   TRAINING_QUERY_KEYS,
 } from '@/queries/training/useTrainingQueries';
 import { trainingApi } from '@/api/training-api';
@@ -18,9 +18,9 @@ import { TrainingPlan, TrainingPlanStatus, TrainingPlanListParams } from '@/type
 
 const STATUS_COLOR: Record<TrainingPlanStatus, string> = {
   DRAFT:            '#64748b',
-  PENDING_APPROVAL: 'var(--color-warning)',
-  APPROVED:         'var(--color-success)',
-  ACTIVE:           'var(--color-accent)',
+  PENDING_APPROVAL: '#b45309',
+  APPROVED:         '#15803d',
+  ACTIVE:           '#2563eb',
   COMPLETED:        '#94a3b8',
 };
 const STATUS_BG: Record<TrainingPlanStatus, string> = {
@@ -52,7 +52,7 @@ interface PlanApprovalDialogProps {
 const PlanApprovalDialog: React.FC<PlanApprovalDialogProps> = ({ plan, onClose }) => {
   const [comments, setComments] = useState('');
   const [error, setError] = useState('');
-  const finalize = useFinalizeApproval();
+  const finalize = useFinalizeApprovalByPlan();
   const qc = useQueryClient();
 
   if (!plan) return null;
@@ -63,7 +63,7 @@ const PlanApprovalDialog: React.FC<PlanApprovalDialogProps> = ({ plan, onClose }
       return;
     }
     finalize.mutate(
-      { id: plan.id, payload: { status, comments: comments.trim() } },
+      { planId: plan.id, payload: { status, comments: comments.trim() } },
       {
         onSuccess: () => {
           qc.invalidateQueries({ queryKey: ['training', 'plans'] });
@@ -263,15 +263,24 @@ export default function TrainingPlansPage() {
       type: 'custom',
       header: 'Status',
       width: '140px',
-      render: (row) => (
-        <TableCell>
-          <Pill
-            label={row.status.replace('_', ' ')}
-            color={STATUS_COLOR[row.status] ?? 'var(--color-text-muted)'}
-            bg={STATUS_BG[row.status] ?? 'var(--color-surface-alt)'}
-          />
-        </TableCell>
-      ),
+      render: (row) => {
+        const isRejected = row.status === 'DRAFT' && !!row.last_rejection;
+        return (
+          <TableCell>
+            {isRejected ? (
+              <div>
+                <Pill label="Rejected" color="#dc2626" bg="rgba(220,38,38,0.10)" />
+              </div>
+            ) : (
+              <Pill
+                label={row.status.replace('_', ' ')}
+                color={STATUS_COLOR[row.status] ?? '#64748b'}
+                bg={STATUS_BG[row.status] ?? 'var(--color-surface-alt)'}
+              />
+            )}
+          </TableCell>
+        );
+      },
     },
     {
       type: 'custom',

@@ -128,6 +128,19 @@ export const useFinalizeApproval = () => {
   });
 };
 
+// Finalize using plan ID — used from the Training Plans list page
+export const useFinalizeApprovalByPlan = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ planId, payload }: { planId: number; payload: FinalizeApprovalPayload }) =>
+      trainingApi.finalizeApprovalByPlan(planId, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['training', 'approvals'] });
+      qc.invalidateQueries({ queryKey: ['training', 'plans'] });
+    },
+  });
+};
+
 // ── Calendars ─────────────────────────────────────────────────────────────
 
 export const useTrainingCalendars = (params?: TrainingCalendarListParams) =>

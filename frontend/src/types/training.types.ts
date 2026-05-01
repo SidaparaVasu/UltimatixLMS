@@ -39,6 +39,12 @@ export interface TrainingPlan {
   start_date: string | null;
   end_date: string | null;
   duration_hours: string | null;
+  // computed: most recent rejection info (present when status=DRAFT and was previously rejected)
+  last_rejection?: {
+    comments: string;
+    approver_name: string | null;
+    rejected_at: string | null;
+  } | null;
   created_at: string;
   updated_at: string;
 }
@@ -149,6 +155,7 @@ export interface TrainingPlanItemListParams {
 
 export interface TrainingApprovalListParams {
   approval_status?: TrainingApprovalStatus | '';
+  training_plan?: number;
   search?: string;
   page?: number;
   page_size?: number;
