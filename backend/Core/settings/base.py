@@ -261,3 +261,10 @@ DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@djangoauth.com")
 # ---------------------------------------------------------------------------
 CORS_ALLOW_ALL_ORIGINS = True  # For dev/testing. Override in specific envs if needed.
 CORS_ALLOW_CREDENTIALS = True
+
+# ---------------------------------------------------------------------------
+# RBAC
+# ---------------------------------------------------------------------------
+# Permission map cache TTL in seconds. Signals invalidate the cache on any
+# role/permission change, so this is a safety fallback, not the primary expiry.
+RBAC_CACHE_TTL = 3600

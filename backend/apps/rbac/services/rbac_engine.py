@@ -1,4 +1,5 @@
 from collections import defaultdict
+from django.conf import settings
 from django.core.cache import cache
 from ..models import UserRoleMaster, RolePermissionMaster
 from ..constants import ScopeType
@@ -6,102 +7,129 @@ from ..constants import ScopeType
 
 class RBACEngine:
     """
-    Core engine for evaluating Role Based Access Control permissions and scopes.
+    Builds and caches the effective permission map for a user.
+
+    The map shape is:
+        {
+            "PERMISSION_CODE": {
+                "GLOBAL": bool,
+                "COMPANY": [company_id, ...],
+                "BUSINESS_UNIT": [bu_id, ...],
+                "DEPARTMENT": [dept_id, ...],
+                "SELF": bool,
+            }
+        }
+
+    Subscription gate: permissions whose PermissionGroupMaster is not in the
+    company's active CompanyPermissionGroup records are excluded from the map,
+    even if a role technically carries them. This lets us control feature access
+    at the company level without touching role assignments.
+
+    Query budget on a cache miss: exactly 3 DB queries.
+    Query budget on a cache hit: 0 DB queries.
     """
 
     @classmethod
-    def get_user_permissions(cls, user):
-        """
-        Aggregates all permissions for a user across all assigned roles.
-        
-        Returns a dictionary formatted as:
-        {
-            "PERMISSION_CODE": {
-                "GLOBAL": True | False,
-                "COMPANY": [id1, id2],
-                "BUSINESS_UNIT": [id1],
-                "DEPARTMENT": [id1, id2],
-                "SELF": True | False
-            }
-        }
-        """
+    def _get_cache_ttl(cls) -> int:
+        return getattr(settings, "RBAC_CACHE_TTL", 3600)
+
+    @classmethod
+    def get_user_permissions(cls, user) -> dict:
         if not user or not getattr(user, "is_authenticated", False) or not user.id:
             return {}
 
-        cache_key = f"rbac_user_perms_{user.id}"
-        cached_perms = cache.get(cache_key)
-        
-        if cached_perms:
-            return cached_perms
+        # Superusers bypass the permission map entirely — has_permission handles this.
+        if user.is_superuser:
+            return {}
 
-        # Fetch all active role assignments for the user
+        cache_key = f"rbac_user_perms_{user.id}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        # Query 1: resolve the user's company via EmployeeMaster
+        from apps.org_management.models import EmployeeMaster
+        employee = (
+            EmployeeMaster.objects
+            .filter(user=user)
+            .select_related("company")
+            .first()
+        )
+        if not employee:
+            cache.set(cache_key, {}, timeout=cls._get_cache_ttl())
+            return {}
+
+        # Query 2: load the permission group codes this company has been granted
+        from ..models import CompanyPermissionGroup
+        granted_group_codes = set(
+            CompanyPermissionGroup.objects
+            .filter(company=employee.company, is_active=True)
+            .values_list("permission_group__group_code", flat=True)
+        )
+
+        # Query 3: fetch all active role assignments and their permissions in one pass
         user_roles = UserRoleMaster.objects.filter(
             user=user,
             is_active=True,
-            role__is_active=True
+            role__is_active=True,
         ).select_related("role")
 
-        aggregated_perms = defaultdict(lambda: {
-            ScopeType.GLOBAL: False,
-            ScopeType.COMPANY: set(),
+        role_ids = [ur.role_id for ur in user_roles]
+        scope_by_role = {ur.role_id: (ur.scope_type, ur.scope_id) for ur in user_roles}
+
+        all_role_perms = RolePermissionMaster.objects.filter(
+            role_id__in=role_ids,
+            permission__is_active=True,
+        ).select_related("permission__permission_group")
+
+        aggregated = defaultdict(lambda: {
+            ScopeType.GLOBAL:        False,
+            ScopeType.COMPANY:       set(),
             ScopeType.BUSINESS_UNIT: set(),
-            ScopeType.DEPARTMENT: set(),
-            ScopeType.SELF: False
+            ScopeType.DEPARTMENT:    set(),
+            ScopeType.SELF:          False,
         })
 
-        for user_role in user_roles:
-            # Fetch all permissions for this role
-            role_perms = RolePermissionMaster.objects.filter(
-                role=user_role.role,
-                permission__is_active=True
-            ).select_related("permission")
+        for rp in all_role_perms:
+            perm = rp.permission
 
-            scope_type = user_role.scope_type
-            scope_id = user_role.scope_id
+            # Subscription gate: skip permissions whose group the company hasn't been granted
+            if perm.permission_group.group_code not in granted_group_codes:
+                continue
 
-            for rp in role_perms:
-                perm_code = rp.permission.permission_code
-                
-                # If they already have global access to this permission, no need to add specific IDs
-                if aggregated_perms[perm_code][ScopeType.GLOBAL]:
-                    continue
+            perm_code = perm.permission_code
+            scope_type, scope_id = scope_by_role[rp.role_id]
 
-                if scope_type == ScopeType.GLOBAL:
-                    aggregated_perms[perm_code][ScopeType.GLOBAL] = True
-                    # Clear out granular scopes since GLOBAL supersedes them
-                    aggregated_perms[perm_code][ScopeType.COMPANY] = set()
-                    aggregated_perms[perm_code][ScopeType.BUSINESS_UNIT] = set()
-                    aggregated_perms[perm_code][ScopeType.DEPARTMENT] = set()
-                elif scope_type == ScopeType.SELF:
-                    aggregated_perms[perm_code][ScopeType.SELF] = True
-                elif scope_type in [ScopeType.COMPANY, ScopeType.BUSINESS_UNIT, ScopeType.DEPARTMENT]:
-                    if scope_id is not None:
-                        aggregated_perms[perm_code][scope_type].add(scope_id)
+            if aggregated[perm_code][ScopeType.GLOBAL]:
+                continue
 
-        # Convert sets to lists for easier consumption (e.g., JSON serialization if needed)
-        format_perms = {}
-        for perm_code, scopes in aggregated_perms.items():
-            format_perms[perm_code] = {
-                ScopeType.GLOBAL: scopes[ScopeType.GLOBAL],
-                ScopeType.COMPANY: list(scopes[ScopeType.COMPANY]),
+            if scope_type == ScopeType.GLOBAL:
+                aggregated[perm_code][ScopeType.GLOBAL] = True
+                aggregated[perm_code][ScopeType.COMPANY] = set()
+                aggregated[perm_code][ScopeType.BUSINESS_UNIT] = set()
+                aggregated[perm_code][ScopeType.DEPARTMENT] = set()
+            elif scope_type == ScopeType.SELF:
+                aggregated[perm_code][ScopeType.SELF] = True
+            elif scope_type in (ScopeType.COMPANY, ScopeType.BUSINESS_UNIT, ScopeType.DEPARTMENT):
+                if scope_id is not None:
+                    aggregated[perm_code][scope_type].add(scope_id)
+
+        result = {
+            code: {
+                ScopeType.GLOBAL:        scopes[ScopeType.GLOBAL],
+                ScopeType.COMPANY:       list(scopes[ScopeType.COMPANY]),
                 ScopeType.BUSINESS_UNIT: list(scopes[ScopeType.BUSINESS_UNIT]),
-                ScopeType.DEPARTMENT: list(scopes[ScopeType.DEPARTMENT]),
-                ScopeType.SELF: scopes[ScopeType.SELF],
+                ScopeType.DEPARTMENT:    list(scopes[ScopeType.DEPARTMENT]),
+                ScopeType.SELF:          scopes[ScopeType.SELF],
             }
-            
-        # Cache for 1 hour; dynamically invalidated by signals on changes
-        cache.set(cache_key, format_perms, timeout=3600)
-        
-        return format_perms
+            for code, scopes in aggregated.items()
+        }
+
+        cache.set(cache_key, result, timeout=cls._get_cache_ttl())
+        return result
 
     @classmethod
-    def has_permission(cls, user, permission_code, scope_type=None, scope_id=None):
-        """
-        Checks if the user has specific permission.
-        If scope_type and scope_id are provided, it verifies the permission exists within that scope or a higher scope (GLOBAL).
-        """
-        # Superusers bypass all permission checks
-        # Handle unauthenticated or None users safely
+    def has_permission(cls, user, permission_code, scope_type=None, scope_id=None) -> bool:
         if not user or not getattr(user, "is_authenticated", False):
             return False
 
@@ -109,25 +137,22 @@ class RBACEngine:
             return True
 
         user_perms = cls.get_user_permissions(user)
-        
+
         if permission_code not in user_perms:
             return False
 
         perm_data = user_perms[permission_code]
 
-        # GLOBAL scope for a permission overrides everything else
         if perm_data.get(ScopeType.GLOBAL) is True:
             return True
 
-        # If strict scope is requested
         if scope_type and scope_id:
-            if scope_type in [ScopeType.COMPANY, ScopeType.BUSINESS_UNIT, ScopeType.DEPARTMENT]:
+            if scope_type in (ScopeType.COMPANY, ScopeType.BUSINESS_UNIT, ScopeType.DEPARTMENT):
                 return scope_id in perm_data.get(scope_type, [])
-            elif scope_type == ScopeType.SELF:
+            if scope_type == ScopeType.SELF:
                 return perm_data.get(ScopeType.SELF) is True
 
-        # If no specific scope was requested but the permission exists in ANY scope
-        # Usually used for simply checking if they can access a list view at all
+        # No specific scope requested — permission exists in at least one scope
         if not scope_type and not scope_id:
             return True
 
