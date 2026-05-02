@@ -6,15 +6,17 @@ from .views import (
     RoleMasterViewSet,
     RolePermissionViewSet,
     UserRoleViewSet,
-    MyPermissionsAPIView
+    CompanyPermissionGroupViewSet,
+    MyPermissionsAPIView,
 )
 
 router = DefaultRouter()
-router.register("permission-groups", PermissionGroupViewSet, basename="permission-groups")
-router.register("permissions", PermissionMasterViewSet, basename="permissions")
-router.register("roles", RoleMasterViewSet, basename="roles")
-router.register("role-mappings", RolePermissionViewSet, basename="role-mappings")
-router.register("user-assignments", UserRoleViewSet, basename="user-assignments")
+router.register("permission-groups",        PermissionGroupViewSet,        basename="permission-groups")
+router.register("permissions",              PermissionMasterViewSet,       basename="permissions")
+router.register("roles",                    RoleMasterViewSet,             basename="roles")
+router.register("role-mappings",            RolePermissionViewSet,         basename="role-mappings")
+router.register("user-assignments",         UserRoleViewSet,               basename="user-assignments")
+router.register("company-permission-groups", CompanyPermissionGroupViewSet, basename="company-permission-groups")
 
 urlpatterns = [
     path("", include(router.urls)),

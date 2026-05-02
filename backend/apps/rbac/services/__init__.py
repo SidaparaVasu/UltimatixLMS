@@ -3,5 +3,6 @@ from .rbac_service import (
     PermissionService,
     RoleService,
     RolePermissionService,
-    UserRoleService
+    UserRoleService,
+    CompanyPermissionGroupService,
 )

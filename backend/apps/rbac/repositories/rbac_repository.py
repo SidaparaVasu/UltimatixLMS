@@ -42,3 +42,11 @@ class UserRoleRepository(BaseRepository[UserRoleMaster]):
     def get_active_user_roles(self, user):
         """Aggregates all active roles for a user."""
         return self.filter(user=user, is_active=True).select_related("role")
+
+
+class CompanyPermissionGroupRepository(BaseRepository):
+    model = None
+
+    def __init__(self):
+        from ..models import CompanyPermissionGroup
+        self.model = CompanyPermissionGroup

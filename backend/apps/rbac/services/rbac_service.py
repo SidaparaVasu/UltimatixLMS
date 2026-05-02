@@ -191,3 +191,16 @@ class UserRoleService(BaseService):
                     "scope_id": ur.scope_id,
                 })
         return permissions_data
+
+
+class CompanyPermissionGroupService(BaseService):
+    """
+    Service for CompanyPermissionGroup — the subscription gate model.
+    Instantiates its repository lazily to avoid circular imports at module load.
+    """
+
+    repository_class = None
+
+    def __init__(self):
+        from ..repositories.rbac_repository import CompanyPermissionGroupRepository
+        super().__init__(repository=CompanyPermissionGroupRepository())

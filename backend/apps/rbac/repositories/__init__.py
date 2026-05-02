@@ -3,5 +3,6 @@ from .rbac_repository import (
     PermissionRepository,
     RoleRepository,
     RolePermissionRepository,
-    UserRoleRepository
+    UserRoleRepository,
+    CompanyPermissionGroupRepository,
 )
