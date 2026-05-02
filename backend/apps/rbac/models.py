@@ -1,8 +1,13 @@
 """
 rbac models.
 
-This module defines models for Role Based Access Control,
-including Permission Groups, Permissions, Roles, and Role assignments.
+Tables:
+    PermissionGroupMaster    — Logical groupings of permissions (e.g. LEARNER_CORE)
+    PermissionMaster         — Atomic permission codes (e.g. COURSE_CREATE)
+    RoleMaster               — Named containers of permissions; system roles have company=null
+    RolePermissionMaster     — Many-to-many: role ↔ permission
+    UserRoleMaster           — Assigns a role to a user at a given scope
+    CompanyPermissionGroup   — Subscription gate: which permission groups a company has access to
 """
 
 from django.db import models
@@ -109,7 +114,11 @@ class PermissionMaster(models.Model):
 
 class RoleMaster(models.Model):
     """
-    Logical containers for permissions (e.g., 'HR Manager', 'LMS Admin').
+    Named container of permissions.
+
+    System roles (is_system_role=True, company=null) are shared across all tenants
+    and are read-only for company admins. Custom roles (is_system_role=False) are
+    owned by a specific company and are fully manageable by that company's LMS_ADMIN.
     """
 
     role_name = models.CharField(
@@ -118,9 +127,8 @@ class RoleMaster(models.Model):
     )
     role_code = models.CharField(
         max_length=100,
-        unique=True,
         db_index=True,
-        help_text="Unique short code for the role.",
+        help_text="Short code for the role. Unique globally for system roles; unique per company for custom roles.",
     )
     description = models.CharField(
         max_length=255,
@@ -129,7 +137,17 @@ class RoleMaster(models.Model):
     )
     is_system_role = models.BooleanField(
         default=False,
-        help_text="Indicates if this is a default system role that cannot be deleted.",
+        help_text="True for platform-defined roles that cannot be edited or deleted by company admins.",
+    )
+    # Null for system roles (shared across all companies).
+    # Non-null for custom roles created by a specific company's LMS_ADMIN.
+    company = models.ForeignKey(
+        "org_management.CompanyMaster",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="custom_roles",
+        help_text="Owning company for custom roles. Null for system roles.",
     )
     is_active = models.BooleanField(
         default=True,
@@ -142,6 +160,15 @@ class RoleMaster(models.Model):
         verbose_name = "Role"
         verbose_name_plural = "Roles"
         ordering = ["role_name"]
+        constraints = [
+            # System roles keep their existing global uniqueness via the db_index above.
+            # This constraint prevents two custom roles with the same code within one company.
+            models.UniqueConstraint(
+                fields=["role_code", "company"],
+                condition=models.Q(company__isnull=False),
+                name="uq_role_code_per_company",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.role_name} ({self.role_code})"
@@ -235,3 +262,49 @@ class UserRoleMaster(models.Model):
             scope_str += f" ({self.scope_id})"
         return f"{self.user.email} - {self.role.role_code} [{scope_str}]"
 
+
+
+# ---------------------------------------------------------------------------
+# 6. CompanyPermissionGroup
+# ---------------------------------------------------------------------------
+
+class CompanyPermissionGroup(models.Model):
+    """
+    Subscription gate: records which PermissionGroupMaster entries a company
+    has been granted access to.
+
+    The RBACEngine reads this table when building a user's permission map and
+    excludes any permission whose group is not present here (with is_active=True)
+    for the user's company. Deactivating a record takes effect on the next
+    cache refresh — no role changes are needed.
+
+    Managed by superusers via Django Admin only.
+    """
+
+    company = models.ForeignKey(
+        "org_management.CompanyMaster",
+        on_delete=models.CASCADE,
+        related_name="permission_groups",
+    )
+    permission_group = models.ForeignKey(
+        PermissionGroupMaster,
+        on_delete=models.CASCADE,
+        related_name="company_grants",
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "rbac_company_permission_group"
+        verbose_name = "Company Permission Group"
+        verbose_name_plural = "Company Permission Groups"
+        unique_together = [("company", "permission_group")]
+        indexes = [
+            models.Index(fields=["company"], name="idx_cpg_company_id"),
+            models.Index(fields=["permission_group"], name="idx_cpg_group_id"),
+        ]
+
+    def __str__(self):
+        status = "active" if self.is_active else "inactive"
+        return f"{self.company.company_code} → {self.permission_group.group_code} [{status}]"
