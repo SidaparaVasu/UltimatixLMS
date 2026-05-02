@@ -1,0 +1,86 @@
+[
+  {
+    "model": "rbac.rolemaster",
+    "pk": 1,
+    "fields": {
+      "role_name": "LMS User",
+      "role_code": "LMS_USER",
+      "description": "Base learner role. Auto-assigned to every employee. Grants access to own learning, skills, and profile.",
+      "is_system_role": true,
+      "company": null,
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.rolemaster",
+    "pk": 2,
+    "fields": {
+      "role_name": "LMS Admin",
+      "role_code": "LMS_ADMIN",
+      "description": "Company-level administrator with full operational access scoped to their company.",
+      "is_system_role": true,
+      "company": null,
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.rolemaster",
+    "pk": 3,
+    "fields": {
+      "role_name": "LMS HR",
+      "role_code": "LMS_HR",
+      "description": "HR manager with employee management and training planning access.",
+      "is_system_role": true,
+      "company": null,
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.rolemaster",
+    "pk": 4,
+    "fields": {
+      "role_name": "LMS L&D Approver",
+      "role_code": "LMS_LND_APPROVER",
+      "description": "Approves and rejects training plans and training calendar submissions.",
+      "is_system_role": true,
+      "company": null,
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.rolemaster",
+    "pk": 5,
+    "fields": {
+      "role_name": "LMS Trainer",
+      "role_code": "LMS_TRAINER",
+      "description": "Content author and trainer. Creates courses, uploads content, and manages assessments.",
+      "is_system_role": true,
+      "company": null,
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.rolemaster",
+    "pk": 6,
+    "fields": {
+      "role_name": "LMS Auditor",
+      "role_code": "LMS_AUDITOR",
+      "description": "Read-only access to audit logs and reports for their company.",
+      "is_system_role": true,
+      "company": null,
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  }
+]

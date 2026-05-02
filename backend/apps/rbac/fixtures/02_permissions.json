@@ -1,0 +1,561 @@
+[
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 1,
+    "fields": {
+      "permission_group": 1,
+      "permission_name": "View Courses",
+      "permission_code": "COURSE_VIEW",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 2,
+    "fields": {
+      "permission_group": 1,
+      "permission_name": "Self Enroll",
+      "permission_code": "ENROLLMENT_SELF",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 3,
+    "fields": {
+      "permission_group": 1,
+      "permission_name": "View Learning Progress",
+      "permission_code": "LEARNING_PROGRESS_VIEW",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 4,
+    "fields": {
+      "permission_group": 1,
+      "permission_name": "View Certificates",
+      "permission_code": "CERTIFICATE_VIEW",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 5,
+    "fields": {
+      "permission_group": 1,
+      "permission_name": "Self Rate Skills",
+      "permission_code": "SKILL_SELF_RATE",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 6,
+    "fields": {
+      "permission_group": 1,
+      "permission_name": "View Skill Matrix",
+      "permission_code": "SKILL_MATRIX_VIEW",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 7,
+    "fields": {
+      "permission_group": 1,
+      "permission_name": "View Own TNI",
+      "permission_code": "TNI_SELF_VIEW",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 8,
+    "fields": {
+      "permission_group": 1,
+      "permission_name": "Attempt Assessments",
+      "permission_code": "ASSESSMENT_ATTEMPT",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 9,
+    "fields": {
+      "permission_group": 1,
+      "permission_name": "View Notifications",
+      "permission_code": "NOTIFICATION_VIEW",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 10,
+    "fields": {
+      "permission_group": 1,
+      "permission_name": "Manage Own Profile",
+      "permission_code": "PROFILE_MANAGE",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 11,
+    "fields": {
+      "permission_group": 2,
+      "permission_name": "View Employees",
+      "permission_code": "EMPLOYEE_VIEW",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 12,
+    "fields": {
+      "permission_group": 2,
+      "permission_name": "Manage Employees",
+      "permission_code": "EMPLOYEE_MANAGE",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 13,
+    "fields": {
+      "permission_group": 2,
+      "permission_name": "View Org Structure",
+      "permission_code": "ORG_STRUCTURE_VIEW",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 14,
+    "fields": {
+      "permission_group": 2,
+      "permission_name": "Manage Org Structure",
+      "permission_code": "ORG_STRUCTURE_MANAGE",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 15,
+    "fields": {
+      "permission_group": 2,
+      "permission_name": "Manage TNI",
+      "permission_code": "TNI_MANAGE",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 16,
+    "fields": {
+      "permission_group": 2,
+      "permission_name": "Approve TNI",
+      "permission_code": "TNI_APPROVE",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 17,
+    "fields": {
+      "permission_group": 2,
+      "permission_name": "View Training Plans",
+      "permission_code": "TRAINING_PLAN_VIEW",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 18,
+    "fields": {
+      "permission_group": 2,
+      "permission_name": "Manage Training Plans",
+      "permission_code": "TRAINING_PLAN_MANAGE",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 19,
+    "fields": {
+      "permission_group": 2,
+      "permission_name": "Manage Enrollments",
+      "permission_code": "ENROLLMENT_MANAGE",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 20,
+    "fields": {
+      "permission_group": 2,
+      "permission_name": "View Reports",
+      "permission_code": "REPORTS_VIEW",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 21,
+    "fields": {
+      "permission_group": 3,
+      "permission_name": "Approve Training Plans",
+      "permission_code": "TRAINING_PLAN_APPROVE",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 22,
+    "fields": {
+      "permission_group": 3,
+      "permission_name": "View Training Calendar",
+      "permission_code": "TRAINING_CALENDAR_VIEW",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 23,
+    "fields": {
+      "permission_group": 3,
+      "permission_name": "Approve Training Calendar",
+      "permission_code": "TRAINING_CALENDAR_APPROVE",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 24,
+    "fields": {
+      "permission_group": 4,
+      "permission_name": "Create Courses",
+      "permission_code": "COURSE_CREATE",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 25,
+    "fields": {
+      "permission_group": 4,
+      "permission_name": "Update Courses",
+      "permission_code": "COURSE_UPDATE",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 26,
+    "fields": {
+      "permission_group": 4,
+      "permission_name": "Delete Courses",
+      "permission_code": "COURSE_DELETE",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 27,
+    "fields": {
+      "permission_group": 4,
+      "permission_name": "Publish Courses",
+      "permission_code": "COURSE_PUBLISH",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 28,
+    "fields": {
+      "permission_group": 4,
+      "permission_name": "Access Course Builder",
+      "permission_code": "COURSE_BUILDER_ACCESS",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 29,
+    "fields": {
+      "permission_group": 4,
+      "permission_name": "Manage Course Categories",
+      "permission_code": "COURSE_CATEGORY_MANAGE",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 30,
+    "fields": {
+      "permission_group": 4,
+      "permission_name": "Manage Assessments",
+      "permission_code": "ASSESSMENT_MANAGE",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 31,
+    "fields": {
+      "permission_group": 4,
+      "permission_name": "Manage Skills",
+      "permission_code": "SKILL_MANAGE",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 32,
+    "fields": {
+      "permission_group": 4,
+      "permission_name": "Manage Skill Categories",
+      "permission_code": "SKILL_CATEGORY_MANAGE",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 33,
+    "fields": {
+      "permission_group": 4,
+      "permission_name": "Manage Skill Mappings",
+      "permission_code": "SKILL_MAPPING_MANAGE",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 34,
+    "fields": {
+      "permission_group": 5,
+      "permission_name": "View Roles",
+      "permission_code": "ROLE_VIEW",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 35,
+    "fields": {
+      "permission_group": 5,
+      "permission_name": "Create Roles",
+      "permission_code": "ROLE_CREATE",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 36,
+    "fields": {
+      "permission_group": 5,
+      "permission_name": "Update Roles",
+      "permission_code": "ROLE_UPDATE",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 37,
+    "fields": {
+      "permission_group": 5,
+      "permission_name": "Delete Roles",
+      "permission_code": "ROLE_DELETE",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 38,
+    "fields": {
+      "permission_group": 5,
+      "permission_name": "Assign User Roles",
+      "permission_code": "USER_ROLE_ASSIGN",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 39,
+    "fields": {
+      "permission_group": 5,
+      "permission_name": "View Config",
+      "permission_code": "CONFIG_VIEW",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 40,
+    "fields": {
+      "permission_group": 5,
+      "permission_name": "Manage Config",
+      "permission_code": "CONFIG_MANAGE",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 41,
+    "fields": {
+      "permission_group": 5,
+      "permission_name": "View Audit Log",
+      "permission_code": "AUDIT_VIEW",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 42,
+    "fields": {
+      "permission_group": 5,
+      "permission_name": "Export Reports",
+      "permission_code": "REPORTS_EXPORT",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 43,
+    "fields": {
+      "permission_group": 5,
+      "permission_name": "Manage Certificates",
+      "permission_code": "CERTIFICATE_MANAGE",
+      "description": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  }
+]

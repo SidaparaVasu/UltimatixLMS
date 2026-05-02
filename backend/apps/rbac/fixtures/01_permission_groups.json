@@ -1,0 +1,80 @@
+[
+  {
+    "model": "rbac.permissiongroupmaster",
+    "pk": 1,
+    "fields": {
+      "group_name": "Learner Core",
+      "group_code": "LEARNER_CORE",
+      "description": "Baseline permissions given to every user via the LMS_USER system role.",
+      "display_order": 1,
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissiongroupmaster",
+    "pk": 2,
+    "fields": {
+      "group_name": "HR Management",
+      "group_code": "HR_MANAGEMENT",
+      "description": "Employee management, org structure, TNI, and training planning.",
+      "display_order": 2,
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissiongroupmaster",
+    "pk": 3,
+    "fields": {
+      "group_name": "L&D Approval",
+      "group_code": "LND_APPROVAL",
+      "description": "Training plan and calendar approval permissions.",
+      "display_order": 3,
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissiongroupmaster",
+    "pk": 4,
+    "fields": {
+      "group_name": "Content Management",
+      "group_code": "CONTENT_MANAGEMENT",
+      "description": "Course authoring, skill management, and assessment creation.",
+      "display_order": 4,
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissiongroupmaster",
+    "pk": 5,
+    "fields": {
+      "group_name": "System Administration",
+      "group_code": "SYSTEM_ADMINISTRATION",
+      "description": "RBAC management, system config, audit, and reporting.",
+      "display_order": 5,
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissiongroupmaster",
+    "pk": 6,
+    "fields": {
+      "group_name": "Audit Access",
+      "group_code": "AUDIT_ACCESS",
+      "description": "Read-only audit and reporting access.",
+      "display_order": 6,
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  }
+]

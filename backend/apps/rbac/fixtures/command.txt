@@ -1,0 +1,1 @@
+python manage.py loaddata 01_permission_groups 02_permissions 03_system_roles 04_role_permissions
