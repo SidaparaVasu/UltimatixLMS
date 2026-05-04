@@ -28,6 +28,7 @@ import {
   Blocks,
   CalendarDays,
   CheckCircle,
+  UserCheck,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { getFullName, getInitials, getPrimaryRoleName } from "@/utils/user.utils";
@@ -88,6 +89,7 @@ const NAV_CONFIG: NavSection[] = [
     requiresAnyPermission: [
       PERMISSIONS.EMPLOYEE_VIEW,
       PERMISSIONS.TNI_MANAGE,
+      PERMISSIONS.TNI_APPROVE,
       PERMISSIONS.TRAINING_PLAN_VIEW,
       PERMISSIONS.TRAINING_PLAN_APPROVE,
       PERMISSIONS.TRAINING_CALENDAR_APPROVE,
@@ -95,6 +97,7 @@ const NAV_CONFIG: NavSection[] = [
     ],
     items: [
       { label: "Employees",           icon: Users,         path: "/admin/employees",         requiredPermission: PERMISSIONS.EMPLOYEE_VIEW },
+      { label: "TNI Review",          icon: UserCheck,     path: "/manager/tni",             requiredPermission: PERMISSIONS.TNI_APPROVE },
       { label: "Training Needs",      icon: ClipboardList, path: "/admin/tni",               requiredPermission: PERMISSIONS.TNI_MANAGE },
       { label: "Training Plans",      icon: GraduationCap, path: "/admin/training-plans",    requiredPermission: PERMISSIONS.TRAINING_PLAN_VIEW },
       { label: "Training Calendar",   icon: CalendarDays,  path: "/admin/training-calendar", requiredPermission: PERMISSIONS.TRAINING_CALENDAR_APPROVE },
@@ -190,6 +193,7 @@ export const Sidebar = () => {
     [PERMISSIONS.EMPLOYEE_MANAGE]:           usePermission(PERMISSIONS.EMPLOYEE_MANAGE),
     [PERMISSIONS.ORG_STRUCTURE_MANAGE]:      usePermission(PERMISSIONS.ORG_STRUCTURE_MANAGE),
     [PERMISSIONS.TNI_MANAGE]:                usePermission(PERMISSIONS.TNI_MANAGE),
+    [PERMISSIONS.TNI_APPROVE]:               usePermission(PERMISSIONS.TNI_APPROVE),
     [PERMISSIONS.TRAINING_PLAN_VIEW]:        usePermission(PERMISSIONS.TRAINING_PLAN_VIEW),
     [PERMISSIONS.TRAINING_PLAN_APPROVE]:     usePermission(PERMISSIONS.TRAINING_PLAN_APPROVE),
     [PERMISSIONS.TRAINING_CALENDAR_APPROVE]: usePermission(PERMISSIONS.TRAINING_CALENDAR_APPROVE),
