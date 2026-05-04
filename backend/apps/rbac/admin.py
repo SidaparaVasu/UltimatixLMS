@@ -4,7 +4,8 @@ from .models import (
     PermissionMaster,
     RoleMaster,
     RolePermissionMaster,
-    UserRoleMaster
+    UserRoleMaster,
+    CompanyPermissionGroup,
 )
 
 
@@ -45,4 +46,27 @@ class UserRoleMasterAdmin(admin.ModelAdmin):
     list_filter = ["scope_type", "is_active", "role"]
     search_fields = ["user__email", "user__username", "role__role_code"]
     ordering = ["-created_at"]
+
+
+@admin.register(CompanyPermissionGroup)
+class CompanyPermissionGroupAdmin(admin.ModelAdmin):
+    list_display = ["company", "permission_group", "is_active", "created_at"]
+    list_filter = ["is_active", "company"]
+    search_fields = ["company__company_code", "permission_group__group_code"]
+    ordering = ["company__company_code", "permission_group__display_order"]
+
+    def has_module_perms(self, request):
+        return request.user.is_superuser
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_add_permission(self, request):
+        return request.user.is_superuser
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_superuser
 
