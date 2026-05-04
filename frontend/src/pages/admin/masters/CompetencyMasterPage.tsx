@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Layers, Puzzle, Plus, Pencil, Trash2, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Layers, Puzzle, Plus, Pencil, Trash2, RotateCcw, AlertTriangle, Tags } from 'lucide-react';
 import {
   useSkillCategories,
   useSkills,
@@ -607,20 +607,33 @@ const CompetencyMasterPage: React.FC = () => {
                 }
                 headerAction={
                   <div className="card-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <button 
-                      onClick={() => setExpandedMappingId(isEditing ? null : cat.id)}
-                      title={isEditing ? "Finish Editing" : "Edit Mapping"}
-                      style={{ 
-                        background: isEditing ? 'var(--color-accent)' : 'none', 
-                        color: isEditing ? 'white' : 'var(--color-text-muted)',
-                        border: 'none', cursor: 'pointer', display: 'flex', padding: '4px', borderRadius: '4px' 
+                    {/* Edit category name / code / description */}
+                    <button
+                      onClick={() => setCategoryDialog({ open: true, editing: cat })}
+                      title="Edit Category"
+                      style={{
+                        background: 'none', color: 'var(--color-text-muted)',
+                        border: 'none', cursor: 'pointer', display: 'flex', padding: '4px', borderRadius: '4px',
                       }}
                     >
                       <Pencil size={14} />
                     </button>
-                    
+
+                    {/* Toggle skill mapping editor */}
+                    <button
+                      onClick={() => setExpandedMappingId(isEditing ? null : cat.id)}
+                      title={isEditing ? 'Close Skill Mapping' : 'Edit Skill Mapping'}
+                      style={{
+                        background: isEditing ? 'var(--color-accent)' : 'none',
+                        color: isEditing ? 'white' : 'var(--color-text-muted)',
+                        border: 'none', cursor: 'pointer', display: 'flex', padding: '4px', borderRadius: '4px',
+                      }}
+                    >
+                      <Tags size={14} />
+                    </button>
+
                     {cat.is_active ? (
-                      <button 
+                      <button
                         onClick={() => setConfirmAction({ open: true, type: 'soft-delete', category: cat })}
                         title="Deactivate Category"
                         style={{ background: 'none', color: 'var(--color-text-muted)', border: 'none', cursor: 'pointer', display: 'flex', padding: '4px' }}
@@ -629,14 +642,14 @@ const CompetencyMasterPage: React.FC = () => {
                       </button>
                     ) : (
                       <>
-                        <button 
+                        <button
                           onClick={() => setConfirmAction({ open: true, type: 'restore', category: cat })}
                           title="Restore Category"
                           style={{ background: 'none', color: 'var(--color-accent)', border: 'none', cursor: 'pointer', display: 'flex', padding: '4px' }}
                         >
                           <RotateCcw size={14} />
                         </button>
-                        <button 
+                        <button
                           onClick={() => setConfirmAction({ open: true, type: 'hard-delete', category: cat })}
                           title="Delete Permanently"
                           style={{ background: 'none', color: 'var(--color-danger)', border: 'none', cursor: 'pointer', display: 'flex', padding: '4px' }}
