@@ -68,6 +68,23 @@ def invalidate_on_role_deactivation(sender, instance, **kwargs):
 
 
 # ---------------------------------------------------------------------------
+# Path 3b — PermissionMaster change
+# Fires when a permission is deactivated or its code changes.
+# All users holding a role that maps to this permission need cache cleared.
+# ---------------------------------------------------------------------------
+
+@receiver(post_save, sender="rbac.PermissionMaster")
+def invalidate_on_permission_change(sender, instance, **kwargs):
+    from .models import RolePermissionMaster
+    role_ids = RolePermissionMaster.objects.filter(
+        permission=instance
+    ).values_list("role_id", flat=True).distinct()
+    from .models import RoleMaster
+    for role in RoleMaster.objects.filter(id__in=role_ids):
+        _invalidate_role_users_cache(role)
+
+
+# ---------------------------------------------------------------------------
 # Path 4 — CompanyPermissionGroup change
 # Fires when a company's subscription/plan is updated.
 # All users in that company need their cache cleared immediately.

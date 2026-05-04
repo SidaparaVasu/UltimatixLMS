@@ -68,7 +68,7 @@ class TestScopedQuerySetMixin(TestCase):
 
         # EmployeeMaster requires JobRole and Location
         from apps.org_management.models import JobRoleMaster, LocationMaster
-        self.role_m = JobRoleMaster.objects.create(job_role_name="Dev", job_role_code="DEV")
+        self.role_m = JobRoleMaster.objects.create(job_role_name="Dev", job_role_code="DEV", company=self.c1)
         self.loc_m = LocationMaster.objects.create(company=self.c1, location_name="HQ", location_code="HQ")
         self.loc_m2 = LocationMaster.objects.create(company=self.c2, location_name="HQ2", location_code="HQ2")
 
@@ -92,6 +92,11 @@ class TestScopedQuerySetMixin(TestCase):
 
         self.role = RoleMaster.objects.create(role_name="Manager", role_code="MGR")
         RolePermissionMaster.objects.create(role=self.role, permission=self.perm_view)
+
+        # Grant the permission group to both companies so the subscription gate passes
+        from apps.rbac.models import CompanyPermissionGroup
+        CompanyPermissionGroup.objects.create(company=self.c1, permission_group=perm_group, is_active=True)
+        CompanyPermissionGroup.objects.create(company=self.c2, permission_group=perm_group, is_active=True)
 
     def tearDown(self):
         cache.clear()

@@ -11,6 +11,7 @@ from ..models import (
 )
 from ..constants import ScopeType
 from ..services.rbac_engine import RBACEngine
+from .rbac_test_helpers import setup_subscription_gate
 
 
 class TestRBACEngine(TestCase):
@@ -34,22 +35,25 @@ class TestRBACEngine(TestCase):
 
         # Create basic RBAC structures
         self.perm_group = PermissionGroupMaster.objects.create(
-            group_name="Course Management", 
+            group_name="Course Management",
             group_code="COURSE_MGMT"
         )
         self.perm_view = PermissionMaster.objects.create(
-            permission_group=self.perm_group, 
-            permission_name="View Course", 
+            permission_group=self.perm_group,
+            permission_name="View Course",
             permission_code="COURSE_VIEW"
         )
         self.perm_edit = PermissionMaster.objects.create(
-            permission_group=self.perm_group, 
-            permission_name="Edit Course", 
+            permission_group=self.perm_group,
+            permission_name="Edit Course",
             permission_code="COURSE_EDIT"
         )
 
         self.role_a = RoleMaster.objects.create(role_name="Role A", role_code="ROLE_A")
         self.role_b = RoleMaster.objects.create(role_name="Role B", role_code="ROLE_B")
+
+        # Wire up the subscription gate so the engine returns permissions for self.user
+        self.company, self.employee = setup_subscription_gate(self.user, self.perm_group)
 
     def tearDown(self):
         cache.clear()

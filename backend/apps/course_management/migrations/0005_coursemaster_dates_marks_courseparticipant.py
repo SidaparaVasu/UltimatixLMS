@@ -1,26 +1,67 @@
 """
-Migration 0005 — sync Django migration state with the actual database.
+Migration 0005 — add new fields to CourseMaster and create CourseParticipant.
 
-All columns and tables were created directly in the DB before this migration
-was written. This migration performs NO database operations — it only updates
-Django's internal migration state so subsequent migrations work correctly.
-
-Pre-existing DB objects being registered:
-  course_master:
-    - start_date          (date, nullable)
-    - end_date            (date, nullable)
-    - show_marks_to_learner (tinyint, maps to show_marks_to_learners in Python)
-    - is_published        (tinyint, indexed)
-    - is_visible          (tinyint)
-
-  course_participant:     (entire table)
-    - id, course_id, employee_id, invited_by_id, invited_at,
-      invite_acknowledged (maps to notification_sent in Python)
-    - idx_crs_participant_course, idx_crs_participant_emp
+On existing databases these objects were created directly; on fresh databases
+(e.g. test environments) they must be created by this migration.
+SeparateDatabaseAndState is used so Django's state is always updated, while
+the actual DB operations are guarded to be idempotent.
 """
 
-from django.db import migrations, models
+from django.db import migrations, models, connection
 import django.db.models.deletion
+
+
+def create_course_participant_if_not_exists(apps, schema_editor):
+    """Create course_participant table only if it doesn't already exist."""
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT COUNT(*) FROM information_schema.TABLES "
+            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'course_participant'"
+        )
+        if cursor.fetchone()[0] == 0:
+            cursor.execute("""
+                CREATE TABLE `course_participant` (
+                    `id` bigint NOT NULL AUTO_INCREMENT,
+                    `invited_at` datetime(6) NOT NULL,
+                    `invite_acknowledged` tinyint(1) NOT NULL DEFAULT 0,
+                    `course_id` bigint NOT NULL,
+                    `employee_id` bigint NOT NULL,
+                    `invited_by_id` bigint DEFAULT NULL,
+                    PRIMARY KEY (`id`),
+                    KEY `idx_crs_participant_course` (`course_id`),
+                    KEY `idx_crs_participant_emp` (`employee_id`),
+                    CONSTRAINT `course_participant_course_id_fk`
+                        FOREIGN KEY (`course_id`) REFERENCES `course_master` (`id`),
+                    CONSTRAINT `course_participant_employee_id_fk`
+                        FOREIGN KEY (`employee_id`) REFERENCES `org_employee_master` (`id`),
+                    CONSTRAINT `course_participant_invited_by_id_fk`
+                        FOREIGN KEY (`invited_by_id`) REFERENCES `org_employee_master` (`id`)
+                )
+            """)
+
+
+def add_coursemaster_fields_if_not_exists(apps, schema_editor):
+    """Add new CourseMaster columns only if they don't already exist."""
+    with connection.cursor() as cursor:
+        def col_exists(col):
+            cursor.execute(
+                "SELECT COUNT(*) FROM information_schema.COLUMNS "
+                "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'course_master' AND COLUMN_NAME = %s",
+                [col]
+            )
+            return cursor.fetchone()[0] > 0
+
+        if not col_exists('start_date'):
+            cursor.execute("ALTER TABLE `course_master` ADD COLUMN `start_date` date NULL")
+        if not col_exists('end_date'):
+            cursor.execute("ALTER TABLE `course_master` ADD COLUMN `end_date` date NULL")
+        if not col_exists('show_marks_to_learner'):
+            cursor.execute("ALTER TABLE `course_master` ADD COLUMN `show_marks_to_learner` tinyint(1) NOT NULL DEFAULT 0")
+        if not col_exists('is_published'):
+            cursor.execute("ALTER TABLE `course_master` ADD COLUMN `is_published` tinyint(1) NOT NULL DEFAULT 0")
+            cursor.execute("ALTER TABLE `course_master` ADD INDEX `course_master_is_published_idx` (`is_published`)")
+        if not col_exists('is_visible'):
+            cursor.execute("ALTER TABLE `course_master` ADD COLUMN `is_visible` tinyint(1) NOT NULL DEFAULT 0")
 
 
 class Migration(migrations.Migration):
@@ -31,11 +72,14 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        # Everything is SeparateDatabaseAndState — DB already has all of this.
+        # Run actual DB operations (idempotent — safe on both fresh and existing DBs)
+        migrations.RunPython(add_coursemaster_fields_if_not_exists, migrations.RunPython.noop),
+        migrations.RunPython(create_course_participant_if_not_exists, migrations.RunPython.noop),
+
+        # Update Django's internal state to match
         migrations.SeparateDatabaseAndState(
             database_operations=[],
             state_operations=[
-                # ── CourseMaster new fields ───────────────────────────────────
                 migrations.AddField(
                     model_name='coursemaster',
                     name='start_date',
@@ -64,8 +108,6 @@ class Migration(migrations.Migration):
                     name='is_visible',
                     field=models.BooleanField(default=False),
                 ),
-
-                # ── CourseParticipant model (table already exists) ────────────
                 migrations.CreateModel(
                     name='CourseParticipant',
                     fields=[

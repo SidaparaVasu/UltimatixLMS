@@ -12,6 +12,7 @@ from ..models import (
 )
 from ..constants import ScopeType
 from ..permissions import HasScopedPermission
+from .rbac_test_helpers import setup_subscription_gate
 
 
 class MockViewWithoutPerm:
@@ -26,7 +27,7 @@ class TestHasScopedPermission(TestCase):
     def setUp(self):
         cache.clear()
         self.factory = APIRequestFactory()
-        
+
         # Setup basic users and roles
         self.user = AuthUser.objects.create_user(
             email="perm_test@example.com",
@@ -42,12 +43,15 @@ class TestHasScopedPermission(TestCase):
 
         perm_group = PermissionGroupMaster.objects.create(group_name="Test", group_code="TEST")
         self.perm = PermissionMaster.objects.create(
-            permission_group=perm_group, 
-            permission_name="Special View", 
+            permission_group=perm_group,
+            permission_name="Special View",
             permission_code="SPECIAL_VIEW"
         )
         self.role = RoleMaster.objects.create(role_name="Special Role", role_code="SP_ROLE")
         RolePermissionMaster.objects.create(role=self.role, permission=self.perm)
+
+        # Wire up the subscription gate so the engine returns permissions for self.user
+        setup_subscription_gate(self.user, perm_group)
 
         self.permission_checker = HasScopedPermission()
 

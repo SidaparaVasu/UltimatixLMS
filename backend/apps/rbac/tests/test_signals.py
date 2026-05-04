@@ -11,6 +11,7 @@ from ..models import (
 )
 from ..constants import ScopeType
 from ..services.rbac_engine import RBACEngine
+from .rbac_test_helpers import setup_subscription_gate
 
 
 class TestRBACSignals(TestCase):
@@ -23,10 +24,16 @@ class TestRBACSignals(TestCase):
 
         # RBAC Structure
         self.perm_group = PermissionGroupMaster.objects.create(group_name="Test", group_code="TEST")
-        self.perm = PermissionMaster.objects.create(permission_group=self.perm_group, permission_name="View", permission_code="TEST_VIEW")
+        self.perm = PermissionMaster.objects.create(
+            permission_group=self.perm_group, permission_name="View", permission_code="TEST_VIEW"
+        )
 
         self.role = RoleMaster.objects.create(role_name="Manager", role_code="MGR")
         RolePermissionMaster.objects.create(role=self.role, permission=self.perm)
+
+        # Wire up the subscription gate for both users (shared company)
+        self.company, _ = setup_subscription_gate(self.user1, self.perm_group)
+        setup_subscription_gate(self.user2, self.perm_group, company=self.company)
 
         # Assign Role directly to both
         UserRoleMaster.objects.create(user=self.user1, role=self.role, scope_type=ScopeType.GLOBAL)
