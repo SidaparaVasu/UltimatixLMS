@@ -265,14 +265,22 @@ class UserRoleViewSet(BaseRBACViewSet):
     def get_queryset(self):
         user = self.request.user
         if user.is_superuser:
-            return UserRoleMaster.objects.all().select_related("user", "role")
-        company = _get_request_company(self.request)
-        if not company:
-            return UserRoleMaster.objects.none()
-        # Only assignments for users who belong to the same company
-        return UserRoleMaster.objects.filter(
-            user__employee_record__company=company
-        ).select_related("user", "role")
+            qs = UserRoleMaster.objects.all().select_related("user", "role")
+        else:
+            company = _get_request_company(self.request)
+            if not company:
+                return UserRoleMaster.objects.none()
+            # Only assignments for users who belong to the same company
+            qs = UserRoleMaster.objects.filter(
+                user__employee_record__company=company
+            ).select_related("user", "role")
+
+        # Optional ?user=<id> filter — used by UserRoleAssignmentPanel
+        user_id = self.request.query_params.get("user")
+        if user_id:
+            qs = qs.filter(user_id=user_id)
+
+        return qs
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
