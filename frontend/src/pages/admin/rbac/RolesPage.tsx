@@ -145,23 +145,17 @@ const RolesPage: React.FC = () => {
       header: 'Role Name',
       cellStyle: { fontWeight: 600, color: 'var(--color-text-primary)' },
       render: (role) => (
-        <button
-          onClick={() => navigate(`/admin/roles/${role.id}`)}
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: 0,
-            cursor: 'pointer',
-            fontSize: '13px',
-            fontWeight: 600,
-            color: 'var(--color-accent)',
-            textAlign: 'left',
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
-          onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
-        >
-          {role.role_name}
-        </button>
+        // Row click navigation to detail page — unlinked until RoleDetailPage is exposed
+        // <button
+        //   onClick={() => navigate(`/admin/roles/${role.id}`)}
+        //   style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+        //     fontSize: '13px', fontWeight: 600, color: 'var(--color-accent)', textAlign: 'left' }}
+        //   onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+        //   onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+        // >
+        //   {role.role_name}
+        // </button>
+        <span style={{ fontSize: '13px', fontWeight: 600 }}>{role.role_name}</span>
       ),
     },
     {
@@ -181,10 +175,11 @@ const RolesPage: React.FC = () => {
       header: 'Status',
       width: '100px',
     },
-    {
-      type: 'actions',
-      onView: (role) => navigate(`/admin/roles/${role.id}`),
-    },
+    // View action navigates to detail page — unlinked until RoleDetailPage is exposed
+    // {
+    //   type: 'actions',
+    //   onView: (role) => navigate(`/admin/roles/${role.id}`),
+    // },
   ];
 
   // ---------------------------------------------------------------------------
@@ -195,14 +190,15 @@ const RolesPage: React.FC = () => {
     <AdminMasterLayout
       title="Roles"
       description="Manage system and custom roles. Custom roles are scoped to your company."
-    //   icon={ShieldCheck}
+      // icon={ShieldCheck}
       breadcrumbs={[
         { label: 'Admin', href: '/admin' },
         { label: 'System' },
         { label: 'Roles' },
       ]}
-      addLabel={canCreate ? 'Create Role' : undefined}
-      onAdd={canCreate ? openDialog : undefined}
+      // Create Role button — unlinked until RoleDetailPage is exposed
+      // addLabel={canCreate ? 'Create Role' : undefined}
+      // onAdd={canCreate ? openDialog : undefined}
       searchPlaceholder="Search by name or code..."
       searchTerm={searchTerm}
       onSearchChange={setSearchTerm}
@@ -249,7 +245,7 @@ const RolesPage: React.FC = () => {
         }}
       />
 
-      {/* ── Create Role Dialog ── */}
+      {/* ── Create Role Dialog — unlinked until RoleDetailPage is exposed ── */}
       <Dialog
         open={isDialogOpen}
         onOpenChange={closeDialog}

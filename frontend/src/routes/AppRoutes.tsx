@@ -44,7 +44,8 @@ const TrainingCalendarPage = lazy(() => import('@/pages/admin/training/TrainingC
 const ApprovalsPage        = lazy(() => import('@/pages/admin/training/ApprovalsPage'));
 const NotificationsPage    = lazy(() => import('@/pages/NotificationsPage'));
 const RolesPage            = lazy(() => import('@/pages/admin/rbac/RolesPage'));
-const RoleDetailPage       = lazy(() => import('@/pages/admin/rbac/RoleDetailPage'));
+// RoleDetailPage is preserved for future use — unlinked from routing intentionally
+// const RoleDetailPage    = lazy(() => import('@/pages/admin/rbac/RoleDetailPage'));
 
 // Placeholder for pages that are not yet implemented
 const ComingSoon = () => (
@@ -119,7 +120,9 @@ export const AppRoutes = () => {
                 {/* RBAC management — requires ROLE_VIEW */}
                 <Route element={<RoleGuard requiredPermissions={[PERMISSIONS.ROLE_VIEW]} />}>
                   <Route path="/admin/roles" element={<RolesPage />} />
+                  {/* RoleDetailPage unlinked — preserved for future use
                   <Route path="/admin/roles/:id" element={<RoleDetailPage />} />
+                  */}
                 </Route>
               </Route>
 
