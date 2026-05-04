@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from common.response import success_response, created_response, error_response
 from apps.rbac.permissions import HasScopedPermission
+from apps.rbac.permission_codes import P
 from .models import (
     TrainingNeed,
     SkillGapSnapshot,
@@ -87,7 +88,7 @@ class TrainingNeedViewSet(BaseTNIViewSet):
     serializer_class = TrainingNeedSerializer
     service_class = TrainingNeedService
     model = TrainingNeed
-    required_permission = "TNI_MANAGE"
+    required_permission = P.HR_MANAGEMENT.TNI_MANAGE
 
     @extend_schema(responses={200: TrainingNeedSerializer(many=True)})
     @action(detail=False, methods=["post"], url_path="run-gap-analysis")
@@ -228,7 +229,7 @@ class SkillGapSnapshotViewSet(BaseTNIViewSet):
     serializer_class = SkillGapSnapshotSerializer
     service_class = SkillGapSnapshotService
     model = SkillGapSnapshot
-    required_permission = "TNI_VIEW"
+    required_permission = P.HR_MANAGEMENT.TNI_MANAGE  # view-only access uses the same TNI manage permission
     http_method_names = ["get", "delete"] # Read-only (for most users)
 
 
@@ -237,7 +238,7 @@ class ComplianceRequirementViewSet(BaseTNIViewSet):
     serializer_class = ComplianceRequirementSerializer
     service_class = ComplianceRequirementService
     model = ComplianceTrainingRequirement
-    required_permission = "COMPLIANCE_MANAGE"
+    required_permission = P.HR_MANAGEMENT.TNI_MANAGE  # compliance requirements are part of TNI management
 
 
 class TrainingNeedApprovalViewSet(BaseTNIViewSet):
@@ -245,7 +246,7 @@ class TrainingNeedApprovalViewSet(BaseTNIViewSet):
     serializer_class = TrainingNeedApprovalSerializer
     service_class = TNIApprovalService
     model = TrainingNeedApproval
-    required_permission = "TNI_APPROVE"
+    required_permission = P.HR_MANAGEMENT.TNI_APPROVE
 
     @action(detail=True, methods=["post"], url_path="finalize")
     def finalize(self, request, pk=None):
@@ -276,7 +277,7 @@ class CourseRecommendationViewSet(BaseTNIViewSet):
     serializer_class = CourseRecommendationSerializer
     service_class = TNICourseRecommendationService
     model = TrainingNeedCourseRecommendation
-    required_permission = "TNI_MANAGE"
+    required_permission = P.HR_MANAGEMENT.TNI_MANAGE
 
 
 class TNIAnalysisViewSet(BaseTNIViewSet):
@@ -284,5 +285,5 @@ class TNIAnalysisViewSet(BaseTNIViewSet):
     serializer_class = TNIAggregatedAnalysisSerializer
     service_class = TNIAnalysisService
     model = TNIAggregatedAnalysis
-    required_permission = "REPORTS_VIEW"
+    required_permission = P.HR_MANAGEMENT.REPORTS_VIEW
     http_method_names = ["get"] # Dashboard analytics (read-only)

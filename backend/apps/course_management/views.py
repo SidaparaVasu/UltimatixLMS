@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from django_filters.rest_framework import DjangoFilterBackend
 from common.response import success_response, created_response, error_response
 from apps.rbac.permissions import HasScopedPermission
+from apps.rbac.permission_codes import P
 from .models import (
     CourseCategoryMaster,
     CourseMaster,
@@ -61,8 +62,8 @@ class BaseCourseViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
 
     # Permission defaults
-    VIEW_PERMISSION = "COURSE_VIEW"
-    EDIT_PERMISSION = "COURSE_EDIT"
+    VIEW_PERMISSION = P.LEARNER_CORE.COURSE_VIEW
+    EDIT_PERMISSION = P.CONTENT_MANAGEMENT.COURSE_UPDATE
 
     @property
     def required_permission(self):
@@ -285,8 +286,8 @@ class CourseDiscussionThreadViewSet(BaseCourseViewSet):
     serializer_class = CourseDiscussionThreadSerializer
     service_class = CourseDiscussionThreadService
     model = CourseDiscussionThread
-    VIEW_PERMISSION = "COURSE_FORUM_VIEW"
-    EDIT_PERMISSION = "COURSE_FORUM_CONTRIBUTE"
+    VIEW_PERMISSION = P.LEARNER_CORE.COURSE_VIEW
+    EDIT_PERMISSION = P.CONTENT_MANAGEMENT.COURSE_UPDATE
 
 
 class CourseDiscussionReplyViewSet(BaseCourseViewSet):
@@ -294,8 +295,8 @@ class CourseDiscussionReplyViewSet(BaseCourseViewSet):
     serializer_class = CourseDiscussionReplySerializer
     service_class = CourseDiscussionReplyService
     model = CourseDiscussionReply
-    VIEW_PERMISSION = "COURSE_FORUM_VIEW"
-    EDIT_PERMISSION = "COURSE_FORUM_CONTRIBUTE"
+    VIEW_PERMISSION = P.LEARNER_CORE.COURSE_VIEW
+    EDIT_PERMISSION = P.CONTENT_MANAGEMENT.COURSE_UPDATE
 
 
 class CourseParticipantViewSet(BaseCourseViewSet):

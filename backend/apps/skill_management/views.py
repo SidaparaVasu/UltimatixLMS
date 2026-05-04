@@ -4,6 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from common.response import success_response, created_response, error_response
 from apps.rbac.permissions import HasScopedPermission
+from apps.rbac.permission_codes import P
 from .models import (
     SkillCategoryMaster,
     SkillMaster,
@@ -118,7 +119,7 @@ class SkillCategoryViewSet(BaseSkillViewSet):
     serializer_class = SkillCategorySerializer
     service_class = SkillCategoryService
     model = SkillCategoryMaster
-    required_permission = "SKILL_CATEGORY_MANAGE"
+    required_permission = P.CONTENT_MANAGEMENT.SKILL_CATEGORY_MANAGE
 
 
 class SkillMasterViewSet(BaseSkillViewSet):
@@ -126,7 +127,7 @@ class SkillMasterViewSet(BaseSkillViewSet):
     serializer_class = SkillMasterSerializer
     service_class = SkillService
     model = SkillMaster
-    required_permission = "SKILL_MANAGE"
+    required_permission = P.CONTENT_MANAGEMENT.SKILL_MANAGE
 
     def get_serializer_class(self):
         if self.action == "retrieve":
@@ -139,7 +140,7 @@ class SkillCategoryMappingViewSet(BaseSkillViewSet):
     serializer_class = SkillCategoryMappingSerializer
     service_class = SkillCategoryMappingService
     model = SkillCategorySkillMap
-    required_permission = "SKILL_MAPPING_MANAGE"
+    required_permission = P.CONTENT_MANAGEMENT.SKILL_MAPPING_MANAGE
 
 
 class SkillLevelViewSet(BaseSkillViewSet):
@@ -147,7 +148,7 @@ class SkillLevelViewSet(BaseSkillViewSet):
     serializer_class = SkillLevelSerializer
     service_class = SkillLevelService
     model = SkillLevelMaster
-    required_permission = "SKILL_LEVEL_MANAGE"
+    required_permission = P.CONTENT_MANAGEMENT.SKILL_MANAGE  # skill level management is part of skill management
 
 
 class JobRoleSkillRequirementViewSet(BaseSkillViewSet):
@@ -155,7 +156,7 @@ class JobRoleSkillRequirementViewSet(BaseSkillViewSet):
     serializer_class = JobRoleSkillRequirementSerializer
     service_class = JobRoleSkillService
     model = JobRoleSkillRequirement
-    required_permission = "ROLE_COMPETENCY_MANAGE"
+    required_permission = P.CONTENT_MANAGEMENT.SKILL_MAPPING_MANAGE  # job role skill requirements are skill mappings
 
     @action(detail=False, methods=['post'], url_path='bulk-sync')
     def bulk_sync(self, request):
@@ -175,7 +176,7 @@ class EmployeeSkillViewSet(BaseSkillViewSet):
     serializer_class = EmployeeSkillSerializer
     service_class = EmployeeSkillService
     model = EmployeeSkill
-    required_permission = "EMPLOYEE_SKILL_MANAGE"
+    required_permission = P.HR_MANAGEMENT.EMPLOYEE_MANAGE  # employee skill updates require HR manage access
 
     @action(detail=False, methods=['post'], url_path='bulk-sync')
     def bulk_sync(self, request):
@@ -198,7 +199,7 @@ class EmployeeSkillHistoryViewSet(BaseSkillViewSet):
     serializer_class = EmployeeSkillHistorySerializer
     service_class = EmployeeSkillHistoryService
     model = EmployeeSkillHistory
-    required_permission = "EMPLOYEE_SKILL_HISTORY_VIEW"
+    required_permission = P.HR_MANAGEMENT.EMPLOYEE_VIEW  # skill history is a read-only view
     http_method_names = ["get"]
 
 
@@ -207,7 +208,7 @@ class EmployeeSkillAssessmentViewSet(BaseSkillViewSet):
     serializer_class = EmployeeSkillAssessmentSerializer
     service_class = EmployeeSkillAssessmentService
     model = EmployeeSkillAssessment
-    required_permission = "SKILL_ASSESSMENT_MANAGE"
+    required_permission = P.CONTENT_MANAGEMENT.ASSESSMENT_MANAGE
 
 
 # ---------------------------------------------------------------------------

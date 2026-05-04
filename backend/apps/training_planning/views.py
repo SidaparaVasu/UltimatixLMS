@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from common.response import success_response, created_response, error_response
 from apps.rbac.permissions import HasScopedPermission
+from apps.rbac.permission_codes import P
 from .models import (
     TrainingPlan,
     TrainingPlanItem,
@@ -93,7 +94,7 @@ class TrainingPlanViewSet(BaseTPViewSet):
     serializer_class = TrainingPlanSerializer
     service_class = TrainingPlanService
     model = TrainingPlan
-    required_permission = "PLAN_MANAGE"
+    required_permission = P.HR_MANAGEMENT.TRAINING_PLAN_MANAGE
 
     def create(self, request, *args, **kwargs):
         employee = self._get_employee(request)
@@ -146,7 +147,7 @@ class TrainingPlanItemViewSet(BaseTPViewSet):
     serializer_class = TrainingPlanItemSerializer
     service_class = TrainingPlanItemService
     model = TrainingPlanItem
-    required_permission = "PLAN_MANAGE"
+    required_permission = P.HR_MANAGEMENT.TRAINING_PLAN_MANAGE
 
 
 class TrainingPlanApprovalViewSet(BaseTPViewSet):
@@ -154,7 +155,7 @@ class TrainingPlanApprovalViewSet(BaseTPViewSet):
     serializer_class = TrainingPlanApprovalSerializer
     service_class = TrainingPlanApprovalService
     model = TrainingPlanApproval
-    required_permission = "PLAN_APPROVE"
+    required_permission = P.LND_APPROVAL.TRAINING_PLAN_APPROVE
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -220,7 +221,7 @@ class TrainingCalendarViewSet(BaseTPViewSet):
     serializer_class = TrainingCalendarSerializer
     service_class = TrainingCalendarService
     model = TrainingCalendar
-    required_permission = "SESSION_SCHEDULE"
+    required_permission = P.LND_APPROVAL.TRAINING_CALENDAR_APPROVE
 
     def create(self, request, *args, **kwargs):
         employee = self._get_employee(request)
@@ -246,7 +247,7 @@ class TrainingSessionViewSet(BaseTPViewSet):
     serializer_class = TrainingSessionSerializer
     service_class = TrainingSessionService
     model = TrainingSession
-    required_permission = "SESSION_VIEW"
+    required_permission = P.HR_MANAGEMENT.TRAINING_PLAN_VIEW
 
 
 class TrainingSessionTrainerViewSet(BaseTPViewSet):
@@ -254,7 +255,7 @@ class TrainingSessionTrainerViewSet(BaseTPViewSet):
     serializer_class = TrainingSessionTrainerSerializer
     service_class = TrainingSessionTrainerService
     model = TrainingSessionTrainer
-    required_permission = "SESSION_SCHEDULE"
+    required_permission = P.LND_APPROVAL.TRAINING_CALENDAR_APPROVE
 
 
 class TrainingSessionEnrollmentViewSet(BaseTPViewSet):
@@ -262,7 +263,7 @@ class TrainingSessionEnrollmentViewSet(BaseTPViewSet):
     serializer_class = TrainingSessionEnrollmentSerializer
     service_class = TrainingSessionEnrollmentService
     model = TrainingSessionEnrollment
-    required_permission = "SESSION_ENROLL"
+    required_permission = P.HR_MANAGEMENT.ENROLLMENT_MANAGE
 
     @action(detail=False, methods=["post"], url_path="sign-up")
     def sign_up(self, request):
@@ -290,7 +291,7 @@ class TrainingAttendanceViewSet(BaseTPViewSet):
     serializer_class = TrainingAttendanceSerializer
     service_class = TrainingAttendanceService
     model = TrainingAttendance
-    required_permission = "SESSION_MANAGE"
+    required_permission = P.HR_MANAGEMENT.TRAINING_PLAN_MANAGE
 
     @action(detail=False, methods=["post"], url_path="bulk-upsert")
     def bulk_upsert(self, request):

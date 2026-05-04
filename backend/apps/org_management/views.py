@@ -1,7 +1,9 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from common.response import success_response, created_response, error_response
+from apps.rbac.permissions import HasScopedPermission
+from apps.rbac.permission_codes import P
 from .models import (
     CompanyMaster,
     BusinessUnitMaster,
@@ -45,6 +47,7 @@ class BaseOrgViewSet(viewsets.ModelViewSet):
     """
     service_class = None
     model = None
+    permission_classes = [HasScopedPermission]
 
     def _get_user_company(self):
         """Helper to get the company associated with the logged-in user."""
@@ -154,6 +157,7 @@ class CompanyMasterViewSet(BaseOrgViewSet):
     serializer_class = CompanyMasterSerializer
     service_class = CompanyService
     model = CompanyMaster
+    required_permission = P.HR_MANAGEMENT.ORG_STRUCTURE_VIEW
 
 
 class BusinessUnitMasterViewSet(BaseOrgViewSet):
@@ -161,6 +165,7 @@ class BusinessUnitMasterViewSet(BaseOrgViewSet):
     serializer_class = BusinessUnitMasterSerializer
     service_class = BusinessUnitService
     model = BusinessUnitMaster
+    required_permission = P.HR_MANAGEMENT.ORG_STRUCTURE_MANAGE
 
     @action(detail=False, methods=["get"], url_path="options")
     def options(self, request):
@@ -181,6 +186,7 @@ class DepartmentMasterViewSet(BaseOrgViewSet):
     serializer_class = DepartmentMasterSerializer
     service_class = DepartmentService
     model = DepartmentMaster
+    required_permission = P.HR_MANAGEMENT.ORG_STRUCTURE_MANAGE
 
     @extend_schema(
         parameters=[
@@ -222,6 +228,7 @@ class LocationMasterViewSet(BaseOrgViewSet):
     serializer_class = LocationMasterSerializer
     service_class = LocationService
     model = LocationMaster
+    required_permission = P.HR_MANAGEMENT.ORG_STRUCTURE_MANAGE
 
     @action(detail=False, methods=["get"], url_path="options")
     def options(self, request):
@@ -242,6 +249,7 @@ class JobRoleMasterViewSet(BaseOrgViewSet):
     serializer_class = JobRoleMasterSerializer
     service_class = JobRoleService
     model = JobRoleMaster
+    required_permission = P.HR_MANAGEMENT.ORG_STRUCTURE_MANAGE
 
     @action(detail=False, methods=["get"], url_path="options")
     def options(self, request):
@@ -262,6 +270,7 @@ class EmployeeMasterViewSet(BaseOrgViewSet):
     serializer_class = EmployeeDirectorySerializer
     service_class = EmployeeService
     model = EmployeeMaster
+    required_permission = P.HR_MANAGEMENT.EMPLOYEE_VIEW
 
     def get_queryset(self):
         company = self._get_user_company()
