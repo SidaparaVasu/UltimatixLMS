@@ -164,7 +164,6 @@ export const useTrainingSessions = (params?: TrainingSessionListParams) =>
   useQuery({
     queryKey: TRAINING_QUERY_KEYS.sessions(params),
     queryFn:  () => trainingApi.getSessions(params),
-    enabled:  !!params?.calendar,
     staleTime: 60_000,
   });
 

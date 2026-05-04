@@ -171,6 +171,8 @@ export interface TrainingSessionListParams {
   session_type?: TrainingSessionType;
   start_date_after?: string;
   start_date_before?: string;
+  year?: number;
+  department?: number;
   page?: number;
   page_size?: number;
 }

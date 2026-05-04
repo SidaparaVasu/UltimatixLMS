@@ -12,7 +12,7 @@ import {
   useDeleteSession,
 } from '@/queries/training/useTrainingQueries';
 import { useDepartmentOptions } from '@/queries/admin/useAdminMasters';
-import { TrainingSession, TrainingSessionType } from '@/types/training.types';
+import { TrainingSession, TrainingSessionType, TrainingSessionListParams } from '@/types/training.types';
 
 // ── date-fns localizer ────────────────────────────────────────────────────
 
@@ -86,21 +86,27 @@ export default function TrainingCalendarPage() {
   const { data: deptOptions } = useDepartmentOptions();
   const allDepts = deptOptions ?? [];
 
-  // ── Resolve or create calendar ────────────────────────────────────────
+  // ── Build session query params ────────────────────────────────────────
+  // Always fetch sessions for the selected year.
+  // Department filter is optional — when empty, all departments are shown.
+  const sessionParams: TrainingSessionListParams = {
+    year:       selectedYear,
+    page_size:  500,
+    ...(selectedDept ? { department: Number(selectedDept) } : {}),
+  };
+
+  const { data: sessionsData, isLoading } = useTrainingSessions(sessionParams);
+  const sessions = sessionsData?.results ?? [];
+  const events   = useMemo(() => toEvents(sessions), [sessions]);
+
+  // ── Resolve calendar for creating new sessions ────────────────────────
+  // We still need a specific dept+year calendar to attach new sessions to.
   const { data: calendarsData } = useTrainingCalendars(
     selectedDept ? { year: selectedYear, department: Number(selectedDept) } : undefined
   );
   const createCalendar = useCreateCalendar();
-
   const calendarRecord = calendarsData?.results?.[0] ?? null;
   const calendarId     = calendarRecord?.id ?? null;
-
-  // ── Fetch sessions ────────────────────────────────────────────────────
-  const { data: sessionsData, isLoading } = useTrainingSessions(
-    calendarId ? { calendar: calendarId, page_size: 200 } : undefined
-  );
-  const sessions = sessionsData?.results ?? [];
-  const events   = useMemo(() => toEvents(sessions), [sessions]);
 
   const deleteSession = useDeleteSession();
 
@@ -181,6 +187,7 @@ export default function TrainingCalendarPage() {
           <button
             onClick={handleNewSession}
             disabled={!selectedDept}
+            title={!selectedDept ? 'Select a department to add a session' : undefined}
             style={{
               padding: '8px 18px', borderRadius: 'var(--radius-md)',
               border: 'none', background: 'var(--color-accent)', color: '#fff',
@@ -195,7 +202,7 @@ export default function TrainingCalendarPage() {
         <hr style={{ marginTop: '16px', border: 'none', borderTop: '1px solid var(--color-border)' }} />
       </div>
 
-      {/* Toolbar: Year + Department */}
+      {/* Toolbar: Year + Department filter */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <label style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>Year</label>
@@ -217,11 +224,20 @@ export default function TrainingCalendarPage() {
             onChange={e => setSelectedDept(e.target.value)}
             style={{ width: '200px', cursor: 'pointer' }}
           >
-            <option value="">Select department…</option>
+            <option value="">All departments</option>
             {allDepts.map(d => (
               <option key={d.id} value={String(d.id)}>{d.name}</option>
             ))}
           </select>
+          {selectedDept && (
+            <button
+              onClick={() => setSelectedDept('')}
+              style={{ fontSize: '12px', color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px' }}
+              title="Clear filter"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
         {/* Legend */}
@@ -237,62 +253,61 @@ export default function TrainingCalendarPage() {
         </div>
       </div>
 
-      {/* No department selected hint */}
+      {/* Hint when no dept selected — creating sessions requires a department */}
       {!selectedDept && (
         <div style={{
-          padding: '32px', textAlign: 'center',
-          border: '1px dashed var(--color-border)',
-          borderRadius: 'var(--radius-lg)',
-          color: 'var(--color-text-muted)', fontSize: '13px',
+          padding: '8px 14px', marginBottom: '16px',
+          background: 'color-mix(in srgb, var(--color-accent) 6%, transparent)',
+          border: '1px solid color-mix(in srgb, var(--color-accent) 20%, transparent)',
+          borderRadius: 'var(--radius-md)',
+          color: 'var(--color-text-secondary)', fontSize: '12px',
         }}>
-          Select a department to view and manage training sessions.
+          Showing all sessions for {selectedYear}. Select a department to add new sessions.
         </div>
       )}
 
-      {/* Calendar */}
-      {selectedDept && (
-        <div style={{ height: '680px' }}>
-          <style>{`
-            .rbc-calendar { font-family: var(--font-body); font-size: 13px; }
-            .rbc-header { padding: 8px 4px; font-size: 12px; font-weight: 600; color: var(--color-text-secondary); border-bottom: 1px solid var(--color-border); }
-            .rbc-month-view { border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; }
-            .rbc-day-bg + .rbc-day-bg { border-left: 1px solid var(--color-border); }
-            .rbc-month-row + .rbc-month-row { border-top: 1px solid var(--color-border); }
-            .rbc-off-range-bg { background: var(--color-surface-alt); }
-            .rbc-today { background: rgba(37,99,235,0.04); }
-            .rbc-date-cell { padding: 4px 6px; font-size: 12px; color: var(--color-text-secondary); }
-            .rbc-date-cell.rbc-off-range { color: var(--color-text-muted); }
-            .rbc-toolbar { margin-bottom: 16px; }
-            .rbc-toolbar button { font-size: 13px; font-weight: 500; color: var(--color-text-secondary); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 5px 12px; background: var(--color-surface); cursor: pointer; }
-            .rbc-toolbar button:hover { background: var(--color-surface-alt); }
-            .rbc-toolbar button.rbc-active { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
-            .rbc-toolbar .rbc-toolbar-label { font-size: 15px; font-weight: 700; color: var(--color-text-primary); }
-            .rbc-show-more { font-size: 11px; color: var(--color-accent); font-weight: 600; padding: 2px 4px; }
-            .rbc-event { padding: 0; background: transparent; border: none; }
-            .rbc-event:focus { outline: none; }
-            .rbc-event.rbc-selected { background: transparent; }
-            .rbc-slot-selection { background: rgba(37,99,235,0.10); }
-          `}</style>
+      {/* Calendar — always visible */}
+      <div style={{ height: '680px' }}>
+        <style>{`
+          .rbc-calendar { font-family: var(--font-body); font-size: 13px; }
+          .rbc-header { padding: 8px 4px; font-size: 12px; font-weight: 600; color: var(--color-text-secondary); border-bottom: 1px solid var(--color-border); }
+          .rbc-month-view { border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; }
+          .rbc-day-bg + .rbc-day-bg { border-left: 1px solid var(--color-border); }
+          .rbc-month-row + .rbc-month-row { border-top: 1px solid var(--color-border); }
+          .rbc-off-range-bg { background: var(--color-surface-alt); }
+          .rbc-today { background: rgba(37,99,235,0.04); }
+          .rbc-date-cell { padding: 4px 6px; font-size: 12px; color: var(--color-text-secondary); }
+          .rbc-date-cell.rbc-off-range { color: var(--color-text-muted); }
+          .rbc-toolbar { margin-bottom: 16px; }
+          .rbc-toolbar button { font-size: 13px; font-weight: 500; color: var(--color-text-secondary); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 5px 12px; background: var(--color-surface); cursor: pointer; }
+          .rbc-toolbar button:hover { background: var(--color-surface-alt); }
+          .rbc-toolbar button.rbc-active { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
+          .rbc-toolbar .rbc-toolbar-label { font-size: 15px; font-weight: 700; color: var(--color-text-primary); }
+          .rbc-show-more { font-size: 11px; color: var(--color-accent); font-weight: 600; padding: 2px 4px; }
+          .rbc-event { padding: 0; background: transparent; border: none; }
+          .rbc-event:focus { outline: none; }
+          .rbc-event.rbc-selected { background: transparent; }
+          .rbc-slot-selection { background: rgba(37,99,235,0.10); }
+        `}</style>
 
-          <Calendar
-            localizer={localizer}
-            events={events}
-            date={calendarDate}
-            view={view}
-            onNavigate={setCalendarDate}
-            onView={setView}
-            onSelectSlot={handleSelectSlot}
-            onSelectEvent={handleSelectEvent}
-            selectable
-            eventPropGetter={eventPropGetter}
-            components={{ event: EventComponent as any }}
-            views={['month', 'week', 'agenda']}
-            style={{ height: '100%' }}
-          />
-        </div>
-      )}
+        <Calendar
+          localizer={localizer}
+          events={events}
+          date={calendarDate}
+          view={view}
+          onNavigate={setCalendarDate}
+          onView={setView}
+          onSelectSlot={handleSelectSlot}
+          onSelectEvent={handleSelectEvent}
+          selectable={!!selectedDept}
+          eventPropGetter={eventPropGetter}
+          components={{ event: EventComponent as any }}
+          views={['month', 'week', 'agenda']}
+          style={{ height: '100%' }}
+        />
+      </div>
 
-      {/* Session Form Drawer */}
+      {/* Session Form Drawer — only available when a dept calendar is resolved */}
       {resolvedCalendarId > 0 && (
         <SessionFormDrawer
           open={formOpen}

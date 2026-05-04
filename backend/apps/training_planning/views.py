@@ -223,6 +223,16 @@ class TrainingCalendarViewSet(BaseTPViewSet):
     model = TrainingCalendar
     required_permission = P.LND_APPROVAL.TRAINING_CALENDAR_APPROVE
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        year = self.request.query_params.get('year')
+        department = self.request.query_params.get('department')
+        if year:
+            qs = qs.filter(year=year)
+        if department:
+            qs = qs.filter(department_id=department)
+        return qs.order_by('-year')
+
     def create(self, request, *args, **kwargs):
         employee = self._get_employee(request)
         if not employee:
@@ -248,6 +258,31 @@ class TrainingSessionViewSet(BaseTPViewSet):
     service_class = TrainingSessionService
     model = TrainingSession
     required_permission = P.HR_MANAGEMENT.TRAINING_PLAN_VIEW
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        calendar = self.request.query_params.get('calendar')
+        session_type = self.request.query_params.get('session_type')
+        start_after = self.request.query_params.get('start_date_after')
+        start_before = self.request.query_params.get('start_date_before')
+        year = self.request.query_params.get('year')
+        department = self.request.query_params.get('department')
+
+        if calendar:
+            qs = qs.filter(calendar_id=calendar)
+        if session_type:
+            qs = qs.filter(session_type=session_type)
+        if start_after:
+            qs = qs.filter(session_start_date__gte=start_after)
+        if start_before:
+            qs = qs.filter(session_start_date__lte=start_before)
+        # Allow filtering directly by year/department via calendar relation
+        if year:
+            qs = qs.filter(calendar__year=year)
+        if department:
+            qs = qs.filter(calendar__department_id=department)
+
+        return qs
 
 
 class TrainingSessionTrainerViewSet(BaseTPViewSet):
