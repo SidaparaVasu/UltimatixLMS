@@ -1,31 +1,40 @@
 import { ReactNode } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
+import type { PermissionCode } from '@/constants/permissions';
 
 interface RoleGuardProps {
   /**
    * Array of role codes allowed to access this route.
-   * If provided, the user must possess at least one of these roles.
+   * At least one must match. Kept for backward compatibility — prefer
+   * requiredPermissions for new routes.
    */
   allowedRoles?: string[];
-  
+
   /**
    * Array of permission codes required to access this route.
-   * If provided, the user must possess all of these permissions in at least one scope.
+   * The user must hold ALL listed permissions in at least one scope.
+   * Unauthenticated users are redirected to /login; unauthorised users
+   * to /unauthorized.
    */
-  requiredPermissions?: string[];
-  
+  requiredPermissions?: PermissionCode[];
+
   children?: ReactNode;
 }
 
 /**
- * RoleGuard provides role and permission-based access control for routes.
- * It dynamically evaluates the user's roles and permissions fetched from the backend.
+ * RoleGuard — route-level access control.
+ *
+ * Evaluation order:
+ *   1. Unauthenticated → /login
+ *   2. allowedRoles check (any match required)
+ *   3. requiredPermissions check (all must be held in at least one scope)
+ *   4. Pass through to <Outlet /> or children
  */
-export const RoleGuard = ({ 
-  allowedRoles = [], 
-  requiredPermissions = [], 
-  children 
+export const RoleGuard = ({
+  allowedRoles = [],
+  requiredPermissions = [],
+  children,
 }: RoleGuardProps) => {
   const { user, isAuthenticated } = useAuthStore();
 
@@ -45,10 +54,10 @@ export const RoleGuard = ({
       const scope = user.permissions[perm];
       if (!scope) return false;
       return (
-        scope.GLOBAL || 
-        scope.SELF || 
-        scope.COMPANY.length > 0 || 
-        scope.BUSINESS_UNIT.length > 0 || 
+        scope.GLOBAL ||
+        scope.SELF ||
+        scope.COMPANY.length > 0 ||
+        scope.BUSINESS_UNIT.length > 0 ||
         scope.DEPARTMENT.length > 0
       );
     });

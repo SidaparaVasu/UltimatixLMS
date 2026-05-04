@@ -7,6 +7,7 @@ import { ProtectedRoute } from '@/routes/ProtectedRoute';
 import { RoleGuard } from '@/routes/RoleGuard';
 import { useThemeStore } from '@/stores/themeStore';
 import { GlobalToast } from '@/components/layout/GlobalToast';
+import { PERMISSIONS } from '@/constants/permissions';
 
 // Lazy-loaded pages
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
@@ -42,6 +43,8 @@ const TrainingPlanFormPage = lazy(() => import('@/pages/admin/training/TrainingP
 const TrainingCalendarPage = lazy(() => import('@/pages/admin/training/TrainingCalendarPage'));
 const ApprovalsPage        = lazy(() => import('@/pages/admin/training/ApprovalsPage'));
 const NotificationsPage    = lazy(() => import('@/pages/NotificationsPage'));
+const RolesPage            = lazy(() => import('@/pages/admin/rbac/RolesPage'));
+const RoleDetailPage       = lazy(() => import('@/pages/admin/rbac/RoleDetailPage'));
 
 // Placeholder for pages that are not yet implemented
 const ComingSoon = () => (
@@ -88,12 +91,13 @@ export const AppRoutes = () => {
             
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
-            {/* Admin Routes Namespace (Protected by RoleGuard) */}
-            <Route element={<RoleGuard allowedRoles={['LMS_ADMIN', 'HR']} />}>
+            {/* Admin Routes Namespace
+                Minimum bar: EMPLOYEE_VIEW covers HR and admin users.
+                Individual routes add tighter guards where needed.        */}
+            <Route element={<RoleGuard requiredPermissions={[PERMISSIONS.EMPLOYEE_VIEW]} />}>
               <Route element={<AdminLayout />}>
-                <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
+                <Route path="/admin" element={<Navigate to="/admin/employees" replace />} />
                 <Route path="/admin/users" element={<ComingSoon />} />
-                <Route path="/admin/roles" element={<ComingSoon />} />
                 <Route path="/admin/reports" element={<ComingSoon />} />
                 <Route path="/admin/business-units" element={<BusinessUnitPage />} />
                 <Route path="/admin/departments" element={<DepartmentPage />} />
@@ -111,8 +115,14 @@ export const AppRoutes = () => {
                 <Route path="/admin/training-calendar" element={<TrainingCalendarPage />} />
                 <Route path="/admin/approvals" element={<ApprovalsPage />} />
                 <Route path="/admin/skill-gap" element={<ComingSoon />} />
+
+                {/* RBAC management — requires ROLE_VIEW */}
+                <Route element={<RoleGuard requiredPermissions={[PERMISSIONS.ROLE_VIEW]} />}>
+                  <Route path="/admin/roles" element={<RolesPage />} />
+                  <Route path="/admin/roles/:id" element={<RoleDetailPage />} />
+                </Route>
               </Route>
-              
+
               {/* Studio runs outside of standard AdminLayout for full screen */}
               <Route path="/admin/courses/builder/:id" element={<CourseBuilderStudio />} />
             </Route>
