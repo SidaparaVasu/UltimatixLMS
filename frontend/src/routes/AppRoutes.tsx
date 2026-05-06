@@ -42,6 +42,8 @@ const TrainingPlansPage    = lazy(() => import('@/pages/admin/training/TrainingP
 const TrainingPlanFormPage = lazy(() => import('@/pages/admin/training/TrainingPlanFormPage'));
 const TrainingCalendarPage = lazy(() => import('@/pages/admin/training/TrainingCalendarPage'));
 const ApprovalsPage        = lazy(() => import('@/pages/admin/training/ApprovalsPage'));
+const AssessmentReviewQueuePage = lazy(() => import('@/pages/admin/assessments/AssessmentReviewQueuePage'));
+const AssessmentReviewDetailPage = lazy(() => import('@/pages/admin/assessments/AssessmentReviewDetailPage'));
 const NotificationsPage    = lazy(() => import('@/pages/NotificationsPage'));
 const RolesPage            = lazy(() => import('@/pages/admin/rbac/RolesPage'));
 // RoleDetailPage is preserved for future use — unlinked from routing intentionally
@@ -116,6 +118,12 @@ export const AppRoutes = () => {
                 <Route path="/admin/training-calendar" element={<TrainingCalendarPage />} />
                 <Route path="/admin/approvals" element={<ApprovalsPage />} />
                 <Route path="/admin/skill-gap" element={<ComingSoon />} />
+
+                {/* Assessments — requires ASSESSMENT_REVIEW_MANAGE */}
+                <Route element={<RoleGuard requiredPermissions={[PERMISSIONS.ASSESSMENT_REVIEW_MANAGE]} />}>
+                  <Route path="/admin/assessments/review" element={<AssessmentReviewQueuePage />} />
+                  <Route path="/admin/assessments/review/:attemptId" element={<AssessmentReviewDetailPage />} />
+                </Route>
 
                 {/* RBAC management — requires ROLE_VIEW */}
                 <Route element={<RoleGuard requiredPermissions={[PERMISSIONS.ROLE_VIEW]} />}>

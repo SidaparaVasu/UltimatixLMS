@@ -29,6 +29,7 @@ import {
   CalendarDays,
   CheckCircle,
   UserCheck,
+  ClipboardCheck,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { getFullName, getInitials, getPrimaryRoleName } from "@/utils/user.utils";
@@ -127,11 +128,13 @@ const NAV_CONFIG: NavSection[] = [
       PERMISSIONS.SKILL_MANAGE,
       PERMISSIONS.SKILL_CATEGORY_MANAGE,
       PERMISSIONS.ASSESSMENT_MANAGE,
+      PERMISSIONS.ASSESSMENT_REVIEW_MANAGE,
     ],
     items: [
-      { label: "Courses",                icon: Blocks,        path: "/admin/courses",           requiredPermission: PERMISSIONS.COURSE_UPDATE },
-      { label: "Course Categories",      icon: BookMarked,    path: "/admin/course-categories", requiredPermission: PERMISSIONS.COURSE_CATEGORY_MANAGE },
-      { label: "Competencies & Skills",  icon: Brain,         path: "/admin/competency",        requiredPermission: PERMISSIONS.SKILL_MANAGE },
+      { label: "Courses",                icon: Blocks,         path: "/admin/courses",                requiredPermission: PERMISSIONS.COURSE_UPDATE },
+      { label: "Course Categories",      icon: BookMarked,     path: "/admin/course-categories",      requiredPermission: PERMISSIONS.COURSE_CATEGORY_MANAGE },
+      { label: "Competencies & Skills",  icon: Brain,          path: "/admin/competency",             requiredPermission: PERMISSIONS.SKILL_MANAGE },
+      { label: "Assessment Review",      icon: ClipboardCheck, path: "/admin/assessments/review",     requiredPermission: PERMISSIONS.ASSESSMENT_REVIEW_MANAGE },
     ],
   },
 
@@ -145,7 +148,6 @@ const NAV_CONFIG: NavSection[] = [
     ],
     items: [
       { label: "Roles",         icon: ShieldCheck, path: "/admin/roles",    requiredPermission: PERMISSIONS.ROLE_VIEW },
-      { label: "Reports",       icon: BarChart2,   path: "/admin/reports",  requiredPermission: PERMISSIONS.REPORTS_VIEW },
       { label: "Settings",      icon: Settings,    path: "/admin/settings", requiredPermission: PERMISSIONS.CONFIG_VIEW },
     ],
   },
@@ -154,7 +156,7 @@ const NAV_CONFIG: NavSection[] = [
   {
     title: "Analytics",
     items: [
-      { label: "Reports",     icon: ChartNoAxesColumn, path: "/reports" },
+      { label: "Reports",       icon: BarChart2,   path: "/admin/reports",  requiredPermission: PERMISSIONS.REPORTS_VIEW },
       { label: "Leaderboard", icon: Trophy,            path: "/leaderboard" },
     ],
   },
@@ -204,6 +206,7 @@ export const Sidebar = () => {
     [PERMISSIONS.SKILL_MANAGE]:              usePermission(PERMISSIONS.SKILL_MANAGE),
     [PERMISSIONS.SKILL_CATEGORY_MANAGE]:     usePermission(PERMISSIONS.SKILL_CATEGORY_MANAGE),
     [PERMISSIONS.ASSESSMENT_MANAGE]:         usePermission(PERMISSIONS.ASSESSMENT_MANAGE),
+    [PERMISSIONS.ASSESSMENT_REVIEW_MANAGE]:  usePermission(PERMISSIONS.ASSESSMENT_REVIEW_MANAGE),
     [PERMISSIONS.ROLE_VIEW]:                 usePermission(PERMISSIONS.ROLE_VIEW),
     [PERMISSIONS.REPORTS_VIEW]:              usePermission(PERMISSIONS.REPORTS_VIEW),
     [PERMISSIONS.CONFIG_VIEW]:               usePermission(PERMISSIONS.CONFIG_VIEW),
