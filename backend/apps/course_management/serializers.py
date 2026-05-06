@@ -164,11 +164,19 @@ class CourseDetailSerializer(CourseMasterSerializer):
 
 
 class CourseDiscussionReplySerializer(serializers.ModelSerializer):
-    author_name = serializers.CharField(source="created_by.user.get_full_name", read_only=True)
+    author_name = serializers.SerializerMethodField()
 
     class Meta:
         model = CourseDiscussionReply
         fields = "__all__"
+        read_only_fields = ["id", "created_by", "created_at"]
+
+    def get_author_name(self, obj):
+        try:
+            p = obj.created_by.user.profile
+            return f"{p.first_name} {p.last_name}".strip() or obj.created_by.user.username
+        except Exception:
+            return obj.created_by.user.username if obj.created_by else "Unknown"
 
 
 # --- STUDIO BULK SYNC SERIALIZERS ---
@@ -203,12 +211,24 @@ class CurriculumSyncSerializer(serializers.Serializer):
 
 
 class CourseDiscussionThreadSerializer(serializers.ModelSerializer):
-    author_name = serializers.CharField(source="created_by.user.get_full_name", read_only=True)
+    author_name = serializers.SerializerMethodField()
+    reply_count = serializers.SerializerMethodField()
     replies = CourseDiscussionReplySerializer(many=True, read_only=True)
 
     class Meta:
         model = CourseDiscussionThread
         fields = "__all__"
+        read_only_fields = ["id", "created_by", "created_at"]
+
+    def get_author_name(self, obj):
+        try:
+            p = obj.created_by.user.profile
+            return f"{p.first_name} {p.last_name}".strip() or obj.created_by.user.username
+        except Exception:
+            return obj.created_by.user.username if obj.created_by else "Unknown"
+
+    def get_reply_count(self, obj):
+        return obj.replies.count()
 
 
 # ── Course Participant Serializers ────────────────────────────────────────────

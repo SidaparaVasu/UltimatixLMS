@@ -11,6 +11,8 @@ import {
   CourseTagMap,
   CurriculumSyncPayload,
   TagMaster,
+  CourseDiscussionThread,
+  CourseDiscussionReply,
 } from "@/types/courses.types";
 
 /**
@@ -291,6 +293,61 @@ export const courseApi = {
       const response = await apiClient.delete(
         `/courses/courses/${courseId}/participants/${participantId}/`
       );
+      return handleApiResponse(response.data);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  // ── Discussion Threads ────────────────────────────────────────────────────
+
+  getDiscussionThreads: async (courseId: number) => {
+    try {
+      const response = await apiClient.get("/courses/discussion-threads/", {
+        params: { course: courseId, page_size: 100 },
+      });
+      return handleApiResponse<PaginatedResponse<CourseDiscussionThread>>(response.data, false);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  createDiscussionThread: async (data: {
+    course: number;
+    thread_title: string;
+    thread_body: string;
+  }) => {
+    try {
+      const response = await apiClient.post("/courses/discussion-threads/", data);
+      return handleApiResponse<CourseDiscussionThread>(response.data);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  deleteDiscussionThread: async (id: number) => {
+    try {
+      const response = await apiClient.delete(`/courses/discussion-threads/${id}/`);
+      return handleApiResponse(response.data);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  // ── Discussion Replies ────────────────────────────────────────────────────
+
+  createDiscussionReply: async (data: { thread: number; reply_text: string }) => {
+    try {
+      const response = await apiClient.post("/courses/discussion-replies/", data);
+      return handleApiResponse<CourseDiscussionReply>(response.data);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  deleteDiscussionReply: async (id: number) => {
+    try {
+      const response = await apiClient.delete(`/courses/discussion-replies/${id}/`);
       return handleApiResponse(response.data);
     } catch (error) {
       return handleApiError(error);

@@ -3,9 +3,9 @@
  * Rendered inside a full-screen portal from CoursePlayerPage.
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { ArrowLeft, PanelLeftClose, PanelLeftOpen, MessageSquare, BookOpen } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useCoursePlayerStore } from '@/stores/coursePlayerStore';
 import { DetailedEnrollmentProgress } from '@/types/player.types';
@@ -13,7 +13,10 @@ import { PlayerSidebar } from '@/components/learner/player/PlayerSidebar';
 import { ContentRenderer } from '@/components/learner/player/ContentRenderer';
 import { LessonCompleteOverlay } from '@/components/learner/player/LessonCompleteOverlay';
 import { CourseCompletionModal } from '@/components/learner/player/CourseCompletionModal';
+import { DiscussionPanel } from '@/components/learner/player/DiscussionPanel';
 import { useCourseDetail } from '@/queries/learner/useLearnerQueries';
+
+type PlayerTab = 'content' | 'discussion';
 
 interface PlayerLayoutProps {
   enrollment: DetailedEnrollmentProgress;
@@ -22,6 +25,8 @@ interface PlayerLayoutProps {
 export const PlayerLayout = ({ enrollment }: PlayerLayoutProps) => {
   const { isSidebarOpen, toggleSidebar, activeLessonId, completedLessonOverlay } =
     useCoursePlayerStore();
+
+  const [activeTab, setActiveTab] = useState<PlayerTab>('content');
 
   const { data: courseData } = useCourseDetail(enrollment.course);
 
@@ -135,18 +140,53 @@ export const PlayerLayout = ({ enrollment }: PlayerLayoutProps) => {
         </div>
 
         {/* Main content */}
-        <div className="flex-1 overflow-y-auto">
-          {activeLesson ? (
-            <ContentRenderer
-              lesson={activeLesson}
-              enrollment={enrollment}
-              nextLesson={nextLesson}
-            />
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-sm text-gray-500">Select a lesson to begin.</p>
-            </div>
-          )}
+        <div className="flex-1 overflow-y-auto flex flex-col">
+          {/* Tab bar */}
+          <div className="flex items-center gap-1 pt-1 pb-0 bg-white border-b border-gray-200 flex-shrink-0">
+            <button
+              onClick={() => setActiveTab('content')}
+              className={cn(
+                'flex items-center gap-1.5 px-6 py-2 text-xs font-semibold border-b-2 transition-colors',
+                activeTab === 'content'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              )}
+            >
+              <BookOpen className="h-3.5 w-3.5" />
+              Content
+            </button>
+            <button
+              onClick={() => setActiveTab('discussion')}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 transition-colors',
+                activeTab === 'discussion'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              )}
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+              Discussion
+            </button>
+          </div>
+
+          {/* Tab content */}
+          <div className="flex-1 overflow-y-auto">
+            {activeTab === 'content' ? (
+              activeLesson ? (
+                <ContentRenderer
+                  lesson={activeLesson}
+                  enrollment={enrollment}
+                  nextLesson={nextLesson}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-sm text-gray-500">Select a lesson to begin.</p>
+                </div>
+              )
+            ) : (
+              <DiscussionPanel courseId={enrollment.course} />
+            )}
+          </div>
         </div>
       </div>
 

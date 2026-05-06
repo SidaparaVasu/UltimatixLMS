@@ -282,21 +282,61 @@ class CourseResourceViewSet(BaseCourseViewSet):
 
 
 class CourseDiscussionThreadViewSet(BaseCourseViewSet):
-    queryset = CourseDiscussionThread.objects.all()
+    queryset = CourseDiscussionThread.objects.select_related(
+        'created_by__user__profile'
+    ).prefetch_related('replies__created_by__user__profile').order_by('-created_at')
     serializer_class = CourseDiscussionThreadSerializer
     service_class = CourseDiscussionThreadService
     model = CourseDiscussionThread
+    filterset_fields = ['course']
+    # Any enrolled learner can read AND post — only COURSE_UPDATE needed for edit/delete
     VIEW_PERMISSION = P.LEARNER_CORE.COURSE_VIEW
-    EDIT_PERMISSION = P.CONTENT_MANAGEMENT.COURSE_UPDATE
+    EDIT_PERMISSION = P.LEARNER_CORE.COURSE_VIEW  # posting is a learner action
+
+    def create(self, request, *args, **kwargs):
+        # Resolve the employee from the current user and inject as created_by
+        from apps.org_management.models import EmployeeMaster
+        employee = EmployeeMaster.objects.filter(user=request.user).first()
+        if not employee:
+            return error_response(message="Employee profile not found.")
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = self.service_class().create(
+            created_by=employee,
+            **{k: v for k, v in serializer.validated_data.items() if k != 'created_by'}
+        )
+        return created_response(
+            message="Discussion thread created successfully.",
+            data=self.get_serializer(instance).data
+        )
 
 
 class CourseDiscussionReplyViewSet(BaseCourseViewSet):
-    queryset = CourseDiscussionReply.objects.all()
+    queryset = CourseDiscussionReply.objects.select_related(
+        'created_by__user__profile'
+    ).order_by('created_at')
     serializer_class = CourseDiscussionReplySerializer
     service_class = CourseDiscussionReplyService
     model = CourseDiscussionReply
+    filterset_fields = ['thread']
     VIEW_PERMISSION = P.LEARNER_CORE.COURSE_VIEW
-    EDIT_PERMISSION = P.CONTENT_MANAGEMENT.COURSE_UPDATE
+    EDIT_PERMISSION = P.LEARNER_CORE.COURSE_VIEW  # posting is a learner action
+
+    def create(self, request, *args, **kwargs):
+        from apps.org_management.models import EmployeeMaster
+        employee = EmployeeMaster.objects.filter(user=request.user).first()
+        if not employee:
+            return error_response(message="Employee profile not found.")
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = self.service_class().create(
+            created_by=employee,
+            **{k: v for k, v in serializer.validated_data.items() if k != 'created_by'}
+        )
+        return created_response(
+            message="Reply posted successfully.",
+            data=self.get_serializer(instance).data
+        )
 
 
 class CourseParticipantViewSet(BaseCourseViewSet):

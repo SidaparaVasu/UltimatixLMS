@@ -211,3 +211,26 @@ export interface CourseCertificate {
 export interface EnrollRequest {
   course_id: number;
 }
+
+// ── Discussion ────────────────────────────────────────────────────────────────
+
+export interface CourseDiscussionReply {
+  id: number;
+  thread: number;
+  created_by: number;
+  reply_text: string;
+  created_at: string;
+  author_name: string;
+}
+
+export interface CourseDiscussionThread {
+  id: number;
+  course: number;
+  created_by: number;
+  thread_title: string;
+  thread_body: string;
+  created_at: string;
+  author_name: string;
+  reply_count: number;
+  replies: CourseDiscussionReply[];
+}
