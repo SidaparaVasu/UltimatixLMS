@@ -302,3 +302,61 @@ class AssessmentResult(models.Model):
 
     class Meta:
         db_table = "asmt_result"
+
+
+class AssessmentRetakeGrant(models.Model):
+    """
+    Records a one-time retake grant issued by an instructor/admin for a specific
+    employee on a specific assessment.
+
+    Each row represents one additional allowed attempt beyond the assessment's
+    default retake_limit. The attempt service counts these grants and adds them
+    to the base limit before enforcing the cap.
+
+    Example:
+        assessment.retake_limit = 1  (default — one attempt)
+        AssessmentRetakeGrant rows for this employee+assessment = 1
+        → effective limit = 2  (one retake allowed)
+    """
+    assessment = models.ForeignKey(
+        AssessmentMaster,
+        on_delete=models.CASCADE,
+        related_name="retake_grants",
+        help_text="The assessment this grant applies to."
+    )
+    employee = models.ForeignKey(
+        "org_management.EmployeeMaster",
+        on_delete=models.CASCADE,
+        related_name="retake_grants",
+        help_text="The learner who is granted the extra attempt."
+    )
+    granted_by = models.ForeignKey(
+        "org_management.EmployeeMaster",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="issued_retake_grants",
+        help_text="Instructor or admin who issued the grant."
+    )
+    note = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Optional reason for granting the retake."
+    )
+    granted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "asmt_retake_grant"
+        verbose_name = "Assessment Retake Grant"
+        verbose_name_plural = "Assessment Retake Grants"
+        ordering = ["-granted_at"]
+        indexes = [
+            models.Index(fields=["assessment", "employee"], name="idx_retake_grant_asmt_emp"),
+        ]
+
+    def __str__(self):
+        return (
+            f"RetakeGrant<{self.employee.employee_code} → "
+            f"{self.assessment.title} by {self.granted_by}>"
+        )

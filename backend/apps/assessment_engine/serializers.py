@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import (
     AssessmentMaster, QuestionBank, QuestionOption, 
     AssessmentQuestionMapping, AssessmentAttempt, 
-    UserAnswer, AssessmentResult
+    UserAnswer, AssessmentResult, AssessmentRetakeGrant
 )
 
 # --- STUDIO CONTEXT (Instructors) ---
@@ -75,9 +75,11 @@ class AssessmentLearnerSerializer(serializers.ModelSerializer):
     No questions, no correct answers — just the info needed for the intro screen.
     Also includes attempt history for the current user (injected via context).
     """
-    question_count = serializers.SerializerMethodField()
-    attempts_used = serializers.SerializerMethodField()
-    attempts_remaining = serializers.SerializerMethodField()
+    question_count      = serializers.SerializerMethodField()
+    attempts_used       = serializers.SerializerMethodField()
+    attempts_remaining  = serializers.SerializerMethodField()
+    last_result_status  = serializers.SerializerMethodField()
+    last_attempt_id     = serializers.SerializerMethodField()
 
     class Meta:
         model = AssessmentMaster
@@ -86,16 +88,20 @@ class AssessmentLearnerSerializer(serializers.ModelSerializer):
             "duration_minutes", "passing_percentage",
             "retake_limit", "is_randomized", "negative_marking_enabled",
             "question_count", "attempts_used", "attempts_remaining",
+            "last_result_status", "last_attempt_id",
         ]
+
+    def _get_employee(self, obj):
+        request = self.context.get('request')
+        if not request or not hasattr(request.user, 'employee_record'):
+            return None
+        return request.user.employee_record.first()
 
     def get_question_count(self, obj):
         return obj.question_mappings.count()
 
     def _get_attempts_used(self, obj):
-        request = self.context.get('request')
-        if not request or not hasattr(request.user, 'employee_record'):
-            return 0
-        employee = request.user.employee_record.first()
+        employee = self._get_employee(obj)
         if not employee:
             return 0
         return AssessmentAttempt.objects.filter(
@@ -107,8 +113,46 @@ class AssessmentLearnerSerializer(serializers.ModelSerializer):
         return self._get_attempts_used(obj)
 
     def get_attempts_remaining(self, obj):
+        from .repositories import RetakeGrantRepository
+        employee = self._get_employee(obj)
+        extra = RetakeGrantRepository().count_grants(employee.id, obj.id) if employee else 0
         used = self._get_attempts_used(obj)
-        return max(0, obj.retake_limit - used)
+        return max(0, obj.retake_limit + extra - used)
+
+    def get_last_result_status(self, obj):
+        """
+        Returns the result status of the most recent COMPLETED attempt:
+        'PASS', 'FAIL', 'PENDING', or None if no attempt exists.
+        """
+        employee = self._get_employee(obj)
+        if not employee:
+            return None
+        last_attempt = AssessmentAttempt.objects.filter(
+            assessment=obj,
+            employee=employee,
+            status="COMPLETED",
+        ).order_by('-started_at').first()
+        if not last_attempt:
+            return None
+        try:
+            return last_attempt.result.status
+        except Exception:
+            return None
+
+    def get_last_attempt_id(self, obj):
+        """
+        Returns the UUID of the most recent COMPLETED attempt, or None.
+        Used by the frontend to fetch the result directly without starting a new attempt.
+        """
+        employee = self._get_employee(obj)
+        if not employee:
+            return None
+        last_attempt = AssessmentAttempt.objects.filter(
+            assessment=obj,
+            employee=employee,
+            status="COMPLETED",
+        ).order_by('-started_at').first()
+        return str(last_attempt.id) if last_attempt else None
 
 
 class QuestionOptionLearnerSerializer(serializers.ModelSerializer):
@@ -180,18 +224,20 @@ class UserAnswerSubmitSerializer(serializers.ModelSerializer):
 
 class AssessmentResultSerializer(serializers.ModelSerializer):
     """
-    Result with enriched stats for the result screen.
+    Result with enriched stats and per-question review for the result screen.
     """
     total_questions = serializers.SerializerMethodField()
     attempted_count = serializers.SerializerMethodField()
-    correct_count = serializers.SerializerMethodField()
+    correct_count   = serializers.SerializerMethodField()
+    answers         = serializers.SerializerMethodField()
 
     class Meta:
         model = AssessmentResult
         fields = [
             "id", "attempt", "total_score", "score_percentage",
             "status", "grading_type", "instructor_feedback",
-            "graded_at", "total_questions", "attempted_count", "correct_count",
+            "graded_at", "total_questions", "attempted_count",
+            "correct_count", "answers",
         ]
 
     def get_total_questions(self, obj):
@@ -201,14 +247,60 @@ class AssessmentResultSerializer(serializers.ModelSerializer):
         return obj.attempt.answers.filter(status="ATTEMPTED").count()
 
     def get_correct_count(self, obj):
-        """
-        Count questions where earned_points > 0 (auto-graded correct answers).
-        Only meaningful for auto-graded attempts.
-        """
         return obj.attempt.answers.filter(
             is_auto_graded=True,
             earned_points__gt=0
         ).count()
+
+    def get_answers(self, obj):
+        """
+        Returns per-question review data for the Coursera-style result screen.
+        Each entry includes:
+          - question text, type, scenario
+          - learner's selected options / answer text
+          - correct options (for auto-graded questions)
+          - earned_points, max_points, is_auto_graded
+        """
+        answers = obj.attempt.answers.select_related(
+            'question'
+        ).prefetch_related(
+            'question__options',
+            'selected_options',
+        ).order_by('id')
+
+        result = []
+        for answer in answers:
+            q = answer.question
+            mapping = AssessmentQuestionMapping.objects.filter(
+                assessment=obj.attempt.assessment,
+                question=q,
+            ).first()
+            max_pts = float(mapping.weight_points) if mapping else 1.0
+
+            correct_options = [
+                {"id": o.id, "option_text": o.option_text}
+                for o in q.options.filter(is_correct=True).order_by("display_order")
+            ]
+            selected_options = [
+                {"id": o.id, "option_text": o.option_text}
+                for o in answer.selected_options.all().order_by("display_order")
+            ]
+
+            result.append({
+                "question_id":       str(q.id),
+                "question_text":     q.question_text,
+                "question_type":     q.question_type,
+                "scenario_text":     q.scenario_text,
+                "explanation_text":  q.explanation_text,
+                "answer_text":       answer.answer_text,
+                "status":            answer.status,
+                "is_auto_graded":    answer.is_auto_graded,
+                "earned_points":     float(answer.earned_points),
+                "max_points":        max_pts,
+                "selected_options":  selected_options,
+                "correct_options":   correct_options,
+            })
+        return result
 
 
 # --- WRITABLE SERIALIZERS (Studio — Question create/update with nested options) ---
@@ -249,3 +341,166 @@ class QuestionBankWriteSerializer(serializers.ModelSerializer):
                 opt.setdefault("display_order", i + 1)
                 QuestionOption.objects.create(question=instance, **opt)
         return instance
+
+
+# ---------------------------------------------------------------------------
+# REVIEW CONTEXT (Instructor / Admin manual grading)
+# ---------------------------------------------------------------------------
+
+class ReviewAnswerSerializer(serializers.ModelSerializer):
+    """
+    Full answer detail for the review page.
+    Includes question text, learner's response, options with correct flags,
+    and current earned points.
+    """
+    question_text     = serializers.CharField(source="question.question_text", read_only=True)
+    question_type     = serializers.CharField(source="question.question_type", read_only=True)
+    scenario_text     = serializers.CharField(source="question.scenario_text", read_only=True)
+    explanation_text  = serializers.CharField(source="question.explanation_text", read_only=True)
+    max_points        = serializers.SerializerMethodField()
+    selected_options  = serializers.SerializerMethodField()
+    correct_options   = serializers.SerializerMethodField()
+
+    class Meta:
+        model = UserAnswer
+        fields = [
+            "id", "question", "question_text", "question_type",
+            "scenario_text", "explanation_text",
+            "status", "answer_text", "uploaded_file",
+            "is_auto_graded", "earned_points", "max_points",
+            "selected_options", "correct_options",
+        ]
+
+    def get_max_points(self, obj):
+        mapping = AssessmentQuestionMapping.objects.filter(
+            assessment=obj.attempt.assessment,
+            question=obj.question,
+        ).first()
+        return float(mapping.weight_points) if mapping else 1.0
+
+    def get_selected_options(self, obj):
+        return [
+            {"id": o.id, "option_text": o.option_text}
+            for o in obj.selected_options.all().order_by("display_order")
+        ]
+
+    def get_correct_options(self, obj):
+        return [
+            {"id": o.id, "option_text": o.option_text}
+            for o in obj.question.options.filter(is_correct=True).order_by("display_order")
+        ]
+
+
+class ReviewAttemptListSerializer(serializers.ModelSerializer):
+    """
+    Compact row for the review queue list page.
+    """
+    learner_name      = serializers.SerializerMethodField()
+    employee_code     = serializers.CharField(source="employee.employee_code", read_only=True)
+    assessment_title  = serializers.CharField(source="assessment.title", read_only=True)
+    course_title      = serializers.SerializerMethodField()
+    auto_score        = serializers.SerializerMethodField()
+    total_points      = serializers.SerializerMethodField()
+    pending_count     = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AssessmentAttempt
+        fields = [
+            "id", "employee_code", "learner_name",
+            "assessment_title", "course_title",
+            "submitted_at", "auto_score", "total_points", "pending_count",
+        ]
+
+    def get_learner_name(self, obj):
+        try:
+            p = obj.employee.user.profile
+            return f"{p.first_name} {p.last_name}".strip() or obj.employee.user.username
+        except Exception:
+            return obj.employee.user.username
+
+    def get_course_title(self, obj):
+        return obj.assessment.course.course_title if obj.assessment.course else None
+
+    def get_auto_score(self, obj):
+        return float(
+            obj.answers.filter(is_auto_graded=True)
+            .aggregate(total=__import__('django.db.models', fromlist=['Sum']).Sum('earned_points'))
+            ['total'] or 0
+        )
+
+    def get_total_points(self, obj):
+        from django.db.models import Sum
+        return float(
+            AssessmentQuestionMapping.objects.filter(assessment=obj.assessment)
+            .aggregate(total=Sum('weight_points'))['total'] or 0
+        )
+
+    def get_pending_count(self, obj):
+        return obj.answers.filter(is_auto_graded=False, status="ATTEMPTED").count()
+
+
+class ReviewAttemptDetailSerializer(serializers.ModelSerializer):
+    """
+    Full attempt detail for the grading page.
+    """
+    learner_name     = serializers.SerializerMethodField()
+    employee_code    = serializers.CharField(source="employee.employee_code", read_only=True)
+    assessment_title = serializers.CharField(source="assessment.title", read_only=True)
+    course_title     = serializers.SerializerMethodField()
+    passing_percentage = serializers.DecimalField(
+        source="assessment.passing_percentage", max_digits=5, decimal_places=2, read_only=True
+    )
+    answers          = ReviewAnswerSerializer(many=True, read_only=True)
+    result           = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AssessmentAttempt
+        fields = [
+            "id", "employee_code", "learner_name",
+            "assessment", "assessment_title", "course_title",
+            "passing_percentage", "submitted_at", "answers", "result",
+        ]
+
+    def get_learner_name(self, obj):
+        try:
+            p = obj.employee.user.profile
+            return f"{p.first_name} {p.last_name}".strip() or obj.employee.user.username
+        except Exception:
+            return obj.employee.user.username
+
+    def get_course_title(self, obj):
+        return obj.assessment.course.course_title if obj.assessment.course else None
+
+    def get_result(self, obj):
+        try:
+            r = obj.result
+            return {
+                "id": r.id,
+                "total_score": float(r.total_score),
+                "score_percentage": float(r.score_percentage),
+                "status": r.status,
+                "grading_type": r.grading_type,
+                "instructor_feedback": r.instructor_feedback,
+                "graded_at": r.graded_at,
+            }
+        except AssessmentResult.DoesNotExist:
+            return None
+
+
+class ManualGradeItemSerializer(serializers.Serializer):
+    """One scored answer in the manual grading payload."""
+    answer_id   = serializers.IntegerField()
+    earned_points = serializers.DecimalField(max_digits=5, decimal_places=2)
+
+
+class ManualGradeSubmitSerializer(serializers.Serializer):
+    """Payload for POST /review/:attemptId/submit/"""
+    grades               = ManualGradeItemSerializer(many=True)
+    instructor_feedback  = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class RetakeGrantSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AssessmentRetakeGrant
+        fields = ["id", "assessment", "employee", "granted_by", "note", "granted_at"]
+        read_only_fields = ["id", "granted_by", "granted_at"]

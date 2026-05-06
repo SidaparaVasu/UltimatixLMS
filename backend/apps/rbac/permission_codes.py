@@ -57,16 +57,17 @@ class PermissionCodes:
 
     class CONTENT_MANAGEMENT:
         """Course authoring, skill management, and assessment creation."""
-        COURSE_CREATE          = "COURSE_CREATE"
-        COURSE_UPDATE          = "COURSE_UPDATE"
-        COURSE_DELETE          = "COURSE_DELETE"
-        COURSE_PUBLISH         = "COURSE_PUBLISH"
-        COURSE_BUILDER_ACCESS  = "COURSE_BUILDER_ACCESS"
-        COURSE_CATEGORY_MANAGE = "COURSE_CATEGORY_MANAGE"
-        ASSESSMENT_MANAGE      = "ASSESSMENT_MANAGE"
-        SKILL_MANAGE           = "SKILL_MANAGE"
-        SKILL_CATEGORY_MANAGE  = "SKILL_CATEGORY_MANAGE"
-        SKILL_MAPPING_MANAGE   = "SKILL_MAPPING_MANAGE"
+        COURSE_CREATE             = "COURSE_CREATE"
+        COURSE_UPDATE             = "COURSE_UPDATE"
+        COURSE_DELETE             = "COURSE_DELETE"
+        COURSE_PUBLISH            = "COURSE_PUBLISH"
+        COURSE_BUILDER_ACCESS     = "COURSE_BUILDER_ACCESS"
+        COURSE_CATEGORY_MANAGE    = "COURSE_CATEGORY_MANAGE"
+        ASSESSMENT_MANAGE         = "ASSESSMENT_MANAGE"
+        ASSESSMENT_REVIEW_MANAGE  = "ASSESSMENT_REVIEW_MANAGE"
+        SKILL_MANAGE              = "SKILL_MANAGE"
+        SKILL_CATEGORY_MANAGE     = "SKILL_CATEGORY_MANAGE"
+        SKILL_MAPPING_MANAGE      = "SKILL_MAPPING_MANAGE"
 
     class SYSTEM_ADMINISTRATION:
         """RBAC management, system config, audit, and reporting — assigned to LMS_ADMIN."""

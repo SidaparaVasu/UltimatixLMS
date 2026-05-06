@@ -391,6 +391,19 @@
   },
   {
     "model": "rbac.permissionmaster",
+    "pk": 44,
+    "fields": {
+      "permission_group": 4,
+      "permission_name": "Review Assessments",
+      "permission_code": "ASSESSMENT_REVIEW_MANAGE",
+      "description": "Allows reviewing and manually grading pending assessment submissions.",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
     "pk": 31,
     "fields": {
       "permission_group": 4,

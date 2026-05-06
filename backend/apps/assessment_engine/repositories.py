@@ -2,7 +2,7 @@ from common.repositories.base import BaseRepository
 from .models import (
     AssessmentMaster, QuestionBank, QuestionOption,
     AssessmentQuestionMapping, AssessmentAttempt,
-    UserAnswer, AssessmentResult
+    UserAnswer, AssessmentResult, AssessmentRetakeGrant
 )
 
 
@@ -48,3 +48,28 @@ class AnswerRepository(BaseRepository[UserAnswer]):
 
 class ResultRepository(BaseRepository[AssessmentResult]):
     model = AssessmentResult
+
+
+class RetakeGrantRepository(BaseRepository[AssessmentRetakeGrant]):
+    model = AssessmentRetakeGrant
+
+    def count_grants(self, employee_id: int, assessment_id: int) -> int:
+        """Returns the number of extra retake grants for this employee+assessment."""
+        return self.model.objects.filter(
+            employee_id=employee_id,
+            assessment_id=assessment_id,
+        ).count()
+
+    def create_grant(
+        self,
+        assessment_id: int,
+        employee_id: int,
+        granted_by_id: int | None = None,
+        note: str = "",
+    ) -> AssessmentRetakeGrant:
+        return self.model.objects.create(
+            assessment_id=assessment_id,
+            employee_id=employee_id,
+            granted_by_id=granted_by_id,
+            note=note,
+        )

@@ -57,14 +57,20 @@ class AttemptService(BaseService):
         if active:
             return active
 
-        # 2. Check retake limit
+        # 2. Check retake limit — base limit + any admin-granted extra attempts
         history_count = self.repository.filter(
-            employee_id=employee_id, 
+            employee_id=employee_id,
             assessment_id=assessment_id
         ).count()
-        
-        if history_count >= assessment.retake_limit:
-            raise ValueError(f"Retake limit reached. Maximum {assessment.retake_limit} attempts allowed.")
+
+        from .repositories import RetakeGrantRepository
+        extra_grants = RetakeGrantRepository().count_grants(employee_id, assessment_id)
+        effective_limit = assessment.retake_limit + extra_grants
+
+        if history_count >= effective_limit:
+            raise ValueError(
+                f"Retake limit reached. Maximum {effective_limit} attempt(s) allowed."
+            )
 
         # 3. Create attempt
         expires_at = timezone.now() + timedelta(minutes=assessment.duration_minutes)
@@ -252,3 +258,196 @@ class GradingService(BaseService):
             # Negative Marking Enabled: Flat penalty for any mistake
             penalty = -(weight * (neg_perc / Decimal("100.00")))
             return penalty
+
+
+class ReviewService:
+    """
+    Handles instructor manual grading and retake grant operations.
+    """
+
+    @transaction.atomic
+    def submit_manual_grades(
+        self,
+        attempt_id: str,
+        grades: list,
+        instructor_feedback: str,
+        graded_by_employee,
+    ):
+        """
+        Applies manual scores to pending answers, recalculates the final result,
+        marks the quiz lesson complete (Option 3 — fail doesn't block progress),
+        and sends a notification to the learner.
+
+        grades: list of dicts with keys 'answer_id' and 'earned_points'
+        """
+        from decimal import Decimal
+        from django.utils import timezone
+        from .models import UserAnswer, AssessmentResult, AssessmentQuestionMapping
+
+        attempt = AttemptRepository().get_by_id(attempt_id)
+        if not attempt:
+            raise ValueError("Attempt not found.")
+        if attempt.status != "COMPLETED":
+            raise ValueError("Attempt is not yet completed.")
+
+        # 1. Apply manual scores to each pending answer
+        answer_map = {str(a.id): a for a in attempt.answers.all()}
+        for grade in grades:
+            answer = answer_map.get(str(grade['answer_id']))
+            if not answer:
+                continue
+            if answer.is_auto_graded:
+                continue  # never override auto-graded answers
+            answer.earned_points = Decimal(str(grade['earned_points']))
+            answer.is_auto_graded = False  # stays False — manually graded
+            answer.save(update_fields=['earned_points'])
+
+        # 2. Recalculate total score
+        all_answers = attempt.answers.all()
+        total_earned = sum(a.earned_points for a in all_answers)
+        total_earned = max(Decimal("0.00"), total_earned)
+
+        mappings_total = sum(
+            m.weight_points
+            for m in AssessmentQuestionMapping.objects.filter(assessment=attempt.assessment)
+        )
+        score_pct = (total_earned / mappings_total * 100) if mappings_total > 0 else Decimal("0.00")
+
+        passing = attempt.assessment.passing_percentage
+        result_status = "PASS" if score_pct >= passing else "FAIL"
+
+        # 3. Update or create the result record
+        result, _ = AssessmentResult.objects.update_or_create(
+            attempt=attempt,
+            defaults={
+                "total_score":          total_earned,
+                "score_percentage":     score_pct,
+                "status":               result_status,
+                "grading_type":         "MANUALLY_GRADED",
+                "instructor_feedback":  instructor_feedback,
+                "graded_by":            graded_by_employee,
+                "graded_at":            timezone.now(),
+            },
+        )
+
+        # 4. Mark quiz lesson complete regardless of pass/fail (Option 3)
+        self._mark_lesson_complete(attempt)
+
+        # 5. Send notification to learner
+        self._notify_learner(attempt, result)
+
+        return result
+
+    def _mark_lesson_complete(self, attempt):
+        """
+        Marks the quiz lesson as complete in the learner's enrollment progress.
+        Called after manual grading — pass or fail, progress is never blocked.
+        """
+        from apps.learning_progress.models import (
+            UserCourseEnrollment, UserLessonProgress, UserContentProgress
+        )
+        from apps.learning_progress.constants import ProgressStatus
+        from django.utils import timezone
+
+        lesson = attempt.assessment.lesson
+        if not lesson:
+            return  # standalone assessment — no lesson to mark
+
+        # Find the enrollment for this employee + course
+        course = attempt.assessment.course
+        if not course:
+            return
+
+        enrollment = UserCourseEnrollment.objects.filter(
+            employee=attempt.employee,
+            course=course,
+        ).first()
+        if not enrollment:
+            return
+
+        # Find or create lesson progress
+        lesson_progress, _ = UserLessonProgress.objects.get_or_create(
+            enrollment=enrollment,
+            lesson=lesson,
+            defaults={"status": ProgressStatus.IN_PROGRESS},
+        )
+
+        if lesson_progress.status == ProgressStatus.COMPLETED:
+            return  # already done
+
+        lesson_progress.status = ProgressStatus.COMPLETED
+        lesson_progress.completed_at = timezone.now()
+        lesson_progress.save(update_fields=["status", "completed_at"])
+
+        # Recalculate overall course progress
+        from apps.learning_progress.services import UserCourseEnrollmentService
+        UserCourseEnrollmentService().update_course_progress(enrollment.id)
+
+    def _notify_learner(self, attempt, result):
+        """
+        Sends an in-app notification to the learner with their result.
+        """
+        try:
+            from apps.notifications.models import Notification
+            from apps.notifications.constants import NotificationType
+            score_pct = float(result.score_percentage)
+            passed = result.status == "PASS"
+            status_label = "Passed ✓" if passed else "Failed ✗"
+
+            # Build deep-link: find the enrollment to construct /learn/:enrollmentId
+            from apps.learning_progress.models import UserCourseEnrollment
+            enrollment = UserCourseEnrollment.objects.filter(
+                employee=attempt.employee,
+                course=attempt.assessment.course,
+            ).first()
+            deep_link = f"/learn/{enrollment.id}" if enrollment else ""
+
+            if passed:
+                body = (
+                    f"Your submission for \"{attempt.assessment.title}\" has been reviewed. "
+                    f"You scored {score_pct:.1f}% — {status_label}. "
+                    f"Congratulations on passing!"
+                )
+            else:
+                body = (
+                    f"Your submission for \"{attempt.assessment.title}\" has been reviewed. "
+                    f"You scored {score_pct:.1f}% — {status_label}. "
+                    f"Please contact your instructor if you need a retake."
+                )
+
+            Notification.objects.create(
+                user=attempt.employee.user,
+                notification_type=NotificationType.ASSESSMENT_RESULT,
+                title="Assessment result available",
+                message=body,
+                action_url=deep_link,
+                entity_type="AssessmentAttempt",
+                entity_id=str(attempt.id),
+            )
+        except Exception:
+            # Notification failure must never break the grading transaction
+            pass
+
+    def grant_retake(
+        self,
+        attempt_id: str,
+        granted_by_employee,
+        note: str = "",
+    ):
+        """
+        Issues one additional retake grant for the employee+assessment
+        associated with the given attempt.
+        """
+        from .repositories import RetakeGrantRepository
+
+        attempt = AttemptRepository().get_by_id(attempt_id)
+        if not attempt:
+            raise ValueError("Attempt not found.")
+
+        grant = RetakeGrantRepository().create_grant(
+            assessment_id=attempt.assessment_id,
+            employee_id=attempt.employee_id,
+            granted_by_id=granted_by_employee.id if granted_by_employee else None,
+            note=note,
+        )
+        return grant
