@@ -13,16 +13,19 @@ class AssessmentMaster(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, default="")
     course = models.ForeignKey(
-        CourseMaster, 
-        on_delete=models.CASCADE, 
-        related_name="assessments"
+        CourseMaster,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assessments",
+        help_text="Optional: link to a course. Leave blank for standalone assessments."
     )
     # Optional: Link directly to a lesson if it's a mid-module quiz
     lesson = models.ForeignKey(
-        CourseLesson, 
-        on_delete=models.SET_NULL, 
-        null=True, 
-        blank=True, 
+        CourseLesson,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name="quizzes"
     )
     

@@ -43,7 +43,7 @@ export interface AssessmentDetail {
   id: number;
   title: string;
   lesson: number | null;
-  course: number;
+  course: number | null;  // null for standalone assessments
   duration_minutes: number;
   passing_percentage: number;
   retake_limit: number;
@@ -106,18 +106,20 @@ export const assessmentApi = {
   },
 
   /**
-   * Create a new AssessmentMaster linked to a lesson.
+   * Create a new AssessmentMaster.
+   * Pass lessonId + courseId for course-linked assessments,
+   * or omit both for a standalone assessment.
    */
   createAssessment: async (
-    lessonId: number,
-    courseId: number,
-    config: AssessmentConfig
+    config: AssessmentConfig,
+    lessonId?: number | null,
+    courseId?: number | null,
   ): Promise<AssessmentDetail | null> => {
     try {
       const response = await apiClient.post("/assessment/studio/", {
-        lesson: lessonId,
-        course: courseId,
-        title: config.title || "Lesson Quiz",
+        ...(courseId ? { course: courseId } : {}),
+        ...(lessonId ? { lesson: lessonId } : {}),
+        title: config.title || "Assessment",
         duration_minutes: config.duration_minutes,
         passing_percentage: config.passing_percentage,
         retake_limit: config.retake_limit,

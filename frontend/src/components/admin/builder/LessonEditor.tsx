@@ -231,10 +231,11 @@ export const LessonEditor: React.FC<LessonEditorProps> = ({ node, courseId, onSa
       // 1. Create or update AssessmentMaster
       let currentAssessmentId = assessmentId;
       if (!currentAssessmentId) {
-        const created = await assessmentApi.createAssessment(lessonDbId, resolvedCourseId, {
-          ...assessmentConfig,
-          title: `${title} — Quiz`,
-        });
+        const created = await assessmentApi.createAssessment(
+          { ...assessmentConfig, title: `${title} — Quiz` },
+          lessonDbId,
+          resolvedCourseId,
+        );
         if (!created) { setQuizSaveError('Failed to create assessment. Please try again.'); return null; }
         currentAssessmentId = created.id;
         setAssessmentId(created.id);

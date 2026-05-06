@@ -29,9 +29,15 @@ class AssessmentStudioViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         lesson_id = self.request.query_params.get('lesson_id')
+        course_id = self.request.query_params.get('course_id')
+        standalone = self.request.query_params.get('standalone')  # ?standalone=true → no course
         if lesson_id:
             qs = qs.filter(lesson_id=lesson_id)
-        return qs
+        if course_id:
+            qs = qs.filter(course_id=course_id)
+        if standalone and standalone.lower() == 'true':
+            qs = qs.filter(course__isnull=True)
+        return qs.order_by('-created_at')
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
@@ -237,10 +243,10 @@ class AssessmentLearnerViewSet(viewsets.ReadOnlyModelViewSet):
     """
     Safe read-only endpoint for learners to fetch assessment metadata.
 
-    GET /api/v1/assessment/learner/?lesson_id=<id>
-      Returns assessment info for a lesson: title, duration, passing %,
-      retake limit, question count, attempts used/remaining.
-      No questions, no correct answers exposed.
+    GET /api/v1/assessment/learner/                    → all published assessments
+    GET /api/v1/assessment/learner/?lesson_id=<id>     → assessments for a lesson
+    GET /api/v1/assessment/learner/?course_id=<id>     → assessments for a course
+    GET /api/v1/assessment/learner/?standalone=true    → assessments with no course
     """
     queryset = AssessmentMaster.objects.filter(status__in=['PUBLISHED', 'DRAFT'])
     serializer_class = AssessmentLearnerSerializer
@@ -249,9 +255,15 @@ class AssessmentLearnerViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         lesson_id = self.request.query_params.get('lesson_id')
+        course_id = self.request.query_params.get('course_id')
+        standalone = self.request.query_params.get('standalone')
         if lesson_id:
             qs = qs.filter(lesson_id=lesson_id)
-        return qs
+        if course_id:
+            qs = qs.filter(course_id=course_id)
+        if standalone and standalone.lower() == 'true':
+            qs = qs.filter(course__isnull=True)
+        return qs.order_by('-created_at')
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
