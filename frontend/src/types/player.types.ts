@@ -101,6 +101,25 @@ export interface AssessmentInfo {
   question_count: number;
   attempts_used: number;
   attempts_remaining: number;
+  /** Status of the most recent completed attempt: 'PASS' | 'FAIL' | 'PENDING' | null */
+  last_result_status: 'PASS' | 'FAIL' | 'PENDING' | null;
+  /** UUID of the most recent completed attempt, used to fetch results directly */
+  last_attempt_id: string | null;
+}
+
+export interface AttemptResultAnswer {
+  question_id: string;
+  question_text: string;
+  question_type: QuestionType;
+  scenario_text: string;
+  explanation_text: string;
+  answer_text: string;
+  status: 'NOT_VISITED' | 'ATTEMPTED' | 'TIMED_OUT';
+  is_auto_graded: boolean;
+  earned_points: number;
+  max_points: number;
+  selected_options: { id: number; option_text: string }[];
+  correct_options: { id: number; option_text: string }[];
 }
 
 export interface AttemptResult {
@@ -116,6 +135,8 @@ export interface AttemptResult {
   total_questions: number;
   attempted_count: number;
   correct_count: number;
+  // Per-question review (Coursera-style)
+  answers: AttemptResultAnswer[];
 }
 
 // ─── Player UI State (used in Zustand store) ─────────────────────────────────

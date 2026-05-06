@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Trash2, CheckCircle, FileText, UploadCloud, Type, Clock, Percent, RefreshCw, Shuffle, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, FileText, UploadCloud, Type, AlertCircle } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { AssessmentConfig } from '@/api/assessment-api';
 
-export type QuestionType = 'MCQ' | 'MULTIPLE_SELECT' | 'TRUE_FALSE' | 'DESCRIPTIVE' | 'SCENARIO' | 'FILE_UPLOAD';
+export type QuestionType = 'MCQ' | 'MSQ' | 'TRUE_FALSE' | 'DESCRIPTIVE' | 'SCENARIO' | 'FILE_UPLOAD';
 
 export interface QuizOption {
   id: string;
@@ -42,34 +42,22 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({
   onConfigChange,
 }) => {
   const [questions, setQuestions] = useState<QuizQuestion[]>(initialQuestions ?? []);
-  const [config, setConfig] = useState<AssessmentConfig>(initialConfig ?? DEFAULT_ASSESSMENT_CONFIG);
-  const [passingPctError, setPassingPctError] = useState<string | null>(null);
 
-  // Sync from parent when initialQuestions/initialConfig change (e.g. on load from backend)
+  // Sync from parent when initialQuestions change (e.g. on load from backend)
   useEffect(() => {
     if (initialQuestions) setQuestions(initialQuestions);
   }, [initialQuestions]);
-
-  useEffect(() => {
-    if (initialConfig) setConfig(initialConfig);
-  }, [initialConfig]);
 
   const updateQuestions = (next: QuizQuestion[]) => {
     setQuestions(next);
     onQuestionsChange?.(next);
   };
 
-  const updateConfig = (patch: Partial<AssessmentConfig>) => {
-    const next = { ...config, ...patch };
-    setConfig(next);
-    onConfigChange?.(next);
-  };
-
   const generateId = () => Math.random().toString(36).substr(2, 9);
 
   const addQuestion = (type: QuestionType) => {
     let initialOptions: QuizOption[] | undefined;
-    if (type === 'MCQ' || type === 'MULTIPLE_SELECT') {
+    if (type === 'MCQ' || type === 'MSQ') {
       initialOptions = [
         { id: generateId(), text: 'Option 1', isCorrect: false },
         { id: generateId(), text: 'Option 2', isCorrect: false },
@@ -127,7 +115,7 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({
   const renderQuestionIcon = (type: QuestionType) => {
     switch (type) {
       case 'MCQ': return <CheckCircle size={16} />;
-      case 'MULTIPLE_SELECT': return <CheckCircle size={16} className="text-purple-400" />;
+      case 'MSQ': return <CheckCircle size={16} className="text-purple-400" />;
       case 'TRUE_FALSE': return <CheckCircle size={16} className="text-emerald-400" />;
       case 'DESCRIPTIVE': return <Type size={16} className="text-blue-400" />;
       case 'SCENARIO': return <FileText size={16} className="text-amber-400" />;
@@ -147,7 +135,7 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({
               className={cn(
                 "w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0",
                 opt.isCorrect ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-600 bg-slate-900",
-                q.type === 'MULTIPLE_SELECT' && "rounded-sm"
+                q.type === 'MSQ' && "rounded-sm"
               )}
               title="Mark as correct answer"
             >
@@ -179,130 +167,6 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({
 
   return (
     <div className="space-y-6">
-
-      {/* ── Assessment Configuration Panel ── */}
-      <div className="bg-[#0f111a] border border-slate-700/60 rounded-xl p-5 space-y-4">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-          <Clock size={12} /> Assessment Settings
-        </h3>
-
-        <div className="grid grid-cols-2 gap-4">
-          {/* Duration */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest flex items-center gap-1">
-              <Clock size={10} /> Duration (minutes)
-            </label>
-            <input
-              type="number"
-              min={1}
-              value={config.duration_minutes}
-              onChange={e => updateConfig({ duration_minutes: Math.max(1, parseInt(e.target.value) || 1) })}
-              className="bg-slate-800/50 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none"
-            />
-          </div>
-
-          {/* Passing % */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest flex items-center gap-1">
-              <Percent size={10} /> Passing % (0–100)
-            </label>
-            <input
-              type="number"
-              min={0}
-              max={100}
-              value={config.passing_percentage}
-              onChange={e => {
-                const v = parseFloat(e.target.value);
-                if (v < 0 || v > 100) {
-                  setPassingPctError('Must be between 0 and 100');
-                } else {
-                  setPassingPctError(null);
-                }
-                updateConfig({ passing_percentage: v });
-              }}
-              className={cn(
-                "bg-slate-800/50 border rounded px-3 py-2 text-sm text-white focus:outline-none",
-                passingPctError ? "border-red-500 focus:border-red-500" : "border-slate-700 focus:border-blue-500"
-              )}
-            />
-            {passingPctError && (
-              <p className="text-[10px] text-red-400 flex items-center gap-1">
-                <AlertCircle size={10} /> {passingPctError}
-              </p>
-            )}
-          </div>
-
-          {/* Retake Limit */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest flex items-center gap-1">
-              <RefreshCw size={10} /> Retake Limit (0 = unlimited)
-            </label>
-            <input
-              type="number"
-              min={0}
-              value={config.retake_limit}
-              onChange={e => updateConfig({ retake_limit: Math.max(0, parseInt(e.target.value) || 0) })}
-              className="bg-slate-800/50 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none"
-            />
-          </div>
-
-          {/* Randomize */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest flex items-center gap-1">
-              <Shuffle size={10} /> Randomize Questions
-            </label>
-            <button
-              onClick={() => updateConfig({ is_randomized: !config.is_randomized })}
-              className={cn(
-                "flex items-center gap-2 px-3 py-2 rounded border text-xs font-semibold transition-colors",
-                config.is_randomized
-                  ? "bg-blue-500/10 border-blue-500 text-blue-400"
-                  : "bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-600"
-              )}
-            >
-              <div className={cn("w-3 h-3 rounded-full", config.is_randomized ? "bg-blue-400" : "bg-slate-600")} />
-              {config.is_randomized ? 'Enabled' : 'Disabled'}
-            </button>
-          </div>
-        </div>
-
-        {/* Negative Marking */}
-        <div className="space-y-3 pt-2 border-t border-slate-800">
-          <div className="flex items-center justify-between">
-            <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
-              Negative Marking
-            </label>
-            <button
-              onClick={() => updateConfig({ negative_marking_enabled: !config.negative_marking_enabled })}
-              className={cn(
-                "flex items-center gap-2 px-3 py-1.5 rounded border text-xs font-semibold transition-colors",
-                config.negative_marking_enabled
-                  ? "bg-red-500/10 border-red-500/50 text-red-400"
-                  : "bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-600"
-              )}
-            >
-              <div className={cn("w-2.5 h-2.5 rounded-full", config.negative_marking_enabled ? "bg-red-400" : "bg-slate-600")} />
-              {config.negative_marking_enabled ? 'Enabled' : 'Disabled'}
-            </button>
-          </div>
-
-          {config.negative_marking_enabled && (
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
-                Deduction % per wrong answer
-              </label>
-              <input
-                type="number"
-                min={0}
-                max={100}
-                value={config.negative_marking_percentage}
-                onChange={e => updateConfig({ negative_marking_percentage: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)) })}
-                className="bg-slate-800/50 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none w-40"
-              />
-            </div>
-          )}
-        </div>
-      </div>
 
       {/* ── Question List ── */}
       <div className="space-y-6">
@@ -375,7 +239,7 @@ export const QuizBuilder: React.FC<QuizBuilderProps> = ({
         <div className="flex flex-wrap gap-2">
           {([
             ['MCQ', 'MCQ'],
-            ['MULTIPLE_SELECT', 'Multiple Select'],
+            ['MSQ', 'Multiple Select'],
             ['TRUE_FALSE', 'True/False'],
             ['DESCRIPTIVE', 'Descriptive'],
             ['SCENARIO', 'Scenario'],
