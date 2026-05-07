@@ -313,7 +313,101 @@ class GradingService(BaseService):
         attempt.submitted_at = timezone.now()
         attempt.save()
 
+        # 4. For standalone DYNAMIC assessments that passed, create skill upgrade proposals
+        from .constants import QuestionSelectionMode
+        if (
+            assessment.question_selection_mode == QuestionSelectionMode.DYNAMIC
+            and result.status == "PASS"
+        ):
+            self._create_skill_upgrade_proposals(attempt, result)
+
         return result
+
+    def _create_skill_upgrade_proposals(self, attempt, result):
+        """
+        Creates one SkillUpgradeProposal per skill mapped to the assessment.
+        Skips skills where the employee already holds an equal or higher level.
+        Notifies users with SKILL_UPGRADE_APPROVE permission.
+        """
+        try:
+            from .models import AssessmentSkillMapping, SkillUpgradeProposal
+            from apps.skill_management.models import EmployeeSkill
+            from apps.notifications.models import Notification
+            from apps.notifications.constants import NotificationType
+            from apps.rbac.models import UserRoleMaster, RolePermissionMaster, PermissionMaster
+
+            skill_mappings = AssessmentSkillMapping.objects.filter(
+                assessment=attempt.assessment
+            ).select_related("skill", "skill_level")
+
+            proposals_created = []
+
+            for sm in skill_mappings:
+                # Check if employee already has an equal or higher level for this skill
+                existing = EmployeeSkill.objects.filter(
+                    employee=attempt.employee,
+                    skill=sm.skill,
+                    is_active=True,
+                ).select_related("current_level").first()
+
+                if existing and existing.current_level.level_rank >= sm.skill_level.level_rank:
+                    # Already at or above the proposed level — skip
+                    continue
+
+                # Avoid duplicate pending proposals for the same employee+skill
+                already_pending = SkillUpgradeProposal.objects.filter(
+                    employee=attempt.employee,
+                    skill=sm.skill,
+                    status="PENDING",
+                ).exists()
+                if already_pending:
+                    continue
+
+                proposal = SkillUpgradeProposal.objects.create(
+                    employee=attempt.employee,
+                    assessment_attempt=attempt,
+                    skill=sm.skill,
+                    proposed_level=sm.skill_level,
+                    status="PENDING",
+                )
+                proposals_created.append(proposal)
+
+            if not proposals_created:
+                return
+
+            # Notify all users with SKILL_UPGRADE_APPROVE permission
+            try:
+                perm = PermissionMaster.objects.get(permission_code="SKILL_UPGRADE_APPROVE")
+                approver_user_ids = (
+                    UserRoleMaster.objects.filter(
+                        role__rolepermissionmaster__permission=perm,
+                        is_active=True,
+                    )
+                    .values_list("user_id", flat=True)
+                    .distinct()
+                )
+
+                skill_names = ", ".join(p.skill.skill_name for p in proposals_created)
+                learner_name = attempt.employee.user.profile.first_name or attempt.employee.employee_code
+
+                for user_id in approver_user_ids:
+                    Notification.objects.create(
+                        user_id=user_id,
+                        notification_type=NotificationType.SKILL_UPGRADE,
+                        title="Skill upgrade approval required",
+                        message=(
+                            f"{learner_name} passed \"{attempt.assessment.title}\" "
+                            f"and has a pending skill upgrade for: {skill_names}."
+                        ),
+                        action_url="/admin/assessments/skill-upgrades",
+                        entity_type="SkillUpgradeProposal",
+                        entity_id=str(proposals_created[0].id),
+                    )
+            except Exception:
+                pass  # notification failure must never break grading
+
+        except Exception:
+            pass  # proposal creation failure must never break grading
 
     def calculate_objective_score(self, answer, mapping, assessment):
         """
@@ -425,6 +519,14 @@ class ReviewService:
 
         # 5. Send notification to learner
         self._notify_learner(attempt, result)
+
+        # 6. For standalone DYNAMIC assessments that passed, create skill upgrade proposals
+        from .constants import QuestionSelectionMode
+        if (
+            attempt.assessment.question_selection_mode == QuestionSelectionMode.DYNAMIC
+            and result.status == "PASS"
+        ):
+            GradingService()._create_skill_upgrade_proposals(attempt, result)
 
         return result
 

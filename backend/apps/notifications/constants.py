@@ -19,6 +19,7 @@ class NotificationType(models.TextChoices):
     COMPLETION        = "COMPLETION",        "Course Completed"
     CERTIFICATE       = "CERTIFICATE",       "Certificate Issued"
     ASSESSMENT_RESULT = "ASSESSMENT_RESULT", "Assessment Result"
+    SKILL_UPGRADE     = "SKILL_UPGRADE",     "Skill Upgrade Proposal"
 
     # -----------------------------------------------------------------------
     # TNI / Skill notifications
