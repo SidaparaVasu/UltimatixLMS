@@ -504,3 +504,191 @@ class RetakeGrantSerializer(serializers.ModelSerializer):
         model = AssessmentRetakeGrant
         fields = ["id", "assessment", "employee", "granted_by", "note", "granted_at"]
         read_only_fields = ["id", "granted_by", "granted_at"]
+
+
+# ---------------------------------------------------------------------------
+# STANDALONE ASSESSMENT — Skill mapping, catalog, upgrade proposals
+# ---------------------------------------------------------------------------
+
+class AssessmentSkillMappingSerializer(serializers.ModelSerializer):
+    skill_name       = serializers.CharField(source="skill.skill_name",       read_only=True)
+    skill_level_name = serializers.CharField(source="skill_level.level_name", read_only=True)
+    skill_level_rank = serializers.IntegerField(source="skill_level.level_rank", read_only=True)
+
+    class Meta:
+        from .models import AssessmentSkillMapping
+        model = AssessmentSkillMapping
+        fields = ["id", "assessment", "skill", "skill_name", "skill_level", "skill_level_name", "skill_level_rank"]
+
+
+class AssessmentCatalogSerializer(serializers.ModelSerializer):
+    """
+    Learner-facing catalog card for standalone assessments.
+    Includes attempt history, cooldown status, and skill mappings.
+    No questions, no correct answers exposed.
+    """
+    question_count        = serializers.SerializerMethodField()
+    attempts_used         = serializers.SerializerMethodField()
+    attempts_remaining    = serializers.SerializerMethodField()
+    last_result_status    = serializers.SerializerMethodField()
+    last_attempt_id       = serializers.SerializerMethodField()
+    cooldown_remaining_hours = serializers.SerializerMethodField()
+    skill_mappings        = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AssessmentMaster
+        fields = [
+            "id", "title", "description",
+            "duration_minutes", "passing_percentage",
+            "retake_limit", "retake_cooldown_hours",
+            "is_randomized", "negative_marking_enabled",
+            "number_of_questions",
+            "question_count", "attempts_used", "attempts_remaining",
+            "last_result_status", "last_attempt_id",
+            "cooldown_remaining_hours", "skill_mappings",
+        ]
+
+    def _get_employee(self, obj):
+        request = self.context.get('request')
+        if not request or not hasattr(request.user, 'employee_record'):
+            return None
+        return request.user.employee_record.first()
+
+    def _get_last_completed_attempt(self, obj):
+        employee = self._get_employee(obj)
+        if not employee:
+            return None
+        return (
+            AssessmentAttempt.objects.filter(
+                assessment=obj, employee=employee, status="COMPLETED"
+            )
+            .order_by('-started_at')
+            .select_related('result')
+            .first()
+        )
+
+    def get_question_count(self, obj):
+        return obj.number_of_questions
+
+    def _get_attempts_used(self, obj):
+        employee = self._get_employee(obj)
+        if not employee:
+            return 0
+        return AssessmentAttempt.objects.filter(assessment=obj, employee=employee).count()
+
+    def get_attempts_used(self, obj):
+        return self._get_attempts_used(obj)
+
+    def get_attempts_remaining(self, obj):
+        from .repositories import RetakeGrantRepository
+        employee = self._get_employee(obj)
+        extra = RetakeGrantRepository().count_grants(employee.id, obj.id) if employee else 0
+        return max(0, obj.retake_limit + extra - self._get_attempts_used(obj))
+
+    def get_last_result_status(self, obj):
+        attempt = self._get_last_completed_attempt(obj)
+        if not attempt:
+            return None
+        try:
+            return attempt.result.status
+        except Exception:
+            return None
+
+    def get_last_attempt_id(self, obj):
+        attempt = self._get_last_completed_attempt(obj)
+        return str(attempt.id) if attempt else None
+
+    def get_cooldown_remaining_hours(self, obj):
+        """
+        Returns hours remaining in cooldown after a failed attempt, or 0 if no cooldown.
+        """
+        if obj.retake_cooldown_hours == 0:
+            return 0
+        attempt = self._get_last_completed_attempt(obj)
+        if not attempt or not attempt.submitted_at:
+            return 0
+        try:
+            if attempt.result.status != "FAIL":
+                return 0
+        except Exception:
+            return 0
+        from django.utils import timezone
+        from datetime import timedelta
+        cooldown_ends = attempt.submitted_at + timedelta(hours=obj.retake_cooldown_hours)
+        remaining = cooldown_ends - timezone.now()
+        if remaining.total_seconds() <= 0:
+            return 0
+        return int(remaining.total_seconds() / 3600) + 1
+
+    def get_skill_mappings(self, obj):
+        from .models import AssessmentSkillMapping
+        mappings = AssessmentSkillMapping.objects.filter(
+            assessment=obj
+        ).select_related("skill", "skill_level")
+        return [
+            {
+                "skill_id":         m.skill_id,
+                "skill_name":       m.skill.skill_name,
+                "skill_level_id":   m.skill_level_id,
+                "skill_level_name": m.skill_level.level_name,
+                "skill_level_rank": m.skill_level.level_rank,
+            }
+            for m in mappings
+        ]
+
+
+class SkillUpgradeProposalSerializer(serializers.ModelSerializer):
+    employee_name    = serializers.SerializerMethodField()
+    employee_code    = serializers.CharField(source="employee.employee_code", read_only=True)
+    skill_name       = serializers.CharField(source="skill.skill_name",       read_only=True)
+    proposed_level_name = serializers.CharField(source="proposed_level.level_name", read_only=True)
+    assessment_title = serializers.CharField(source="assessment_attempt.assessment.title", read_only=True)
+    approved_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        from .models import SkillUpgradeProposal
+        model = SkillUpgradeProposal
+        fields = [
+            "id", "employee_code", "employee_name",
+            "skill", "skill_name",
+            "proposed_level", "proposed_level_name",
+            "assessment_attempt", "assessment_title",
+            "status", "approved_by", "approved_by_name", "approved_at",
+            "created_at",
+        ]
+        read_only_fields = ["id", "status", "approved_by", "approved_at", "created_at"]
+
+    def get_employee_name(self, obj):
+        try:
+            p = obj.employee.user.profile
+            return f"{p.first_name} {p.last_name}".strip() or obj.employee.user.username
+        except Exception:
+            return obj.employee.user.username
+
+    def get_approved_by_name(self, obj):
+        if not obj.approved_by:
+            return None
+        try:
+            p = obj.approved_by.user.profile
+            return f"{p.first_name} {p.last_name}".strip() or obj.approved_by.user.username
+        except Exception:
+            return obj.approved_by.user.username
+
+
+class QuestionBankWithSkillSerializer(serializers.ModelSerializer):
+    """
+    Extended question serializer that includes skill and skill_level fields.
+    Used for the Question Bank management page.
+    """
+    options      = QuestionOptionStudioSerializer(many=True, read_only=True)
+    skill_name   = serializers.CharField(source="skill.skill_name",       read_only=True, default=None)
+    skill_level_name = serializers.CharField(source="skill_level.level_name", read_only=True, default=None)
+
+    class Meta:
+        model = QuestionBank
+        fields = [
+            "id", "question_text", "question_type", "scenario_text",
+            "explanation_text", "difficulty_complexity",
+            "skill", "skill_name", "skill_level", "skill_level_name",
+            "is_active", "options",
+        ]

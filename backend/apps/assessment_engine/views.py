@@ -6,16 +6,20 @@ from common.response import success_response, error_response, created_response
 from apps.rbac.permissions import HasScopedPermission
 from apps.rbac.permission_codes import P
 from .models import (
-    AssessmentMaster, QuestionBank, AssessmentAttempt, AssessmentResult
+    AssessmentMaster, QuestionBank, AssessmentAttempt, AssessmentResult,
+    AssessmentSkillMapping, SkillUpgradeProposal,
 )
 from .serializers import (
     AssessmentMasterStudioSerializer, AssessmentLearnerSerializer,
     QuestionBankStudioSerializer, QuestionBankWriteSerializer,
+    QuestionBankWithSkillSerializer,
     AssessmentAttemptSerializer, UserAnswerSubmitSerializer,
     AssessmentResultSerializer, QuestionLearnerSerializer,
     UserAnswerLifecycleSerializer,
     ReviewAttemptListSerializer, ReviewAttemptDetailSerializer,
     ManualGradeSubmitSerializer, RetakeGrantSerializer,
+    AssessmentSkillMappingSerializer, AssessmentCatalogSerializer,
+    SkillUpgradeProposalSerializer,
 )
 from .services import AssessmentBuildService, AttemptService, GradingService, ReviewService
 
@@ -100,16 +104,36 @@ class AssessmentStudioViewSet(viewsets.ModelViewSet):
 class QuestionBankViewSet(viewsets.ModelViewSet):
     """
     API for managing the central question pool.
-    Uses the standard response envelope.
+    Supports filtering by skill, skill_level, and question_type.
     """
-    queryset = QuestionBank.objects.all()
-    serializer_class = QuestionBankStudioSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    queryset = QuestionBank.objects.select_related('skill', 'skill_level').all()
+    serializer_class = QuestionBankWithSkillSerializer
+    permission_classes = [HasScopedPermission]
+    required_permission = P.CONTENT_MANAGEMENT.ASSESSMENT_MANAGE
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        skill_id     = self.request.query_params.get('skill')
+        level_id     = self.request.query_params.get('skill_level')
+        q_type       = self.request.query_params.get('question_type')
+        is_active    = self.request.query_params.get('is_active')
+        search       = self.request.query_params.get('search')
+        if skill_id:
+            qs = qs.filter(skill_id=skill_id)
+        if level_id:
+            qs = qs.filter(skill_level_id=level_id)
+        if q_type:
+            qs = qs.filter(question_type=q_type)
+        if is_active is not None:
+            qs = qs.filter(is_active=is_active.lower() not in ('false', '0'))
+        if search:
+            qs = qs.filter(question_text__icontains=search)
+        return qs.order_by('-created_at')
 
     def get_serializer_class(self):
         if self.action in ('create', 'update', 'partial_update'):
             return QuestionBankWriteSerializer
-        return QuestionBankStudioSerializer
+        return QuestionBankWithSkillSerializer
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -117,7 +141,7 @@ class QuestionBankViewSet(viewsets.ModelViewSet):
         instance = serializer.save()
         return created_response(
             message="Question created successfully.",
-            data=QuestionBankStudioSerializer(instance).data,
+            data=QuestionBankWithSkillSerializer(instance).data,
         )
 
     def update(self, request, *args, **kwargs):
@@ -128,8 +152,100 @@ class QuestionBankViewSet(viewsets.ModelViewSet):
         instance = serializer.save()
         return success_response(
             message="Question updated successfully.",
-            data=QuestionBankStudioSerializer(instance).data,
+            data=QuestionBankWithSkillSerializer(instance).data,
         )
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return success_response(data=serializer.data)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        return success_response(data=self.get_serializer(instance).data)
+
+    @action(detail=False, methods=['post'], url_path='bulk-upload')
+    def bulk_upload(self, request):
+        """
+        POST /assessment/questions/bulk-upload/
+        Accepts a CSV or Excel file. Validates ALL rows first.
+        Imports nothing if any row has an error — returns full error report.
+
+        CSV columns:
+          question_type, question_text, scenario_text, explanation_text,
+          difficulty_complexity, skill_code, skill_level_name,
+          option_1, option_1_correct, option_2, option_2_correct,
+          option_3, option_3_correct, option_4, option_4_correct
+        """
+        from .bulk_upload import QuestionBulkUploader
+        file = request.FILES.get('file')
+        if not file:
+            return error_response(message="No file provided. Upload a CSV or Excel file.")
+
+        uploader = QuestionBulkUploader()
+        result = uploader.process(file)
+
+        if result['errors']:
+            return error_response(
+                message=f"Validation failed. {len(result['errors'])} error(s) found. No questions were imported.",
+                errors=result['errors'],
+                status_code=400,
+            )
+
+        return created_response(
+            message=f"{result['imported']} question(s) imported successfully.",
+            data={"imported": result['imported']},
+        )
+
+    @action(detail=False, methods=['get'], url_path='bulk-upload-template')
+    def bulk_upload_template(self, request):
+        """
+        GET /assessment/questions/bulk-upload-template/
+        Returns a sample CSV file showing the expected format.
+        """
+        import csv
+        from django.http import HttpResponse
+
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="question_bank_template.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow([
+            'question_type', 'question_text', 'scenario_text', 'explanation_text',
+            'difficulty_complexity', 'skill_code', 'skill_level_name',
+            'option_1', 'option_1_correct',
+            'option_2', 'option_2_correct',
+            'option_3', 'option_3_correct',
+            'option_4', 'option_4_correct',
+        ])
+        # Sample rows
+        writer.writerow([
+            'MCQ', 'What is a Python list?', '', 'A list is a mutable sequence.',
+            '2', 'PYTHON', 'Basic',
+            'A mutable ordered sequence', 'TRUE',
+            'An immutable tuple', 'FALSE',
+            'A dictionary', 'FALSE',
+            'A set', 'FALSE',
+        ])
+        writer.writerow([
+            'TRUE_FALSE', 'Python is a compiled language.', '', 'Python is interpreted.',
+            '1', 'PYTHON', 'Basic',
+            'True', 'FALSE',
+            'False', 'TRUE',
+            '', '',
+            '', '',
+        ])
+        writer.writerow([
+            'DESCRIPTIVE', 'Explain the difference between a list and a tuple in Python.',
+            '', 'Lists are mutable; tuples are immutable.',
+            '3', 'PYTHON', 'Intermediate',
+            '', '', '', '', '', '', '', '',
+        ])
+        return response
 
 
 class AssessmentAttemptViewSet(viewsets.ModelViewSet):
@@ -413,3 +529,188 @@ class AssessmentReviewViewSet(viewsets.ViewSet):
             )
         except ValueError as e:
             return error_response(message=str(e))
+
+
+class AssessmentCatalogViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Learner-facing catalog of published standalone assessments.
+    GET /api/v1/assessment/catalog/
+    """
+    serializer_class = AssessmentCatalogSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return (
+            AssessmentMaster.objects.filter(
+                status='PUBLISHED',
+                course__isnull=True,
+                lesson__isnull=True,
+            )
+            .prefetch_related('skill_mappings__skill', 'skill_mappings__skill_level')
+            .order_by('title')
+        )
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return success_response(data=serializer.data)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return success_response(data=serializer.data)
+
+
+class AssessmentSkillMappingViewSet(viewsets.ModelViewSet):
+    """
+    CRUD for skill mappings on standalone assessments.
+    GET/POST /api/v1/assessment/skill-mappings/?assessment=<id>
+    """
+    serializer_class = AssessmentSkillMappingSerializer
+    permission_classes = [HasScopedPermission]
+    required_permission = P.CONTENT_MANAGEMENT.ASSESSMENT_MANAGE
+
+    def get_queryset(self):
+        qs = AssessmentSkillMapping.objects.select_related(
+            'assessment', 'skill', 'skill_level'
+        )
+        assessment_id = self.request.query_params.get('assessment')
+        if assessment_id:
+            qs = qs.filter(assessment_id=assessment_id)
+        return qs
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        return created_response(
+            message="Skill mapping added.",
+            data=self.get_serializer(instance).data,
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.delete()
+        return success_response(message="Skill mapping removed.")
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
+        return success_response(data=serializer.data)
+
+
+class SkillUpgradeProposalViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Skill upgrade proposals — approve-only workflow.
+
+    GET  /api/v1/assessment/skill-upgrade-proposals/          — list pending proposals
+    POST /api/v1/assessment/skill-upgrade-proposals/:id/approve/ — approve a proposal
+    """
+    serializer_class = SkillUpgradeProposalSerializer
+    permission_classes = [HasScopedPermission]
+    required_permission = P.CONTENT_MANAGEMENT.SKILL_UPGRADE_APPROVE
+
+    def get_queryset(self):
+        qs = SkillUpgradeProposal.objects.select_related(
+            'employee__user__profile',
+            'skill',
+            'proposed_level',
+            'assessment_attempt__assessment',
+            'approved_by__user__profile',
+        ).order_by('-created_at')
+
+        status_filter = self.request.query_params.get('status')
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        else:
+            qs = qs.filter(status='PENDING')  # default: show pending only
+
+        return qs
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return success_response(data=serializer.data)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        return success_response(data=self.get_serializer(instance).data)
+
+    @action(detail=True, methods=['post'], url_path='approve')
+    def approve(self, request, pk=None):
+        """
+        Approve a skill upgrade proposal.
+        Updates EmployeeSkill if the proposed level is higher than current.
+        Skips silently if the employee already holds an equal or higher level.
+        """
+        from django.utils import timezone
+        from apps.skill_management.models import EmployeeSkill, SkillIdentifiedBy
+
+        proposal = self.get_object()
+
+        if proposal.status == 'APPROVED':
+            return error_response(message="This proposal has already been approved.")
+
+        approver = getattr(request.user, 'employee_record', None)
+        approver = approver.first() if approver else None
+
+        # Update or create EmployeeSkill — only if proposed level is higher
+        existing = EmployeeSkill.objects.filter(
+            employee=proposal.employee,
+            skill=proposal.skill,
+            is_active=True,
+        ).select_related('current_level').first()
+
+        if not existing or existing.current_level.level_rank < proposal.proposed_level.level_rank:
+            EmployeeSkill.objects.update_or_create(
+                employee=proposal.employee,
+                skill=proposal.skill,
+                defaults={
+                    'current_level': proposal.proposed_level,
+                    'identified_by': SkillIdentifiedBy.ASSESSMENT,
+                    'is_active': True,
+                },
+            )
+
+        # Mark proposal approved
+        proposal.status = 'APPROVED'
+        proposal.approved_by = approver
+        proposal.approved_at = timezone.now()
+        proposal.save(update_fields=['status', 'approved_by', 'approved_at'])
+
+        # Notify the learner
+        try:
+            from apps.notifications.models import Notification
+            from apps.notifications.constants import NotificationType
+            Notification.objects.create(
+                user=proposal.employee.user,
+                notification_type=NotificationType.SKILL_UPGRADE,
+                title="Skill upgrade approved",
+                message=(
+                    f"Your skill upgrade for \"{proposal.skill.skill_name}\" "
+                    f"to {proposal.proposed_level.level_name} has been approved."
+                ),
+                action_url="/my-skills",
+                entity_type="SkillUpgradeProposal",
+                entity_id=str(proposal.id),
+            )
+        except Exception:
+            pass
+
+        return success_response(
+            message="Skill upgrade approved successfully.",
+            data=self.get_serializer(proposal).data,
+        )
