@@ -47,7 +47,14 @@ class AttemptService(BaseService):
     def start_attempt(self, employee_id, assessment_id):
         """
         Initializes a new attempt and pre-populates the question shells.
+
+        For FIXED assessments (course quizzes): reads pre-mapped questions.
+        For DYNAMIC assessments (standalone): runs DynamicQuestionSelector,
+        writes per-attempt question mappings, and enforces cooldown.
         """
+        from .constants import QuestionSelectionMode
+        from .question_selector import DynamicQuestionSelector, InsufficientQuestionsError
+
         assessment = AssessmentRepository().get_by_id(assessment_id)
         if not assessment:
             raise ValueError("Assessment not found.")
@@ -72,7 +79,41 @@ class AttemptService(BaseService):
                 f"Retake limit reached. Maximum {effective_limit} attempt(s) allowed."
             )
 
-        # 3. Create attempt
+        # 3. Cooldown check (DYNAMIC mode only, applies after a FAILED attempt)
+        if (
+            assessment.question_selection_mode == QuestionSelectionMode.DYNAMIC
+            and assessment.retake_cooldown_hours > 0
+            and history_count > 0
+        ):
+            from .models import AssessmentResult
+            last_attempt = (
+                self.repository.filter(
+                    employee_id=employee_id,
+                    assessment_id=assessment_id,
+                    status="COMPLETED",
+                )
+                .order_by("-started_at")
+                .first()
+            )
+            if last_attempt:
+                try:
+                    last_result = last_attempt.result
+                    if last_result.status == "FAIL" and last_attempt.submitted_at:
+                        cooldown_ends = last_attempt.submitted_at + timedelta(
+                            hours=assessment.retake_cooldown_hours
+                        )
+                        now = timezone.now()
+                        if now < cooldown_ends:
+                            remaining = cooldown_ends - now
+                            hours_left = int(remaining.total_seconds() / 3600) + 1
+                            raise ValueError(
+                                f"Cooldown active. You can retake this assessment in "
+                                f"{hours_left} hour(s)."
+                            )
+                except AssessmentResult.DoesNotExist:
+                    pass
+
+        # 4. Create attempt
         expires_at = timezone.now() + timedelta(minutes=assessment.duration_minutes)
         attempt = self.repository.create(**{
             "employee_id": employee_id,
@@ -81,21 +122,57 @@ class AttemptService(BaseService):
             "expires_at": expires_at
         })
 
-        # 4. Pre-populate question shells (UserAnswer)
-        mappings = list(assessment.question_mappings.all())
-        if assessment.is_randomized:
-            random.shuffle(mappings)
-            
-        from .models import UserAnswer
-        shells = [
-            UserAnswer(
-                attempt=attempt,
-                question_id=m.question_id,
-                status="NOT_VISITED"
-            ) for m in mappings
-        ]
-        UserAnswer.objects.bulk_create(shells)
-        
+        # 5. Select questions and create UserAnswer shells
+        if assessment.question_selection_mode == QuestionSelectionMode.DYNAMIC:
+            # Dynamic: algorithm selects questions from the bank
+            selector = DynamicQuestionSelector()
+            try:
+                questions = selector.select(
+                    assessment=assessment,
+                    employee_id=employee_id,
+                    number_of_questions=assessment.number_of_questions,
+                )
+            except InsufficientQuestionsError as e:
+                # Roll back the attempt creation and surface the error
+                attempt.delete()
+                raise ValueError(str(e))
+
+            # Write per-attempt question mappings
+            mappings = AssessmentQuestionMapping.objects.bulk_create([
+                AssessmentQuestionMapping(
+                    assessment=assessment,
+                    attempt=attempt,
+                    question=q,
+                    weight_points=1.00,
+                    time_limit_seconds=0,
+                    display_order=i + 1,
+                )
+                for i, q in enumerate(questions)
+            ])
+
+            if assessment.is_randomized:
+                random.shuffle(questions)
+
+            from .models import UserAnswer
+            UserAnswer.objects.bulk_create([
+                UserAnswer(attempt=attempt, question=q, status="NOT_VISITED")
+                for q in questions
+            ])
+
+        else:
+            # Fixed: read pre-mapped questions (existing course quiz behavior)
+            mappings = list(
+                assessment.question_mappings.filter(attempt__isnull=True)
+            )
+            if assessment.is_randomized:
+                random.shuffle(mappings)
+
+            from .models import UserAnswer
+            UserAnswer.objects.bulk_create([
+                UserAnswer(attempt=attempt, question_id=m.question_id, status="NOT_VISITED")
+                for m in mappings
+            ])
+
         return attempt
 
     @transaction.atomic
@@ -104,16 +181,14 @@ class AttemptService(BaseService):
         Atomically identifies the next not-visited question and starts its timer.
         """
         from .models import UserAnswer
-        # Find the first not-visited question based on creation order/randomized order
         next_answer = UserAnswer.objects.filter(
             attempt_id=attempt_id, 
             status="NOT_VISITED"
         ).order_by('id').first()
         
         if not next_answer:
-            return None # No more questions
-            
-        # Start the timer!
+            return None
+
         next_answer.started_at = timezone.now()
         next_answer.save()
         return next_answer
@@ -128,23 +203,31 @@ class AttemptService(BaseService):
         
         if answer.status != "NOT_VISITED" or not answer.started_at:
             raise ValueError("Question already submitted or timer not started.")
-            
-        # 1. Hard-Timing Check
-        mapping = AssessmentQuestionMapping.objects.get(
-            assessment_id=answer.attempt.assessment_id, 
-            question_id=question_id
-        )
-        
-        duration = (timezone.now() - answer.started_at).total_seconds()
-        
-        # 5s buffer for network latency
-        if mapping.time_limit_seconds > 0 and duration > (mapping.time_limit_seconds + 5):
-            answer.status = "TIMED_OUT"
-            answer.finished_at = timezone.now()
-            answer.save()
-            return answer, False # Timed out
 
-        # 2. Save Response
+        # Fetch the mapping — check attempt-specific first (DYNAMIC), then global (FIXED)
+        mapping = (
+            AssessmentQuestionMapping.objects.filter(
+                attempt_id=attempt_id,
+                question_id=question_id,
+            ).first()
+            or
+            AssessmentQuestionMapping.objects.filter(
+                assessment_id=answer.attempt.assessment_id,
+                question_id=question_id,
+                attempt__isnull=True,
+            ).first()
+        )
+
+        if mapping and mapping.time_limit_seconds > 0:
+            duration = (timezone.now() - answer.started_at).total_seconds()
+            # 5s buffer for network latency
+            if duration > (mapping.time_limit_seconds + 5):
+                answer.status = "TIMED_OUT"
+                answer.finished_at = timezone.now()
+                answer.save()
+                return answer, False
+
+        # Save response
         if selected_option_ids:
             answer.selected_options.set(selected_option_ids)
         
@@ -176,7 +259,11 @@ class GradingService(BaseService):
             return attempt.result
 
         assessment = attempt.assessment
-        mappings = {m.question_id: m for m in assessment.question_mappings.all()}
+        # For DYNAMIC attempts, mappings are per-attempt; for FIXED, they're global
+        if assessment.question_selection_mode == "DYNAMIC":
+            mappings = {m.question_id: m for m in AssessmentQuestionMapping.objects.filter(attempt=attempt)}
+        else:
+            mappings = {m.question_id: m for m in assessment.question_mappings.filter(attempt__isnull=True)}
         # We only grade Attempted questions; Timed-out/Not-visited are 0 by default
         answers = attempt.answers.all().select_related('question')
         
@@ -302,15 +389,18 @@ class ReviewService:
             answer.is_auto_graded = False  # stays False — manually graded
             answer.save(update_fields=['earned_points'])
 
-        # 2. Recalculate total score
+        # Recalculate total score using the correct mapping set
         all_answers = attempt.answers.all()
         total_earned = sum(a.earned_points for a in all_answers)
         total_earned = max(Decimal("0.00"), total_earned)
 
-        mappings_total = sum(
-            m.weight_points
-            for m in AssessmentQuestionMapping.objects.filter(assessment=attempt.assessment)
-        )
+        if attempt.assessment.question_selection_mode == "DYNAMIC":
+            mappings_qs = AssessmentQuestionMapping.objects.filter(attempt=attempt)
+        else:
+            mappings_qs = AssessmentQuestionMapping.objects.filter(
+                assessment=attempt.assessment, attempt__isnull=True
+            )
+        mappings_total = sum(m.weight_points for m in mappings_qs)
         score_pct = (total_earned / mappings_total * 100) if mappings_total > 0 else Decimal("0.00")
 
         passing = attempt.assessment.passing_percentage
