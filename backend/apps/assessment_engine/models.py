@@ -1,7 +1,7 @@
 import uuid
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
-from .constants import QuestionType, AssessmentStatus, GradingStatus
+from .constants import QuestionType, AssessmentStatus, GradingStatus, QuestionSelectionMode, SkillUpgradeStatus
 from apps.course_management.models import CourseMaster, CourseLesson
 
 
@@ -28,7 +28,22 @@ class AssessmentMaster(models.Model):
         blank=True,
         related_name="quizzes"
     )
-    
+
+    # ── Question selection ────────────────────────────────────────────────────
+    question_selection_mode = models.CharField(
+        max_length=20,
+        choices=QuestionSelectionMode.choices,
+        default=QuestionSelectionMode.FIXED,
+        help_text=(
+            "FIXED: questions are pre-mapped at creation time (course quizzes). "
+            "DYNAMIC: questions are selected from the bank at attempt start (standalone)."
+        )
+    )
+    number_of_questions = models.PositiveIntegerField(
+        default=10,
+        help_text="For DYNAMIC mode: how many questions to pick per attempt from the bank."
+    )
+
     duration_minutes = models.PositiveIntegerField(
         default=30, 
         help_text="Time limit in minutes."
@@ -43,7 +58,14 @@ class AssessmentMaster(models.Model):
         default=1, 
         help_text="Number of times a student can attempt this quiz."
     )
-    
+    retake_cooldown_hours = models.PositiveIntegerField(
+        default=0,
+        help_text=(
+            "Hours a learner must wait after a FAILED attempt before retaking. "
+            "0 = no cooldown. Only applies to standalone (DYNAMIC) assessments."
+        )
+    )
+
     is_randomized = models.BooleanField(
         default=False, 
         help_text="If true, question order will be shuffled for each student."
@@ -77,10 +99,19 @@ class AssessmentMaster(models.Model):
     def __str__(self):
         return self.title
 
+    @property
+    def is_standalone(self) -> bool:
+        """True when this assessment is not linked to any course."""
+        return self.course_id is None and self.lesson_id is None
+
 
 class QuestionBank(models.Model):
     """
     Stores individual questions that can be mapped to multiple assessments.
+
+    For standalone (DYNAMIC) assessments, each question is linked to a skill
+    and a skill level so the selection algorithm can filter by target proficiency.
+    Course quiz questions (FIXED mode) may leave skill/skill_level blank.
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     question_text = models.TextField()
@@ -89,7 +120,25 @@ class QuestionBank(models.Model):
         choices=QuestionType.choices,
         default=QuestionType.MCQ
     )
-    
+
+    # ── Skill linkage (for dynamic question selection) ────────────────────────
+    skill = models.ForeignKey(
+        "skill_management.SkillMaster",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="questions",
+        help_text="Skill this question tests. Required for DYNAMIC assessments."
+    )
+    skill_level = models.ForeignKey(
+        "skill_management.SkillLevelMaster",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="questions",
+        help_text="Minimum skill level this question targets."
+    )
+
     # Used for scenario-based questions
     scenario_text = models.TextField(
         blank=True, 
@@ -114,6 +163,9 @@ class QuestionBank(models.Model):
 
     class Meta:
         db_table = "asmt_question_bank"
+        indexes = [
+            models.Index(fields=["skill", "skill_level"], name="idx_qbank_skill_level"),
+        ]
 
     def __str__(self):
         return f"[{self.get_question_type_display()}] {self.question_text[:50]}..."
@@ -148,6 +200,12 @@ class QuestionOption(models.Model):
 class AssessmentQuestionMapping(models.Model):
     """
     Links QuestionBank to AssessmentMaster with instance-specific weightage.
+
+    Two modes:
+    - FIXED (course quizzes): attempt=None — mapping belongs to the assessment globally.
+      Questions are pre-selected at assessment creation time.
+    - DYNAMIC (standalone): attempt=<attempt> — mapping belongs to one specific attempt.
+      Questions are selected by the algorithm at attempt start.
     """
     assessment = models.ForeignKey(
         AssessmentMaster, 
@@ -158,6 +216,15 @@ class AssessmentQuestionMapping(models.Model):
         QuestionBank, 
         on_delete=models.CASCADE, 
         related_name="assessment_usages"
+    )
+    # Null for FIXED mode; set to the attempt for DYNAMIC mode
+    attempt = models.ForeignKey(
+        "AssessmentAttempt",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="question_mappings",
+        help_text="Set for DYNAMIC attempts. Null for FIXED (global) mappings."
     )
     weight_points = models.DecimalField(
         max_digits=5, 
@@ -173,7 +240,19 @@ class AssessmentQuestionMapping(models.Model):
 
     class Meta:
         db_table = "asmt_question_mapping"
-        unique_together = ["assessment", "question"]
+        # Uniqueness: a question can appear once per assessment (FIXED) or once per attempt (DYNAMIC)
+        constraints = [
+            models.UniqueConstraint(
+                fields=["assessment", "question"],
+                condition=models.Q(attempt__isnull=True),
+                name="uq_asmt_question_fixed",
+            ),
+            models.UniqueConstraint(
+                fields=["attempt", "question"],
+                condition=models.Q(attempt__isnull=False),
+                name="uq_asmt_question_dynamic",
+            ),
+        ]
         ordering = ["display_order"]
 
 
@@ -359,4 +438,111 @@ class AssessmentRetakeGrant(models.Model):
         return (
             f"RetakeGrant<{self.employee.employee_code} → "
             f"{self.assessment.title} by {self.granted_by}>"
+        )
+
+
+class AssessmentSkillMapping(models.Model):
+    """
+    Maps a standalone assessment to one or more skills with a target proficiency level.
+
+    When a learner passes the assessment, a SkillUpgradeProposal is created for
+    each mapped skill (unless the learner already holds an equal or higher level).
+    """
+    assessment = models.ForeignKey(
+        AssessmentMaster,
+        on_delete=models.CASCADE,
+        related_name="skill_mappings",
+        help_text="The standalone assessment this mapping belongs to."
+    )
+    skill = models.ForeignKey(
+        "skill_management.SkillMaster",
+        on_delete=models.CASCADE,
+        related_name="assessment_mappings",
+        help_text="Skill that this assessment evaluates."
+    )
+    skill_level = models.ForeignKey(
+        "skill_management.SkillLevelMaster",
+        on_delete=models.PROTECT,
+        related_name="assessment_mappings",
+        help_text="Target proficiency level awarded on passing this assessment."
+    )
+
+    class Meta:
+        db_table = "asmt_skill_mapping"
+        unique_together = ["assessment", "skill"]
+        verbose_name = "Assessment Skill Mapping"
+        verbose_name_plural = "Assessment Skill Mappings"
+
+    def __str__(self):
+        return f"{self.assessment.title} → {self.skill.skill_name} ({self.skill_level.level_name})"
+
+
+class SkillUpgradeProposal(models.Model):
+    """
+    Created automatically when a learner passes a standalone assessment.
+    One proposal per skill per passing attempt.
+
+    Lifecycle:
+        PENDING  → approver reviews → APPROVED
+        On APPROVED: EmployeeSkill is updated if the proposed level is higher
+                     than the current recorded level.
+
+    Rules:
+        - Never created if the learner already holds an equal or higher skill level.
+        - Cannot be rejected — only approved (or left pending).
+        - Approver must hold SKILL_UPGRADE_APPROVE permission.
+    """
+    employee = models.ForeignKey(
+        "org_management.EmployeeMaster",
+        on_delete=models.CASCADE,
+        related_name="skill_upgrade_proposals",
+        help_text="Learner whose skill level is proposed for upgrade."
+    )
+    assessment_attempt = models.ForeignKey(
+        AssessmentAttempt,
+        on_delete=models.CASCADE,
+        related_name="skill_upgrade_proposals",
+        help_text="The passing attempt that triggered this proposal."
+    )
+    skill = models.ForeignKey(
+        "skill_management.SkillMaster",
+        on_delete=models.CASCADE,
+        related_name="upgrade_proposals",
+    )
+    proposed_level = models.ForeignKey(
+        "skill_management.SkillLevelMaster",
+        on_delete=models.PROTECT,
+        related_name="upgrade_proposals",
+        help_text="The skill level being proposed."
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=SkillUpgradeStatus.choices,
+        default=SkillUpgradeStatus.PENDING,
+    )
+    approved_by = models.ForeignKey(
+        "org_management.EmployeeMaster",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approved_skill_upgrades",
+        help_text="Employee who approved the upgrade."
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "asmt_skill_upgrade_proposal"
+        verbose_name = "Skill Upgrade Proposal"
+        verbose_name_plural = "Skill Upgrade Proposals"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["employee", "status"], name="idx_sup_employee_status"),
+            models.Index(fields=["skill", "status"],    name="idx_sup_skill_status"),
+        ]
+
+    def __str__(self):
+        return (
+            f"SkillUpgrade<{self.employee.employee_code} → "
+            f"{self.skill.skill_name} {self.proposed_level.level_name} [{self.status}]>"
         )

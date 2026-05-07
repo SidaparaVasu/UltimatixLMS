@@ -404,6 +404,19 @@
   },
   {
     "model": "rbac.permissionmaster",
+    "pk": 45,
+    "fields": {
+      "permission_group": 4,
+      "permission_name": "Approve Skill Upgrades",
+      "permission_code": "SKILL_UPGRADE_APPROVE",
+      "description": "Allows approving skill upgrade proposals generated from passed assessments.",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
     "pk": 31,
     "fields": {
       "permission_group": 4,

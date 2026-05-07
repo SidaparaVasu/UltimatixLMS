@@ -16,6 +16,11 @@ class AssessmentStatus(models.TextChoices):
     ARCHIVED = "ARCHIVED", "Archived"
 
 
+class QuestionSelectionMode(models.TextChoices):
+    FIXED   = "FIXED",   "Fixed — questions pre-mapped at assessment creation (course quizzes)"
+    DYNAMIC = "DYNAMIC", "Dynamic — questions selected from bank at attempt start (standalone)"
+
+
 class AttemptStatus(models.TextChoices):
     IN_PROGRESS = "IN_PROGRESS", "In Progress"
     SUBMITTED = "SUBMITTED", "Submitted"
@@ -34,3 +39,8 @@ class ResultStatus(models.TextChoices):
     PASS = "PASS", "Passed"
     FAIL = "FAIL", "Failed"
     PENDING = "PENDING", "Pending Review"
+
+
+class SkillUpgradeStatus(models.TextChoices):
+    PENDING  = "PENDING",  "Pending Approval"
+    APPROVED = "APPROVED", "Approved"

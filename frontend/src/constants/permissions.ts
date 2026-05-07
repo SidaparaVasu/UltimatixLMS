@@ -42,7 +42,7 @@ export const PERMISSIONS = {
   TRAINING_CALENDAR_VIEW:    'TRAINING_CALENDAR_VIEW',
   TRAINING_CALENDAR_APPROVE: 'TRAINING_CALENDAR_APPROVE',
 
-  // ── CONTENT_MANAGEMENT (11) ─────────────────────────────────────────────
+  // ── CONTENT_MANAGEMENT (12) ─────────────────────────────────────────────
   // Course authoring, skill management, and assessment creation.
   COURSE_CREATE:              'COURSE_CREATE',
   COURSE_UPDATE:              'COURSE_UPDATE',
@@ -52,6 +52,7 @@ export const PERMISSIONS = {
   COURSE_CATEGORY_MANAGE:     'COURSE_CATEGORY_MANAGE',
   ASSESSMENT_MANAGE:          'ASSESSMENT_MANAGE',
   ASSESSMENT_REVIEW_MANAGE:   'ASSESSMENT_REVIEW_MANAGE',
+  SKILL_UPGRADE_APPROVE:      'SKILL_UPGRADE_APPROVE',
   SKILL_MANAGE:               'SKILL_MANAGE',
   SKILL_CATEGORY_MANAGE:      'SKILL_CATEGORY_MANAGE',
   SKILL_MAPPING_MANAGE:       'SKILL_MAPPING_MANAGE',
