@@ -161,6 +161,16 @@ class QuestionBank(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # ── Authorship tracking ───────────────────────────────────────────────────
+    created_by = models.ForeignKey(
+        "org_management.EmployeeMaster",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_questions",
+        help_text="Employee who created this question. Used to filter by organisation."
+    )
+
     class Meta:
         db_table = "asmt_question_bank"
         indexes = [

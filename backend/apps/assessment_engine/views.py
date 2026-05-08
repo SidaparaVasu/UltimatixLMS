@@ -1,6 +1,7 @@
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from django.utils import timezone
 
 from common.response import success_response, error_response, created_response
 from apps.rbac.permissions import HasScopedPermission
@@ -113,6 +114,13 @@ class QuestionBankViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+
+        # ── Org filter: show only questions created by the requesting user's company ──
+        employee = getattr(self.request.user, 'employee_record', None)
+        employee = employee.first() if employee else None
+        if employee and getattr(employee, 'company', None):
+            qs = qs.filter(created_by__company=employee.company)
+
         skill_id     = self.request.query_params.get('skill')
         level_id     = self.request.query_params.get('skill_level')
         q_type       = self.request.query_params.get('question_type')
@@ -138,7 +146,10 @@ class QuestionBankViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        instance = serializer.save()
+        # Set created_by to the requesting user's employee record
+        employee = getattr(request.user, 'employee_record', None)
+        employee = employee.first() if employee else None
+        instance = serializer.save(created_by=employee)
         return created_response(
             message="Question created successfully.",
             data=QuestionBankWithSkillSerializer(instance).data,
@@ -358,6 +369,83 @@ class AssessmentAttemptViewSet(viewsets.ModelViewSet):
         except Exception:
             return error_response(message="Result record not found.")
 
+    @action(detail=True, methods=['get'], url_path='resume')
+    def resume_attempt(self, request, pk=None):
+        """
+        Resume an in-progress attempt after a disconnect or tab close.
+
+        Returns:
+          - finalized: true  → attempt was expired or already completed; grading triggered
+          - finalized: false → attempt is still active; returns remaining_seconds + next question
+
+        GET /assessment/attempts/:id/resume/
+        """
+        attempt = self.get_object()
+
+        # ── Already completed ─────────────────────────────────────────────────
+        if attempt.status == "COMPLETED":
+            return success_response(data={
+                "attempt_id": str(attempt.id),
+                "status": "COMPLETED",
+                "remaining_seconds": 0,
+                "next_question": None,
+                "finalized": True,
+            })
+
+        # ── Check expiry — auto-finalize if time has run out ──────────────────
+        now = timezone.now()
+        if attempt.expires_at <= now:
+            # Mark all NOT_VISITED answers as TIMED_OUT
+            from .models import UserAnswer
+            UserAnswer.objects.filter(
+                attempt=attempt,
+                status="NOT_VISITED",
+            ).update(status="TIMED_OUT", finished_at=now)
+
+            grader = GradingService()
+            try:
+                grader.grade_attempt(attempt.id)
+            except Exception:
+                pass  # grading failure must not block the response
+
+            return success_response(data={
+                "attempt_id": str(attempt.id),
+                "status": "COMPLETED",
+                "remaining_seconds": 0,
+                "next_question": None,
+                "finalized": True,
+            })
+
+        # ── Still active — return remaining time and next question ────────────
+        remaining_seconds = max(0, int((attempt.expires_at - now).total_seconds()))
+
+        service = AttemptService()
+        next_answer = service.get_next_question(attempt.id)
+
+        if not next_answer:
+            # All questions answered — trigger finalize
+            grader = GradingService()
+            try:
+                grader.grade_attempt(attempt.id)
+            except Exception:
+                pass
+            return success_response(data={
+                "attempt_id": str(attempt.id),
+                "status": "COMPLETED",
+                "remaining_seconds": 0,
+                "next_question": None,
+                "finalized": True,
+            })
+
+        serializer = UserAnswerLifecycleSerializer(next_answer)
+        return success_response(data={
+            "attempt_id": str(attempt.id),
+            "status": "IN_PROGRESS",
+            "remaining_seconds": remaining_seconds,
+            "next_question": serializer.data,
+            "finalized": False,
+        })
+
 
 class AssessmentLearnerViewSet(viewsets.ReadOnlyModelViewSet):
     """
@@ -438,10 +526,15 @@ class AssessmentReviewViewSet(viewsets.ViewSet):
 
         assessment_id = request.query_params.get("assessment")
         course_id = request.query_params.get("course")
+        standalone = request.query_params.get("standalone")
         if assessment_id:
             qs = qs.filter(assessment_id=assessment_id)
         if course_id:
             qs = qs.filter(assessment__course_id=course_id)
+        if standalone == "true":
+            qs = qs.filter(assessment__course__isnull=True)
+        elif standalone == "false":
+            qs = qs.filter(assessment__course__isnull=False)
 
         from common.pagination import StandardResultsPagination
         paginator = StandardResultsPagination()

@@ -680,9 +680,10 @@ class QuestionBankWithSkillSerializer(serializers.ModelSerializer):
     Extended question serializer that includes skill and skill_level fields.
     Used for the Question Bank management page.
     """
-    options      = QuestionOptionStudioSerializer(many=True, read_only=True)
-    skill_name   = serializers.CharField(source="skill.skill_name",       read_only=True, default=None)
+    options          = QuestionOptionStudioSerializer(many=True, read_only=True)
+    skill_name       = serializers.CharField(source="skill.skill_name",       read_only=True, default=None)
     skill_level_name = serializers.CharField(source="skill_level.level_name", read_only=True, default=None)
+    created_by_name  = serializers.SerializerMethodField()
 
     class Meta:
         model = QuestionBank
@@ -690,5 +691,14 @@ class QuestionBankWithSkillSerializer(serializers.ModelSerializer):
             "id", "question_text", "question_type", "scenario_text",
             "explanation_text", "difficulty_complexity",
             "skill", "skill_name", "skill_level", "skill_level_name",
-            "is_active", "options",
+            "is_active", "created_by_name", "created_at", "options",
         ]
+
+    def get_created_by_name(self, obj):
+        if not obj.created_by:
+            return None
+        try:
+            p = obj.created_by.user.profile
+            return f"{p.first_name} {p.last_name}".strip() or obj.created_by.user.username
+        except Exception:
+            return None
