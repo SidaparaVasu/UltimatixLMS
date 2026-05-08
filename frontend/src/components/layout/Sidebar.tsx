@@ -7,7 +7,7 @@ import {
   LayoutDashboard,
   BookOpen,
   Calendar,
-  // CheckSquare,   // Assessments — not yet developed
+  CheckSquare,   // Assessments — not yet developed
   // Award,         // Certifications — not yet developed
   // Trophy,        // Leaderboard — not yet developed
   Star,
@@ -79,7 +79,7 @@ const NAV_CONFIG: NavSection[] = [
     title: "Training",
     items: [
       { label: "Training Calendar", icon: Calendar,    path: "/training-calendar" },
-      // { label: "Assessments",       icon: CheckSquare, path: "/assessments",             requiredPermission: PERMISSIONS.ASSESSMENT_ATTEMPT },
+      { label: "Assessments",       icon: CheckSquare, path: "/assessments",             requiredPermission: PERMISSIONS.ASSESSMENT_ATTEMPT },
       // { label: "Certifications",    icon: Award,       path: "/certifications",          requiredPermission: PERMISSIONS.CERTIFICATE_VIEW },   // TODO: not yet developed
     ],
   },

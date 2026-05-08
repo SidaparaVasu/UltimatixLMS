@@ -15,7 +15,7 @@ export const STANDALONE_ASSESSMENT_KEYS = {
 /**
  * Fetches the paginated list of standalone assessments.
  */
-export const useStandaloneAssessmentList = (params?: { page?: number }) =>
+export const useStandaloneAssessmentList = (params?: { page?: number; page_size?: number }) =>
   useQuery({
     queryKey: STANDALONE_ASSESSMENT_KEYS.list(params),
     queryFn:  () => standaloneAssessmentApi.list(params),
