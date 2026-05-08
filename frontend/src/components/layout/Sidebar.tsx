@@ -7,9 +7,9 @@ import {
   LayoutDashboard,
   BookOpen,
   Calendar,
-  CheckSquare,
-  Award,
-  Trophy,
+  // CheckSquare,   // Assessments — not yet developed
+  // Award,         // Certifications — not yet developed
+  // Trophy,        // Leaderboard — not yet developed
   Star,
   User,
   ShieldCheck,
@@ -18,11 +18,11 @@ import {
   Network,
   MapPin,
   ClipboardList,
-  BarChart2,
-  Settings,
+  // BarChart2,     // Reports — not yet developed
+  // Settings,      // Settings — not yet developed
   GraduationCap,
   BookMarked,
-  ChartNoAxesColumn,
+  // ChartNoAxesColumn,
   Bell,
   Brain,
   Blocks,
@@ -79,8 +79,8 @@ const NAV_CONFIG: NavSection[] = [
     title: "Training",
     items: [
       { label: "Training Calendar", icon: Calendar,    path: "/training-calendar" },
-      { label: "Assessments",       icon: CheckSquare, path: "/assessments",             requiredPermission: PERMISSIONS.ASSESSMENT_ATTEMPT },
-      { label: "Certifications",    icon: Award,       path: "/certifications",          requiredPermission: PERMISSIONS.CERTIFICATE_VIEW },
+      // { label: "Assessments",       icon: CheckSquare, path: "/assessments",             requiredPermission: PERMISSIONS.ASSESSMENT_ATTEMPT },
+      // { label: "Certifications",    icon: Award,       path: "/certifications",          requiredPermission: PERMISSIONS.CERTIFICATE_VIEW },   // TODO: not yet developed
     ],
   },
 
@@ -148,7 +148,7 @@ const NAV_CONFIG: NavSection[] = [
     ],
     items: [
       { label: "Roles",         icon: ShieldCheck, path: "/admin/roles",    requiredPermission: PERMISSIONS.ROLE_VIEW },
-      { label: "Settings",      icon: Settings,    path: "/admin/settings", requiredPermission: PERMISSIONS.CONFIG_VIEW },
+      // { label: "Settings",      icon: Settings,    path: "/admin/settings", requiredPermission: PERMISSIONS.CONFIG_VIEW },
     ],
   },
 
@@ -156,8 +156,8 @@ const NAV_CONFIG: NavSection[] = [
   {
     title: "Analytics",
     items: [
-      { label: "Reports",       icon: BarChart2,   path: "/admin/reports",  requiredPermission: PERMISSIONS.REPORTS_VIEW },
-      { label: "Leaderboard", icon: Trophy,            path: "/leaderboard" },
+      // { label: "Reports",     icon: BarChart2, path: "/admin/reports",  requiredPermission: PERMISSIONS.REPORTS_VIEW }, // TODO: not yet developed
+      // { label: "Leaderboard", icon: Trophy,    path: "/leaderboard" },                                                  // TODO: not yet developed
     ],
   },
 
