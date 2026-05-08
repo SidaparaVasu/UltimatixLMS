@@ -72,4 +72,5 @@ export interface QuestionBankFilters {
   is_active?: boolean;
   search?: string;
   page?: number;
+  page_size?: number;
 }

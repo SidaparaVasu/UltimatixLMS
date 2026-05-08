@@ -31,7 +31,7 @@ const DIFFICULTY_LABELS: Record<number, string> = {
   1: 'Easy', 2: 'Basic', 3: 'Intermediate', 4: 'Advanced', 5: 'Expert',
 };
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 30; // keep page size to 30 to avoid long page scroll bug
 
 // ── Expandable Question Row ───────────────────────────────────────────────────
 
@@ -271,6 +271,7 @@ export default function QuestionBankPage() {
     question_type: (typeFilter as StandaloneQuestionType) || undefined,
     is_active: activeFilter === '' ? undefined : activeFilter === 'true',
     page,
+    page_size: PAGE_SIZE,
   });
 
   const { data: skillsRes } = useSkills();
