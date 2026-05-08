@@ -20,14 +20,38 @@ import {
   ClipboardList,
   CalendarDays,
   CheckCircle,
+  HelpCircle,
+  ClipboardCheck,
+  TrendingUp,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { getFullName, getInitials, getPrimaryRoleName } from "@/utils/user.utils";
+import { usePermission } from '@/hooks/usePermission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 export const AdminSidebar = () => {
   const { isSidebarOpen } = useUIStore();
   const { user } = useAuthStore();
   const location = useLocation();
+
+  // Permission checks for the Assessments section
+  const canManageAssessments  = usePermission(PERMISSIONS.ASSESSMENT_MANAGE);
+  const canReviewAssessments  = usePermission(PERMISSIONS.ASSESSMENT_REVIEW_MANAGE);
+  const canApproveSkillUpgrade = usePermission(PERMISSIONS.SKILL_UPGRADE_APPROVE);
+
+  // Build assessment items dynamically based on permissions
+  const assessmentItems = [
+    ...(canManageAssessments ? [
+      { label: "Question Bank",  icon: HelpCircle,     path: "/admin/assessments/questions", badge: null },
+      { label: "Assessments",    icon: ClipboardCheck, path: "/admin/assessments",           badge: null },
+    ] : []),
+    ...(canReviewAssessments ? [
+      { label: "Review Queue",   icon: ClipboardList,  path: "/admin/assessments/review",    badge: null },
+    ] : []),
+    ...(canApproveSkillUpgrade ? [
+      { label: "Skill Upgrades", icon: TrendingUp,     path: "/admin/assessments/skill-upgrades", badge: null },
+    ] : []),
+  ];
 
   const sections = [
     {
@@ -69,6 +93,11 @@ export const AdminSidebar = () => {
         { label: "Course Catalog", icon: Blocks, path: "/admin/courses", badge: null },
       ]
     },
+    // Assessments section — items are permission-gated (built above)
+    ...(assessmentItems.length > 0 ? [{
+      title: "Assessments",
+      items: assessmentItems,
+    }] : []),
     {
       title: "System",
       items: [

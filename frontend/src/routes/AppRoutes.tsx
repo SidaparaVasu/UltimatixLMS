@@ -44,6 +44,12 @@ const TrainingCalendarPage = lazy(() => import('@/pages/admin/training/TrainingC
 const ApprovalsPage        = lazy(() => import('@/pages/admin/training/ApprovalsPage'));
 const AssessmentReviewQueuePage = lazy(() => import('@/pages/admin/assessments/AssessmentReviewQueuePage'));
 const AssessmentReviewDetailPage = lazy(() => import('@/pages/admin/assessments/AssessmentReviewDetailPage'));
+const QuestionBankPage           = lazy(() => import('@/pages/admin/assessments/QuestionBankPage'));
+const AssessmentListPage         = lazy(() => import('@/pages/admin/assessments/AssessmentListPage'));
+const AssessmentFormPage         = lazy(() => import('@/pages/admin/assessments/AssessmentFormPage'));
+const SkillUpgradeApprovalsPage  = lazy(() => import('@/pages/admin/assessments/SkillUpgradeApprovalsPage'));
+const AssessmentCatalogPage      = lazy(() => import('@/pages/learner/AssessmentCatalogPage'));
+const AssessmentPlayerPage       = lazy(() => import('@/pages/learner/AssessmentPlayerPage'));
 const NotificationsPage    = lazy(() => import('@/pages/NotificationsPage'));
 const RolesPage            = lazy(() => import('@/pages/admin/rbac/RolesPage'));
 // RoleDetailPage is preserved for future use — unlinked from routing intentionally
@@ -119,10 +125,23 @@ export const AppRoutes = () => {
                 <Route path="/admin/approvals" element={<ApprovalsPage />} />
                 <Route path="/admin/skill-gap" element={<ComingSoon />} />
 
-                {/* Assessments — requires ASSESSMENT_REVIEW_MANAGE */}
+                {/* Assessments — Question Bank + Assessment Management (requires ASSESSMENT_MANAGE) */}
+                <Route element={<RoleGuard requiredPermissions={[PERMISSIONS.ASSESSMENT_MANAGE]} />}>
+                  <Route path="/admin/assessments" element={<AssessmentListPage />} />
+                  <Route path="/admin/assessments/new" element={<AssessmentFormPage />} />
+                  <Route path="/admin/assessments/:id/edit" element={<AssessmentFormPage />} />
+                  <Route path="/admin/assessments/questions" element={<QuestionBankPage />} />
+                </Route>
+
+                {/* Assessments — Review Queue (requires ASSESSMENT_REVIEW_MANAGE) */}
                 <Route element={<RoleGuard requiredPermissions={[PERMISSIONS.ASSESSMENT_REVIEW_MANAGE]} />}>
                   <Route path="/admin/assessments/review" element={<AssessmentReviewQueuePage />} />
                   <Route path="/admin/assessments/review/:attemptId" element={<AssessmentReviewDetailPage />} />
+                </Route>
+
+                {/* Assessments — Skill Upgrade Approvals (requires SKILL_UPGRADE_APPROVE) */}
+                <Route element={<RoleGuard requiredPermissions={[PERMISSIONS.SKILL_UPGRADE_APPROVE]} />}>
+                  <Route path="/admin/assessments/skill-upgrades" element={<SkillUpgradeApprovalsPage />} />
                 </Route>
 
                 {/* RBAC management — requires ROLE_VIEW */}
@@ -136,6 +155,9 @@ export const AppRoutes = () => {
 
               {/* Studio runs outside of standard AdminLayout for full screen */}
               <Route path="/admin/courses/builder/:id" element={<CourseBuilderStudio />} />
+
+              {/* Assessment Player — full screen, no sidebar/header */}
+              <Route path="/assessments/:assessmentId/attempt" element={<AssessmentPlayerPage />} />
             </Route>
 
             <Route element={<DashboardLayout />}>
@@ -159,7 +181,7 @@ export const AppRoutes = () => {
 
               {/* Coming Soon Routes */}
               <Route path="/skills" element={<ComingSoon />} />
-              <Route path="/assessments" element={<ComingSoon />} />
+              <Route path="/assessments" element={<AssessmentCatalogPage />} />
               <Route path="/certifications" element={<ComingSoon />} />
               <Route path="/reports" element={<ComingSoon />} />
               <Route path="/leaderboard" element={<ComingSoon />} />
