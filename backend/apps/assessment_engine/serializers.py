@@ -247,8 +247,9 @@ class AssessmentResultSerializer(serializers.ModelSerializer):
         return obj.attempt.answers.filter(status="ATTEMPTED").count()
 
     def get_correct_count(self, obj):
+        # Count any answered question that earned points — auto-graded or manually reviewed.
         return obj.attempt.answers.filter(
-            is_auto_graded=True,
+            status="ATTEMPTED",
             earned_points__gt=0
         ).count()
 
@@ -260,6 +261,9 @@ class AssessmentResultSerializer(serializers.ModelSerializer):
           - learner's selected options / answer text
           - correct options (for auto-graded questions)
           - earned_points, max_points, is_auto_graded
+          - is_manually_graded: True when this answer has been reviewed by an instructor.
+            Derived from the result's grading_type so the frontend can distinguish
+            "awaiting review" from "already reviewed" — both have is_auto_graded=False.
         """
         answers = obj.attempt.answers.select_related(
             'question'
@@ -267,6 +271,9 @@ class AssessmentResultSerializer(serializers.ModelSerializer):
             'question__options',
             'selected_options',
         ).order_by('id')
+
+        # True once the instructor has submitted grades for this attempt
+        result_is_graded = obj.grading_type == "MANUALLY_GRADED"
 
         result = []
         for answer in answers:
@@ -286,19 +293,24 @@ class AssessmentResultSerializer(serializers.ModelSerializer):
                 for o in answer.selected_options.all().order_by("display_order")
             ]
 
+            # A manually-graded answer is one that was not auto-graded AND the
+            # result has been finalised by an instructor (grading_type=MANUALLY_GRADED).
+            is_manually_graded = not answer.is_auto_graded and result_is_graded
+
             result.append({
-                "question_id":       str(q.id),
-                "question_text":     q.question_text,
-                "question_type":     q.question_type,
-                "scenario_text":     q.scenario_text,
-                "explanation_text":  q.explanation_text,
-                "answer_text":       answer.answer_text,
-                "status":            answer.status,
-                "is_auto_graded":    answer.is_auto_graded,
-                "earned_points":     float(answer.earned_points),
-                "max_points":        max_pts,
-                "selected_options":  selected_options,
-                "correct_options":   correct_options,
+                "question_id":        str(q.id),
+                "question_text":      q.question_text,
+                "question_type":      q.question_type,
+                "scenario_text":      q.scenario_text,
+                "explanation_text":   q.explanation_text,
+                "answer_text":        answer.answer_text,
+                "status":             answer.status,
+                "is_auto_graded":     answer.is_auto_graded,
+                "is_manually_graded": is_manually_graded,
+                "earned_points":      float(answer.earned_points),
+                "max_points":         max_pts,
+                "selected_options":   selected_options,
+                "correct_options":    correct_options,
             })
         return result
 
@@ -449,6 +461,7 @@ class ReviewAttemptDetailSerializer(serializers.ModelSerializer):
     employee_code    = serializers.CharField(source="employee.employee_code", read_only=True)
     assessment_title = serializers.CharField(source="assessment.title", read_only=True)
     course_title     = serializers.SerializerMethodField()
+    lesson_id        = serializers.IntegerField(source="assessment.lesson_id", read_only=True)
     passing_percentage = serializers.DecimalField(
         source="assessment.passing_percentage", max_digits=5, decimal_places=2, read_only=True
     )
@@ -460,7 +473,7 @@ class ReviewAttemptDetailSerializer(serializers.ModelSerializer):
         fields = [
             "id", "employee_code", "learner_name",
             "assessment", "assessment_title", "course_title",
-            "passing_percentage", "submitted_at", "answers", "result",
+            "lesson_id", "passing_percentage", "submitted_at", "answers", "result",
         ]
 
     def get_learner_name(self, obj):

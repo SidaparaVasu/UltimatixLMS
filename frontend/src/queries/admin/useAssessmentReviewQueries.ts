@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { assessmentReviewApi } from '@/api/assessment-review-api';
 import { ManualGradePayload, RetakeGrantPayload } from '@/types/assessment-review.types';
+import { PLAYER_QUERY_KEYS } from '@/queries/learner/usePlayerQueries';
 
 export const REVIEW_KEYS = {
   queue:  (params?: object) => ['assessment', 'review', 'queue', params],
@@ -28,8 +29,19 @@ export const useSubmitGrades = (attemptId: string) => {
     mutationFn: (payload: ManualGradePayload) =>
       assessmentReviewApi.submitGrades(attemptId, payload),
     onSuccess: () => {
+      // Invalidate the review queue and this attempt's detail
       qc.invalidateQueries({ queryKey: ['assessment', 'review', 'queue'] });
       qc.invalidateQueries({ queryKey: REVIEW_KEYS.detail(attemptId) });
+
+      // Invalidate the learner's course player cache so the updated result status
+      // (PENDING → PASS/FAIL) is reflected immediately without a page refresh.
+      // We read lesson_id from the already-cached review detail to be precise.
+      const detail = qc.getQueryData<Awaited<ReturnType<typeof assessmentReviewApi.getDetail>>>(
+        REVIEW_KEYS.detail(attemptId)
+      );
+      if (detail?.lesson_id) {
+        qc.invalidateQueries({ queryKey: PLAYER_QUERY_KEYS.assessmentByLesson(detail.lesson_id) });
+      }
     },
   });
 };
@@ -40,7 +52,18 @@ export const useGrantRetake = (attemptId: string) => {
     mutationFn: (payload?: RetakeGrantPayload) =>
       assessmentReviewApi.grantRetake(attemptId, payload),
     onSuccess: () => {
+      // Invalidate the review queue and this attempt's detail
+      qc.invalidateQueries({ queryKey: ['assessment', 'review', 'queue'] });
       qc.invalidateQueries({ queryKey: REVIEW_KEYS.detail(attemptId) });
+
+      // Invalidate the learner's course player cache so the updated attempts_remaining
+      // is reflected immediately, enabling the retake button without a page refresh.
+      const detail = qc.getQueryData<Awaited<ReturnType<typeof assessmentReviewApi.getDetail>>>(
+        REVIEW_KEYS.detail(attemptId)
+      );
+      if (detail?.lesson_id) {
+        qc.invalidateQueries({ queryKey: PLAYER_QUERY_KEYS.assessmentByLesson(detail.lesson_id) });
+      }
     },
   });
 };

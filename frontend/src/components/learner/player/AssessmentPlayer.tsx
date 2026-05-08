@@ -696,24 +696,43 @@ function StatCard({
 function QuestionReviewCard({ answer, index }: { answer: AttemptResultAnswer; index: number }) {
   const [open, setOpen] = useState(false);
 
-  const isPending   = !answer.is_auto_graded && answer.status === 'ATTEMPTED';
-  const isCorrect   = answer.is_auto_graded && answer.earned_points > 0;
-  const isIncorrect = answer.is_auto_graded && answer.earned_points === 0 && answer.status === 'ATTEMPTED';
-  const isSkipped   = answer.status !== 'ATTEMPTED';
+  // "Pending" only when the answer needs manual review AND the instructor hasn't
+  // graded it yet. is_auto_graded stays false even after manual grading, so we
+  // use is_manually_graded (derived from result.grading_type on the backend) to
+  // distinguish "awaiting review" from "already reviewed".
+  const isPending       = !answer.is_auto_graded && !answer.is_manually_graded && answer.status === 'ATTEMPTED';
+  const isManuallyGraded = answer.is_manually_graded && answer.status === 'ATTEMPTED';
+  const isCorrect       = answer.is_auto_graded && answer.earned_points > 0;
+  const isIncorrect     = answer.is_auto_graded && answer.earned_points === 0 && answer.status === 'ATTEMPTED';
+  const isSkipped       = answer.status !== 'ATTEMPTED';
 
-  const headerColor = isPending  ? 'text-amber-600'
-                    : isCorrect  ? 'text-emerald-600'
-                    : isIncorrect ? 'text-red-600'
+  // For manually-graded answers: full marks = correct, partial/zero = incorrect
+  const manuallyCorrect   = isManuallyGraded && answer.earned_points >= answer.max_points;
+  const manuallyPartial   = isManuallyGraded && answer.earned_points > 0 && answer.earned_points < answer.max_points;
+  const manuallyIncorrect = isManuallyGraded && answer.earned_points === 0;
+
+  const headerColor = isPending         ? 'text-amber-600'
+                    : isCorrect         ? 'text-emerald-600'
+                    : manuallyCorrect   ? 'text-emerald-600'
+                    : manuallyPartial   ? 'text-blue-600'
+                    : isIncorrect       ? 'text-red-600'
+                    : manuallyIncorrect ? 'text-red-600'
                     : 'text-gray-400';
 
-  const headerIcon = isPending   ? <Clock className="h-4 w-4 flex-shrink-0" />
-                   : isCorrect   ? <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-                   : isIncorrect ? <XCircle className="h-4 w-4 flex-shrink-0" />
+  const headerIcon = isPending         ? <Clock className="h-4 w-4 flex-shrink-0" />
+                   : isCorrect         ? <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+                   : manuallyCorrect   ? <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+                   : manuallyPartial   ? <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+                   : isIncorrect       ? <XCircle className="h-4 w-4 flex-shrink-0" />
+                   : manuallyIncorrect ? <XCircle className="h-4 w-4 flex-shrink-0" />
                    : <AlertCircle className="h-4 w-4 flex-shrink-0" />;
 
-  const statusLabel = isPending   ? 'Pending Review'
-                    : isCorrect   ? `Correct · ${answer.earned_points}/${answer.max_points} pts`
-                    : isIncorrect ? `Incorrect · 0/${answer.max_points} pts`
+  const statusLabel = isPending         ? 'Pending Review'
+                    : isCorrect         ? `Correct · ${answer.earned_points}/${answer.max_points} pts`
+                    : manuallyCorrect   ? `Reviewed · ${answer.earned_points}/${answer.max_points} pts`
+                    : manuallyPartial   ? `Reviewed · ${answer.earned_points}/${answer.max_points} pts`
+                    : isIncorrect       ? `Incorrect · 0/${answer.max_points} pts`
+                    : manuallyIncorrect ? `Reviewed · 0/${answer.max_points} pts`
                     : 'Not Attempted';
 
   return (
@@ -754,6 +773,38 @@ function QuestionReviewCard({ answer, index }: { answer: AttemptResultAnswer; in
             <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-md px-3 py-2.5 text-sm text-amber-700">
               <Clock className="h-4 w-4 flex-shrink-0" />
               This answer is awaiting manual review by your instructor.
+            </div>
+          )}
+
+          {/* Manually graded — show the learner's answer and awarded score */}
+          {isManuallyGraded && (
+            <div className="flex flex-col gap-2">
+              {answer.answer_text && (
+                <div className="bg-white border border-gray-200 rounded-md p-3 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                  {answer.answer_text}
+                </div>
+              )}
+              <div className={cn(
+                'flex items-center gap-2 px-3 py-2 rounded-md text-sm border',
+                manuallyCorrect ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                : manuallyPartial ? 'bg-blue-50 border-blue-200 text-blue-700'
+                : 'bg-red-50 border-red-200 text-red-700'
+              )}>
+                {manuallyCorrect || manuallyPartial
+                  ? <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
+                  : <XCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                }
+                <span className="font-medium">
+                  {manuallyCorrect
+                    ? 'Full marks awarded'
+                    : manuallyPartial
+                    ? 'Partial marks awarded'
+                    : 'No marks awarded'}
+                </span>
+                <span className="ml-auto font-semibold font-mono text-xs">
+                  {answer.earned_points} / {answer.max_points} pts
+                </span>
+              </div>
             </div>
           )}
 

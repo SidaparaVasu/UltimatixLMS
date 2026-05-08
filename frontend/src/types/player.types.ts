@@ -116,6 +116,8 @@ export interface AttemptResultAnswer {
   answer_text: string;
   status: 'NOT_VISITED' | 'ATTEMPTED' | 'TIMED_OUT';
   is_auto_graded: boolean;
+  /** True when the instructor has submitted grades for this attempt (grading_type = MANUALLY_GRADED). */
+  is_manually_graded: boolean;
   earned_points: number;
   max_points: number;
   selected_options: { id: number; option_text: string }[];

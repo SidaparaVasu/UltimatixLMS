@@ -53,6 +53,7 @@ export interface ReviewAttemptDetail {
   assessment: number;
   assessment_title: string;
   course_title: string | null;
+  lesson_id: number | null;
   passing_percentage: string;
   submitted_at: string;
   answers: ReviewAnswer[];

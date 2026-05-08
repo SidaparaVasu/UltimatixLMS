@@ -98,6 +98,53 @@ class GradingEngineTest(TestCase):
         result = self.grader.grade_attempt(attempt.id)
         self.assertEqual(result.total_score, Decimal("5.00"))
 
+    def test_msq_partial_with_one_wrong(self):
+        """
+        3 correct + 1 wrong selected out of 4 correct options.
+        Expected: (3 correct - 1 wrong) / 4 * weight = 0.5 * 10 = 5.00
+        Previously this returned 0 due to strict-accuracy rule.
+        """
+        q = QuestionBank.objects.create(question_text="MSQ with wrong", question_type="MSQ")
+        AssessmentQuestionMapping.objects.create(assessment=self.assessment, question=q, weight_points=10.00)
+        c1 = QuestionOption.objects.create(question=q, option_text="C1", is_correct=True)
+        c2 = QuestionOption.objects.create(question=q, option_text="C2", is_correct=True)
+        c3 = QuestionOption.objects.create(question=q, option_text="C3", is_correct=True)
+        c4 = QuestionOption.objects.create(question=q, option_text="C4", is_correct=True)
+        w1 = QuestionOption.objects.create(question=q, option_text="W1", is_correct=False)
+
+        attempt = AssessmentAttempt.objects.create(
+            employee=self.employee, assessment=self.assessment,
+            expires_at=timezone.now() + timedelta(hours=1)
+        )
+        ans = UserAnswer.objects.create(attempt=attempt, question=q, status="ATTEMPTED")
+        ans.selected_options.add(c1, c2, c3, w1)  # 3 correct + 1 wrong
+
+        result = self.grader.grade_attempt(attempt.id)
+        # (3 - 1) / 4 * 10 = 5.00
+        self.assertEqual(result.total_score, Decimal("5.00"))
+
+    def test_msq_all_wrong_floors_at_zero(self):
+        """
+        Selecting only wrong options should give 0, not negative.
+        """
+        q = QuestionBank.objects.create(question_text="MSQ all wrong", question_type="MSQ")
+        AssessmentQuestionMapping.objects.create(assessment=self.assessment, question=q, weight_points=10.00)
+        QuestionOption.objects.create(question=q, option_text="C1", is_correct=True)
+        QuestionOption.objects.create(question=q, option_text="C2", is_correct=True)
+        w1 = QuestionOption.objects.create(question=q, option_text="W1", is_correct=False)
+        w2 = QuestionOption.objects.create(question=q, option_text="W2", is_correct=False)
+
+        attempt = AssessmentAttempt.objects.create(
+            employee=self.employee, assessment=self.assessment,
+            expires_at=timezone.now() + timedelta(hours=1)
+        )
+        ans = UserAnswer.objects.create(attempt=attempt, question=q, status="ATTEMPTED")
+        ans.selected_options.add(w1, w2)  # only wrong options
+
+        result = self.grader.grade_attempt(attempt.id)
+        # (0 - 2) / 2 * 10 = -10 → floored to 0
+        self.assertEqual(result.total_score, Decimal("0.00"))
+
     def test_manual_review_trigger(self):
         """Verify that descriptive questions set status to PENDING."""
         q_auto = QuestionBank.objects.create(question_text="MCQ", question_type="MCQ")

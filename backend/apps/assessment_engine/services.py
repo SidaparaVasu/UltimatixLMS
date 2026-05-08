@@ -411,34 +411,60 @@ class GradingService(BaseService):
 
     def calculate_objective_score(self, answer, mapping, assessment):
         """
-        Advanced scoring logic supporting MSQ (Set-based) and Negative Marking.
+        Scoring logic supporting MSQ (partial credit) and Negative Marking.
+
+        MSQ scoring (no global negative marking):
+          - Each correct option selected   → +weight / total_correct
+          - Each wrong option selected     → -weight / total_correct  (per-option deduction)
+          - Result is floored at 0 so a single question never goes negative
+          - Perfect match still awards full weight
+
+        MCQ / TRUE_FALSE:
+          - Perfect match → full weight
+          - Any mismatch  → 0 (or global negative-marking penalty)
+
+        Global negative marking (neg_enabled):
+          - Overrides MSQ partial logic — flat penalty on any wrong answer
         """
         from decimal import Decimal
         weight = Decimal(str(mapping.weight_points))
         neg_enabled = assessment.negative_marking_enabled
         neg_perc = Decimal(str(assessment.negative_marking_percentage))
-        
+
         question = answer.question
         correct_options = set(question.options.filter(is_correct=True).values_list('id', flat=True))
         selected_options = set(answer.selected_options.values_list('id', flat=True))
 
-        # 1. Perfect Match (Works for MCQ, MSQ, TRUE_FALSE)
+        # 1. Perfect match — full marks for all question types
         if selected_options == correct_options and len(correct_options) > 0:
             return weight
 
-        # 2. Incorrect / Partial
-        if not neg_enabled:
-            # Check for partial credit if MSQ
-            if question.question_type == "MSQ" and len(selected_options) > 0:
-                # Only award if NO incorrect options selected (Strict accuracy)
-                all_selected_are_correct = selected_options.issubset(correct_options)
-                if all_selected_are_correct:
-                    return (Decimal(len(selected_options)) / Decimal(len(correct_options))) * weight
+        # 2. Nothing selected — 0 points
+        if not selected_options:
             return Decimal("0.00")
-        else:
-            # Negative Marking Enabled: Flat penalty for any mistake
+
+        # 3. MSQ partial credit (when global negative marking is off)
+        if question.question_type == "MSQ" and not neg_enabled:
+            total_correct = Decimal(len(correct_options))
+            per_option_value = weight / total_correct
+
+            correct_selected = selected_options & correct_options
+            wrong_selected   = selected_options - correct_options
+
+            raw_score = (
+                Decimal(len(correct_selected)) * per_option_value
+                - Decimal(len(wrong_selected)) * per_option_value
+            )
+            # Floor at 0 — a single question never contributes negative points
+            return max(Decimal("0.00"), raw_score)
+
+        # 4. MCQ / TRUE_FALSE mismatch, or MSQ with global negative marking enabled
+        if neg_enabled:
+            # Flat penalty for any wrong answer
             penalty = -(weight * (neg_perc / Decimal("100.00")))
             return penalty
+
+        return Decimal("0.00")
 
 
 class ReviewService:
