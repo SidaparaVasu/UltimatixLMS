@@ -52,7 +52,7 @@ export const skillApi = {
   // Skills
   getSkills: async () => {
     try {
-      const response = await apiClient.get("/skills/skills/");
+      const response = await apiClient.get("/skills/skills/", { params: { page_size: 1000 } });
       return handleApiResponse<PaginatedResponse<Skill>>(response.data, false);
     } catch (error) {
       return handleApiError(error);
@@ -86,7 +86,7 @@ export const skillApi = {
   // Skill Levels
   getSkillLevels: async () => {
     try {
-      const response = await apiClient.get("/skills/skill-levels/");
+      const response = await apiClient.get("/skills/skill-levels/", { params: { page_size: 1000 } });
       return handleApiResponse<PaginatedResponse<SkillLevel>>(response.data, false);
     } catch (error) {
       return handleApiError(error);

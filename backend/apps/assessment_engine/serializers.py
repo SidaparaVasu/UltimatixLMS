@@ -318,7 +318,9 @@ class QuestionBankWriteSerializer(serializers.ModelSerializer):
         model = QuestionBank
         fields = [
             "id", "question_text", "question_type", "scenario_text",
-            "explanation_text", "difficulty_complexity", "options",
+            "explanation_text", "difficulty_complexity",
+            "skill", "skill_level",
+            "options",
         ]
         read_only_fields = ["id"]
 
