@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ClipboardCheck, Clock, AlertCircle } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { ClipboardCheck, Clock, AlertCircle, BookOpen, Layers } from 'lucide-react';
 import { AdminMasterLayout } from '@/components/admin/layout/AdminMasterLayout';
 import { AdminDataTable, DataTableColumn } from '@/components/admin/layout/AdminDataTable';
 import { TableCell, TableActionCell, TableActionButton } from '@/components/ui/table';
@@ -16,19 +16,17 @@ function formatDate(iso: string) {
   });
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+type TabKey = 'course' | 'standalone';
 
 const PAGE_SIZE = 20;
 
-export default function AssessmentReviewQueuePage() {
-  const navigate = useNavigate();
-  const [page, setPage] = useState(1);
+// ── Shared table columns ──────────────────────────────────────────────────────
 
-  const { data, isLoading, error } = useReviewQueue({ page });
-  const items  = data?.results ?? [];
-  const total  = data?.count   ?? 0;
-
-  const columns: DataTableColumn<ReviewQueueItem>[] = [
+function buildColumns(
+  navigate: ReturnType<typeof useNavigate>,
+  tab: TabKey,
+): DataTableColumn<ReviewQueueItem>[] {
+  return [
     {
       type: 'custom',
       header: 'Learner',
@@ -51,9 +49,14 @@ export default function AssessmentReviewQueuePage() {
           <p style={{ margin: 0, fontSize: '13px', fontWeight: 500, color: 'var(--color-text-primary)' }}>
             {row.assessment_title}
           </p>
-          {row.course_title && (
+          {tab === 'course' && row.course_title && (
             <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'var(--color-text-muted)' }}>
               {row.course_title}
+            </p>
+          )}
+          {tab === 'standalone' && (
+            <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'var(--color-accent)', fontWeight: 500 }}>
+              Standalone
             </p>
           )}
         </TableCell>
@@ -114,40 +117,116 @@ export default function AssessmentReviewQueuePage() {
       ),
     },
   ];
+}
+
+// ── Tab panel ─────────────────────────────────────────────────────────────────
+
+function ReviewTabPanel({ tab, navigate }: { tab: TabKey; navigate: ReturnType<typeof useNavigate> }) {
+  const [page, setPage] = useState(1);
+
+  const standalone = tab === 'standalone' ? 'true' : 'false';
+  const { data, isLoading, error } = useReviewQueue({ standalone, page });
+
+  const items = data?.results ?? [];
+  const total = data?.count ?? 0;
+  const columns = buildColumns(navigate, tab);
+
+  if (total === 0 && !isLoading && !error) {
+    return (
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        padding: 'var(--space-16) var(--space-8)',
+        border: '1px dashed var(--color-border)', borderRadius: 'var(--radius-lg)',
+        color: 'var(--color-text-muted)',
+      }}>
+        <ClipboardCheck size={36} style={{ opacity: 0.3, marginBottom: 'var(--space-3)' }} />
+        <p style={{ fontSize: '14px', fontWeight: 500, margin: 0 }}>All caught up</p>
+        <p style={{ fontSize: '13px', margin: '4px 0 0' }}>
+          No {tab === 'standalone' ? 'standalone' : 'course'} assessments are pending manual review.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <AdminDataTable<ReviewQueueItem>
+      rowKey="id"
+      columns={columns}
+      data={items}
+      isLoading={isLoading}
+      error={error}
+      emptyMessage="No pending reviews."
+      skeletonRowCount={8}
+      pagination={{ page, pageSize: PAGE_SIZE, total, onPageChange: setPage }}
+    />
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default function AssessmentReviewQueuePage() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Tab state persisted in URL: ?tab=course (default) | ?tab=standalone
+  const activeTab = (searchParams.get('tab') as TabKey) ?? 'course';
+
+  const setTab = (tab: TabKey) => {
+    setSearchParams({ tab }, { replace: true });
+  };
+
+  const tabs: { key: TabKey; label: string; icon: typeof BookOpen }[] = [
+    { key: 'course',     label: 'Course Assessments',     icon: BookOpen },
+    { key: 'standalone', label: 'Standalone Assessments', icon: Layers },
+  ];
 
   return (
     <AdminMasterLayout
       title="Assessment Review"
-      description="Manually grade pending assessment submissions that contain descriptive or file-upload questions."
+      description="Manually grade pending assessment submissions that contain descriptive questions."
       breadcrumbs={[
         { label: 'Admin', href: '/admin' },
         { label: 'Assessments' },
         { label: 'Review Queue' },
       ]}
-      resultCount={total}
     >
-      {total === 0 && !isLoading && !error ? (
-        <div style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          padding: 'var(--space-16) var(--space-8)',
-          border: '1px dashed var(--color-border)', borderRadius: 'var(--radius-lg)',
-          color: 'var(--color-text-muted)',
-        }}>
-          <ClipboardCheck size={36} style={{ opacity: 0.3, marginBottom: 'var(--space-3)' }} />
-          <p style={{ fontSize: '14px', fontWeight: 500, margin: 0 }}>All caught up</p>
-          <p style={{ fontSize: '13px', margin: '4px 0 0' }}>No assessments are pending manual review.</p>
-        </div>
-      ) : (
-        <AdminDataTable<ReviewQueueItem>
-          rowKey="id"
-          columns={columns}
-          data={items}
-          isLoading={isLoading}
-          error={error}
-          emptyMessage="No pending reviews."
-          skeletonRowCount={8}
-          pagination={{ page, pageSize: PAGE_SIZE, total, onPageChange: setPage }}
-        />
+      {/* ── Tab switcher ── */}
+      <div style={{
+        display: 'flex',
+        borderBottom: '1px solid var(--color-border)',
+        marginBottom: 'var(--space-5)',
+        gap: 'var(--space-1)',
+      }}>
+        {tabs.map(({ key, label, icon: Icon }) => {
+          const isActive = activeTab === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '10px 16px',
+                background: 'none', border: 'none', cursor: 'pointer',
+                fontSize: '13px', fontWeight: isActive ? 600 : 400,
+                color: isActive ? 'var(--color-accent)' : 'var(--color-text-muted)',
+                borderBottom: `2px solid ${isActive ? 'var(--color-accent)' : 'transparent'}`,
+                marginBottom: '-1px',
+                transition: 'all 150ms',
+              }}
+            >
+              <Icon size={14} />
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Tab content — each mounts independently with its own page state ── */}
+      {activeTab === 'course' && (
+        <ReviewTabPanel key="course" tab="course" navigate={navigate} />
+      )}
+      {activeTab === 'standalone' && (
+        <ReviewTabPanel key="standalone" tab="standalone" navigate={navigate} />
       )}
     </AdminMasterLayout>
   );

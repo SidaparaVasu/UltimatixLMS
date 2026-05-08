@@ -7,7 +7,7 @@ export const REVIEW_KEYS = {
   detail: (id: string)      => ['assessment', 'review', 'detail', id],
 };
 
-export const useReviewQueue = (params?: { assessment?: number; course?: number; page?: number }) =>
+export const useReviewQueue = (params?: { assessment?: number; course?: number; standalone?: 'true' | 'false'; page?: number }) =>
   useQuery({
     queryKey: REVIEW_KEYS.queue(params),
     queryFn:  () => assessmentReviewApi.getQueue({ ...params, page_size: 20 }),

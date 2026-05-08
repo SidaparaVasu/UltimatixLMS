@@ -15,7 +15,7 @@ export const assessmentReviewApi = {
    * GET /assessment/review/
    * Returns attempts pending manual review.
    */
-  getQueue: async (params?: { assessment?: number; course?: number; page?: number; page_size?: number }) => {
+  getQueue: async (params?: { assessment?: number; course?: number; standalone?: 'true' | 'false'; page?: number; page_size?: number }) => {
     try {
       const response = await apiClient.get(`${BASE}/`, { params });
       return handleApiResponse<PaginatedResponse<ReviewQueueItem>>(response.data, false);
