@@ -31,6 +31,7 @@ import {
   UserCheck,
   ClipboardCheck,
   FilePenLine,
+  BadgeCheck,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { getFullName, getInitials, getPrimaryRoleName } from "@/utils/user.utils";
@@ -96,15 +97,17 @@ const NAV_CONFIG: NavSection[] = [
       PERMISSIONS.TRAINING_CALENDAR_APPROVE,
       PERMISSIONS.ENROLLMENT_MANAGE,
       PERMISSIONS.ASSESSMENT_REVIEW_MANAGE,
+      PERMISSIONS.SKILL_UPGRADE_APPROVE,
     ],
     items: [
       { label: "TNI Review",          icon: UserCheck,     path: "/manager/tni",             requiredPermission: PERMISSIONS.TNI_APPROVE },
       { label: "Training Needs",      icon: ClipboardList, path: "/admin/tni",               requiredPermission: PERMISSIONS.TNI_MANAGE },
       { label: "Training Plans",      icon: GraduationCap, path: "/admin/training-plans",    requiredPermission: PERMISSIONS.TRAINING_PLAN_VIEW },
-      { label: "Training Plan Approvals",           icon: CheckCircle,   path: "/admin/approvals",         requiredPermission: PERMISSIONS.TRAINING_PLAN_APPROVE },
+      { label: "Training Plan Approval",           icon: CheckCircle,   path: "/admin/approvals",         requiredPermission: PERMISSIONS.TRAINING_PLAN_APPROVE },
       { label: "Training Calendar",   icon: CalendarDays,  path: "/admin/training-calendar", requiredPermission: PERMISSIONS.TRAINING_CALENDAR_APPROVE },
       { label: "Manage Assessments",          icon: FilePenLine, path: "/admin/assessments", requiredPermission: PERMISSIONS.ASSESSMENT_MANAGE},
       { label: "Assessment Review",      icon: ClipboardCheck, path: "/admin/assessments/review",     requiredPermission: PERMISSIONS.ASSESSMENT_REVIEW_MANAGE },
+      { label: "Skill Upgrade Approval",      icon: BadgeCheck, path: "/admin/assessments/skill-upgrades", requiredPermission: PERMISSIONS.SKILL_UPGRADE_APPROVE },
     ],
   },
 
@@ -208,6 +211,7 @@ export const Sidebar = () => {
     [PERMISSIONS.SKILL_CATEGORY_MANAGE]:     usePermission(PERMISSIONS.SKILL_CATEGORY_MANAGE),
     [PERMISSIONS.ASSESSMENT_MANAGE]:         usePermission(PERMISSIONS.ASSESSMENT_MANAGE),
     [PERMISSIONS.ASSESSMENT_REVIEW_MANAGE]:  usePermission(PERMISSIONS.ASSESSMENT_REVIEW_MANAGE),
+    [PERMISSIONS.SKILL_UPGRADE_APPROVE]:     usePermission(PERMISSIONS.SKILL_UPGRADE_APPROVE),
     [PERMISSIONS.ROLE_VIEW]:                 usePermission(PERMISSIONS.ROLE_VIEW),
     [PERMISSIONS.REPORTS_VIEW]:              usePermission(PERMISSIONS.REPORTS_VIEW),
     [PERMISSIONS.CONFIG_VIEW]:               usePermission(PERMISSIONS.CONFIG_VIEW),
