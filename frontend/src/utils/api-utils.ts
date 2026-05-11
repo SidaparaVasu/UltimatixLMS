@@ -20,14 +20,18 @@ export const handleApiResponse = <T>(response: ApiResponse<T>, notify: boolean =
     }
     return response.data ?? (true as unknown as T);
   } else {
-    const errorMsg = response.message || 'An unexpected error occurred.';
+    // If field-level validation errors are present, surface them directly
+    // instead of the generic "Validation failed" message.
+    let errorMsg = response.message || 'An unexpected error occurred.';
+    if (response.errors) {
+      const fieldMessages = Object.values(response.errors).flat();
+      if (fieldMessages.length > 0) {
+        errorMsg = fieldMessages.join(' ');
+      }
+      console.error('API Validation Errors:', response.errors);
+    }
     if (notify) {
       showNotification(errorMsg, 'error');
-    }
-    
-    // Log detailed validation errors if present
-    if (response.errors) {
-      console.error('API Validation Errors:', response.errors);
     }
     return null;
   }
@@ -35,11 +39,24 @@ export const handleApiResponse = <T>(response: ApiResponse<T>, notify: boolean =
 
 /**
  * Standard error handler for caught exceptions in API calls.
+ * For validation errors (400), surfaces field-level messages from `errors`
+ * instead of the generic top-level message.
  */
 export const handleApiError = (error: any) => {
   const { showNotification } = useNotificationStore.getState();
-  
-  const message = error.response?.data?.message || error.message || 'Connection to server failed.';
+
+  const data = error.response?.data;
+
+  // If the backend returned field-level validation errors, join and show them
+  if (data?.errors) {
+    const fieldMessages = Object.values(data.errors as Record<string, string[]>).flat();
+    if (fieldMessages.length > 0) {
+      showNotification(fieldMessages.join(' '), 'error');
+      throw error;
+    }
+  }
+
+  const message = data?.message || error.message || 'Connection to server failed.';
   showNotification(message, 'error');
   
   throw error;

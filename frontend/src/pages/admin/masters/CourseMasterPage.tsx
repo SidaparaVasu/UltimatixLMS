@@ -237,7 +237,7 @@ const CourseMasterPage: React.FC = () => {
       }
     >
       {/* ── Course list ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '50% 50%', gap: '15px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '50% 50%', gap: '15px', paddingBottom: '50px' }}>
         {isLoading ? (
           Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
         ) : filteredData.length === 0 ? (

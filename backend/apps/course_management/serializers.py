@@ -101,7 +101,15 @@ class CourseMasterSerializer(serializers.ModelSerializer):
             "participant_count", "total_sections", "total_lessons",
             "created_at", "updated_at",
         )
-        read_only_fields = ("course_code", "created_by", "created_at", "updated_at")
+        read_only_fields = ("created_by", "created_at", "updated_at")
+        extra_kwargs = {
+            "course_code": {"required": True},
+        }
+
+    def update(self, instance, validated_data):
+        # course_code is immutable after creation — silently drop it on updates
+        validated_data.pop("course_code", None)
+        return super().update(instance, validated_data)
 
     def get_participant_count(self, obj) -> int:
         return obj.participants.count()
