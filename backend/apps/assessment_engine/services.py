@@ -329,36 +329,51 @@ class GradingService(BaseService):
 
     def _create_skill_upgrade_proposals(self, attempt, result):
         """
-        Creates one SkillUpgradeProposal per skill mapped to the assessment.
-        Skips skills where the employee already holds an equal or higher level.
-        Notifies users with SKILL_UPGRADE_APPROVE permission.
+        Handles skill upgrades after a learner passes a standalone assessment.
+
+        For each skill mapped to the assessment:
+
+        Case A — Skill NOT in employee profile (or inactive):
+            Auto-assign the skill at the proposed level immediately.
+            No approval needed. Notify the learner directly.
+
+        Case B — Skill exists at a LOWER level:
+            Create a SkillUpgradeProposal (PENDING) for admin approval.
+            Notify approvers.
+
+        Case C — Skill exists at EQUAL or HIGHER level:
+            Skip — no action needed.
+
+        Case D — A PENDING proposal already exists for this skill:
+            Skip — avoid duplicates.
         """
         try:
             from .models import AssessmentSkillMapping, SkillUpgradeProposal
-            from apps.skill_management.models import EmployeeSkill
+            from apps.skill_management.models import EmployeeSkill, EmployeeSkillHistory
             from apps.notifications.models import Notification
             from apps.notifications.constants import NotificationType
-            from apps.rbac.models import UserRoleMaster, RolePermissionMaster, PermissionMaster
+            from apps.rbac.models import UserRoleMaster, PermissionMaster
 
             skill_mappings = AssessmentSkillMapping.objects.filter(
                 assessment=attempt.assessment
             ).select_related("skill", "skill_level")
 
             proposals_created = []
+            auto_assigned = []   # (skill_name, level_name) tuples for learner notification
 
             for sm in skill_mappings:
-                # Check if employee already has an equal or higher level for this skill
-                existing = EmployeeSkill.objects.filter(
+                # Look for any existing EmployeeSkill row (active or inactive)
+                existing_any = EmployeeSkill.objects.filter(
                     employee=attempt.employee,
                     skill=sm.skill,
-                    is_active=True,
                 ).select_related("current_level").first()
 
-                if existing and existing.current_level.level_rank >= sm.skill_level.level_rank:
-                    # Already at or above the proposed level — skip
+                existing_active = existing_any if (existing_any and existing_any.is_active) else None
+
+                # ── Case C / D — already at or above, or duplicate pending ──
+                if existing_active and existing_active.current_level.level_rank >= sm.skill_level.level_rank:
                     continue
 
-                # Avoid duplicate pending proposals for the same employee+skill
                 already_pending = SkillUpgradeProposal.objects.filter(
                     employee=attempt.employee,
                     skill=sm.skill,
@@ -367,6 +382,33 @@ class GradingService(BaseService):
                 if already_pending:
                     continue
 
+                # ── Case A — skill not in profile (or inactive row exists) ──
+                if not existing_active:
+                    if existing_any:
+                        # Reactivate the inactive row and update level
+                        existing_any.current_level = sm.skill_level
+                        existing_any.identified_by = "ASSESSMENT"
+                        existing_any.is_active = True
+                        existing_any._changed_by    = None
+                        existing_any._change_reason = EmployeeSkillHistory.ChangeReason.ASSESSMENT_AUTO
+                        existing_any.save()
+                    else:
+                        # Create a brand-new EmployeeSkill row
+                        new_skill = EmployeeSkill(
+                            employee=attempt.employee,
+                            skill=sm.skill,
+                            current_level=sm.skill_level,
+                            identified_by="ASSESSMENT",
+                            is_active=True,
+                        )
+                        new_skill._changed_by    = None
+                        new_skill._change_reason = EmployeeSkillHistory.ChangeReason.ASSESSMENT_AUTO
+                        new_skill.save()
+
+                    auto_assigned.append((sm.skill.skill_name, sm.skill_level.level_name))
+                    continue
+
+                # ── Case B — skill exists at a lower level → needs approval ──
                 proposal = SkillUpgradeProposal.objects.create(
                     employee=attempt.employee,
                     assessment_attempt=attempt,
@@ -376,42 +418,64 @@ class GradingService(BaseService):
                 )
                 proposals_created.append(proposal)
 
-            if not proposals_created:
-                return
-
-            # Notify all users with SKILL_UPGRADE_APPROVE permission
-            try:
-                perm = PermissionMaster.objects.get(permission_code="SKILL_UPGRADE_APPROVE")
-                approver_user_ids = (
-                    UserRoleMaster.objects.filter(
-                        role__rolepermissionmaster__permission=perm,
-                        is_active=True,
+            # ── Notify learner about auto-assigned skills (Case A) ────────────
+            if auto_assigned:
+                try:
+                    skill_lines = ", ".join(
+                        f"{name} ({level})" for name, level in auto_assigned
                     )
-                    .values_list("user_id", flat=True)
-                    .distinct()
-                )
-
-                skill_names = ", ".join(p.skill.skill_name for p in proposals_created)
-                learner_name = attempt.employee.user.profile.first_name or attempt.employee.employee_code
-
-                for user_id in approver_user_ids:
                     Notification.objects.create(
-                        user_id=user_id,
+                        user=attempt.employee.user,
                         notification_type=NotificationType.SKILL_UPGRADE,
-                        title="Skill upgrade approval required",
+                        title="Skills added to your profile",
                         message=(
-                            f"{learner_name} passed \"{attempt.assessment.title}\" "
-                            f"and has a pending skill upgrade for: {skill_names}."
+                            f"You passed \"{attempt.assessment.title}\". "
+                            f"The following skill(s) have been added to your profile: {skill_lines}."
                         ),
-                        action_url="/admin/assessments/skill-upgrades",
-                        entity_type="SkillUpgradeProposal",
-                        entity_id=str(proposals_created[0].id),
+                        action_url="/my-skills",
+                        entity_type="AssessmentAttempt",
+                        entity_id=str(attempt.id),
                     )
-            except Exception:
-                pass  # notification failure must never break grading
+                except Exception:
+                    pass
+
+            # ── Notify approvers about pending proposals (Case B) ─────────────
+            if proposals_created:
+                try:
+                    perm = PermissionMaster.objects.get(permission_code="SKILL_UPGRADE_APPROVE")
+                    approver_user_ids = (
+                        UserRoleMaster.objects.filter(
+                            role__rolepermissionmaster__permission=perm,
+                            is_active=True,
+                        )
+                        .values_list("user_id", flat=True)
+                        .distinct()
+                    )
+
+                    skill_names = ", ".join(p.skill.skill_name for p in proposals_created)
+                    learner_name = (
+                        attempt.employee.user.profile.first_name
+                        or attempt.employee.employee_code
+                    )
+
+                    for user_id in approver_user_ids:
+                        Notification.objects.create(
+                            user_id=user_id,
+                            notification_type=NotificationType.SKILL_UPGRADE,
+                            title="Skill upgrade approval required",
+                            message=(
+                                f"{learner_name} passed \"{attempt.assessment.title}\" "
+                                f"and has a pending skill upgrade for: {skill_names}."
+                            ),
+                            action_url="/admin/assessments/skill-upgrades",
+                            entity_type="SkillUpgradeProposal",
+                            entity_id=str(proposals_created[0].id),
+                        )
+                except Exception:
+                    pass  # notification failure must never break grading
 
         except Exception:
-            pass  # proposal creation failure must never break grading
+            pass  # proposal/assignment failure must never break grading
 
     def calculate_objective_score(self, answer, mapping, assessment):
         """

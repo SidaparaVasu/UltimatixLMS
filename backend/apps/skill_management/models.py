@@ -251,7 +251,21 @@ class EmployeeSkill(models.Model):
 class EmployeeSkillHistory(models.Model):
     """
     Stores historical changes in employee skill levels for audit and progression tracking.
+
+    Written automatically by the post_save signal on EmployeeSkill whenever
+    current_level changes. Callers can attach context by setting these attributes
+    on the EmployeeSkill instance before saving:
+        instance._changed_by     = EmployeeMaster | None
+        instance._change_reason  = one of SkillChangeReason choices
     """
+
+    class ChangeReason(models.TextChoices):
+        SELF_RATING          = "SELF_RATING",          "Self Rating"
+        MANAGER_RATING       = "MANAGER_RATING",       "Manager Rating"
+        ASSESSMENT_AUTO      = "ASSESSMENT_AUTO",      "Assessment — Auto Assigned"
+        ASSESSMENT_APPROVED  = "ASSESSMENT_APPROVED",  "Assessment — Approved"
+        ADMIN_OVERRIDE       = "ADMIN_OVERRIDE",       "Admin Override"
+
     employee = models.ForeignKey(
         EmployeeMaster,
         on_delete=models.CASCADE,
@@ -272,6 +286,20 @@ class EmployeeSkillHistory(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         related_name="new_history"
+    )
+    changed_by = models.ForeignKey(
+        EmployeeMaster,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="skill_changes_made",
+        help_text="Employee who triggered the change. Null means system/auto."
+    )
+    change_reason = models.CharField(
+        max_length=30,
+        choices=ChangeReason.choices,
+        default=ChangeReason.ADMIN_OVERRIDE,
+        help_text="Why the skill level changed."
     )
     remarks = models.CharField(
         max_length=255,

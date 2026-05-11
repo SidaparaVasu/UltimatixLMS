@@ -31,19 +31,29 @@ def capture_previous_skill_level(sender, instance, **kwargs):
 def log_skill_change_history(sender, instance, created, **kwargs):
     """
     Log a history entry whenever an employee's finalized proficiency level changes.
+
+    Callers can attach context before saving the EmployeeSkill instance:
+        instance._changed_by    = EmployeeMaster | None  (None = system/auto)
+        instance._change_reason = EmployeeSkillHistory.ChangeReason value
+    If not set, defaults to changed_by=None, change_reason=ADMIN_OVERRIDE.
     """
     old_level = getattr(instance, "_old_level", None)
     new_level = instance.current_level
 
     if created or (old_level != new_level):
+        changed_by    = getattr(instance, "_changed_by",    None)
+        change_reason = getattr(instance, "_change_reason", EmployeeSkillHistory.ChangeReason.ADMIN_OVERRIDE)
+
         EmployeeSkillHistory.objects.create(
             employee=instance.employee,
             skill=instance.skill,
             old_level=old_level,
             new_level=new_level,
+            changed_by=changed_by,
+            change_reason=change_reason,
             remarks=(
                 "Initial skill assignment." if created
-                else "Automated proficiency update."
+                else "Proficiency level updated."
             ),
         )
 
