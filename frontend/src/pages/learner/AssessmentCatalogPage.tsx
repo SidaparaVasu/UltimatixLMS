@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ClipboardList } from 'lucide-react';
-import { useAssessmentCatalog, useStartAttempt } from '@/queries/learner/useAssessmentCatalogQueries';
-import { useNotificationStore } from '@/stores/notificationStore';
+import { useAssessmentCatalog } from '@/queries/learner/useAssessmentCatalogQueries';
 import AssessmentCatalogCard from '@/components/learner/assessment/AssessmentCatalogCard';
 import { CatalogItem } from '@/types/assessment-catalog.types';
 
@@ -37,29 +36,20 @@ function SkeletonCard() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function AssessmentCatalogPage() {
-  const showNotification = useNotificationStore(s => s.showNotification);
-  const [startingId, setStartingId] = useState<number | null>(null);
-
   const { data, isLoading, error } = useAssessmentCatalog();
-  const startAttempt = useStartAttempt();
 
   const items = data?.results ?? [];
 
-  const handleStart = async (item: CatalogItem) => {
-    setStartingId(item.id);
-    try {
-      const result = await startAttempt.mutateAsync({ assessment_id: item.id });
-      if (result) {
-        // Open player in new tab
-        const url = `/assessments/${item.id}/attempt?attempt=${result.id}`;
-        window.open(url, '_blank', 'noopener,noreferrer');
-      }
-    } catch (err: any) {
-      const msg = err?.response?.data?.message ?? 'Failed to start assessment. Please try again.';
-      showNotification(msg, 'error');
-    } finally {
-      setStartingId(null);
-    }
+  const handleStart = (item: CatalogItem) => {
+    // Open player WITHOUT creating an attempt — let the instructions screen handle that
+    const url = `/assessments/${item.id}/attempt`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleResume = (item: CatalogItem) => {
+    if (!item.active_attempt_id) return;
+    const url = `/assessments/${item.id}/attempt?attempt=${item.active_attempt_id}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -124,7 +114,8 @@ export default function AssessmentCatalogPage() {
                 key={item.id}
                 item={item}
                 onStart={handleStart}
-                isStarting={startingId === item.id}
+                onResume={handleResume}
+                isStarting={false}
               />
             ))}
           </div>

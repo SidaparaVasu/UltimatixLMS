@@ -277,16 +277,20 @@ class GradingService(BaseService):
                 continue
                 
             q_type = answer.question.question_type
-            
+
             # 1. Handle Auto-gradable types
-            if q_type in ["MCQ", "MSQ", "TRUE_FALSE"]:
+            # SCENARIO questions with options are auto-graded like MCQ/MSQ.
+            # Only SCENARIO without options (free-text answer) needs manual review.
+            has_options = answer.question.options.filter(is_correct=True).exists()
+
+            if q_type in ["MCQ", "MSQ", "TRUE_FALSE"] or (q_type == "SCENARIO" and has_options):
                 q_score = self.calculate_objective_score(answer, mapping, assessment)
                 answer.earned_points = q_score
                 answer.is_auto_graded = True
                 answer.save()
                 earned_points += q_score
             else:
-                # Descriptive / File Upload
+                # DESCRIPTIVE, FILE_UPLOAD, or SCENARIO without options
                 needs_manual_review = True
                 answer.is_auto_graded = False
                 answer.save()

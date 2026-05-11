@@ -542,13 +542,14 @@ class AssessmentCatalogSerializer(serializers.ModelSerializer):
     Includes attempt history, cooldown status, and skill mappings.
     No questions, no correct answers exposed.
     """
-    question_count        = serializers.SerializerMethodField()
-    attempts_used         = serializers.SerializerMethodField()
-    attempts_remaining    = serializers.SerializerMethodField()
-    last_result_status    = serializers.SerializerMethodField()
-    last_attempt_id       = serializers.SerializerMethodField()
+    question_count           = serializers.SerializerMethodField()
+    attempts_used            = serializers.SerializerMethodField()
+    attempts_remaining       = serializers.SerializerMethodField()
+    last_result_status       = serializers.SerializerMethodField()
+    last_attempt_id          = serializers.SerializerMethodField()
+    active_attempt_id        = serializers.SerializerMethodField()
     cooldown_remaining_hours = serializers.SerializerMethodField()
-    skill_mappings        = serializers.SerializerMethodField()
+    skill_mappings           = serializers.SerializerMethodField()
 
     class Meta:
         model = AssessmentMaster
@@ -559,7 +560,7 @@ class AssessmentCatalogSerializer(serializers.ModelSerializer):
             "is_randomized", "negative_marking_enabled",
             "number_of_questions",
             "question_count", "attempts_used", "attempts_remaining",
-            "last_result_status", "last_attempt_id",
+            "last_result_status", "last_attempt_id", "active_attempt_id",
             "cooldown_remaining_hours", "skill_mappings",
         ]
 
@@ -611,6 +612,21 @@ class AssessmentCatalogSerializer(serializers.ModelSerializer):
 
     def get_last_attempt_id(self, obj):
         attempt = self._get_last_completed_attempt(obj)
+        return str(attempt.id) if attempt else None
+
+    def get_active_attempt_id(self, obj):
+        """
+        Returns the UUID of the current IN_PROGRESS attempt, or None.
+        Used by the frontend to show a "Resume" button instead of "Start Assessment".
+        """
+        employee = self._get_employee(obj)
+        if not employee:
+            return None
+        attempt = AssessmentAttempt.objects.filter(
+            assessment=obj,
+            employee=employee,
+            status="IN_PROGRESS",
+        ).first()
         return str(attempt.id) if attempt else None
 
     def get_cooldown_remaining_hours(self, obj):

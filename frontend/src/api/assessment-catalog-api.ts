@@ -35,4 +35,19 @@ export const assessmentCatalogApi = {
       return handleApiError(error);
     }
   },
+
+  /**
+   * GET /assessment/catalog/:id/
+   * Returns a single catalog item for the given assessment ID.
+   * Used by the assessment player to load metadata (title, duration, etc.)
+   * for the instructions screen without coupling to the admin studio API.
+   */
+  getDetail: async (assessmentId: number) => {
+    try {
+      const response = await apiClient.get(`/assessment/catalog/${assessmentId}/`);
+      return handleApiResponse<CatalogItem>(response.data, false);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
 };

@@ -6,7 +6,7 @@ export interface CatalogSkillMapping {
   skill_level_name: string;
 }
 
-// ── Catalog item (returned by GET /assessment/catalog/) ──────────────────────
+// ── Catalog item (returned by GET /assessment/catalog/ and GET /assessment/catalog/:id/) ──
 export interface CatalogItem {
   id: number;
   title: string;
@@ -22,6 +22,8 @@ export interface CatalogItem {
   attempts_remaining: number;
   last_result_status: 'PASS' | 'FAIL' | 'PENDING' | null;
   last_attempt_id: string | null;
+  /** UUID of the current IN_PROGRESS attempt, or null if none active. */
+  active_attempt_id: string | null;
   cooldown_remaining_hours: number;
   skill_mappings: CatalogSkillMapping[];
 }

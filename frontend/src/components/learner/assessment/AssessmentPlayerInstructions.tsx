@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  ShieldCheck, Wifi, Camera, Mic,
+  ShieldCheck, Camera, Mic, Wifi,
   CheckCircle2, XCircle, Loader2, AlertTriangle,
   Eye, Copy, Monitor, Clock, ArrowRight,
 } from 'lucide-react';
@@ -13,13 +13,14 @@ interface AssessmentPlayerInstructionsProps {
   questionCount: number;
   passingPercentage: string;
   negativeMarking: boolean;
+  isResuming?: boolean;
   onBegin: (stream: MediaStream) => void;
 }
 
 // ── Rules list ────────────────────────────────────────────────────────────────
 
 const RULES = [
-  { icon: Monitor,    text: 'Do not switch tabs or windows during the assessment. Three violations will result in automatic submission.' },
+  { icon: Monitor,    text: 'Do not switch tabs or windows during the assessment. Third violation will result in automatic submission.' },
   { icon: Clock,      text: 'Each question has a time limit. Unanswered questions will be marked as not attempted when time runs out.' },
   { icon: ArrowRight, text: 'Questions are presented one at a time. You cannot go back to a previous question.' },
   { icon: Copy,       text: 'Copy, paste, and text selection are disabled during the assessment.' },
@@ -63,6 +64,7 @@ export default function AssessmentPlayerInstructions({
   questionCount,
   passingPercentage,
   negativeMarking,
+  isResuming = false,
   onBegin,
 }: AssessmentPlayerInstructionsProps) {
   const [checks, setChecks] = useState<SystemCheckState>({ internet: false, camera: false, microphone: false });
@@ -72,6 +74,8 @@ export default function AssessmentPlayerInstructions({
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [consentChecked, setConsentChecked] = useState(false);
   const [isRequesting, setIsRequesting] = useState(false);
+  const [startInput, setStartInput] = useState('');
+  const [isBeginning, setIsBeginning] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
 
   // Check internet on mount
@@ -111,18 +115,27 @@ export default function AssessmentPlayerInstructions({
     }
   };
 
-  // Cleanup stream on unmount
+  // Cleanup stream on unmount — only stop tracks if we did NOT hand the
+  // stream off to the parent via onBegin (i.e. the user navigated away
+  // without starting). Once onBegin fires, the parent owns the stream.
+  const beganRef = useRef(false);
+
   useEffect(() => {
     return () => {
-      streamRef.current?.getTracks().forEach(t => t.stop());
+      if (!beganRef.current) {
+        streamRef.current?.getTracks().forEach(t => t.stop());
+      }
     };
   }, []);
 
   const allChecksPass = checks.internet && checks.camera && checks.microphone;
-  const canBegin = allChecksPass && consentChecked;
+  const startTyped    = startInput.trim().toLowerCase() === 'start';
+  const canBegin      = allChecksPass && consentChecked && startTyped;
 
   const handleBegin = () => {
-    if (!canBegin || !cameraStream) return;
+    if (!canBegin || !cameraStream || isBeginning) return;
+    setIsBeginning(true);
+    beganRef.current = true;  // prevent cleanup from stopping the stream
     onBegin(cameraStream);
   };
 
@@ -159,16 +172,19 @@ export default function AssessmentPlayerInstructions({
         {/* Left — Rules */}
         <div>
           <h2 style={{ margin: '0 0 var(--space-2)', fontSize: '20px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-            Before You Begin
+            {isResuming ? 'Resume Assessment' : 'Before You Begin'}
           </h2>
           <p style={{ margin: '0 0 var(--space-5)', fontSize: '14px', color: 'var(--color-text-muted)' }}>
-            Please read the following rules carefully before starting the assessment.
+            {isResuming
+              ? 'Complete the system checks below to continue your assessment from where you left off.'
+              : 'Please read the following rules carefully before starting the assessment.'
+            }
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginBottom: 'var(--space-6)' }}>
             {RULES.map((rule, i) => (
               <div key={i} style={{
-                display: 'flex', gap: 'var(--space-3)', alignItems: 'flex-start',
+                display: 'flex', gap: 'var(--space-3)', alignItems: 'center',
                 padding: 'var(--space-3) var(--space-4)',
                 background: 'var(--color-surface)',
                 border: '1px solid var(--color-border)',
@@ -281,27 +297,74 @@ export default function AssessmentPlayerInstructions({
               </div>
             )}
 
-            {/* Begin button */}
-            <button
-              onClick={handleBegin}
-              disabled={!canBegin}
-              style={{
-                width: '100%', padding: '11px 16px',
-                borderRadius: 'var(--radius-md)',
-                border: 'none',
-                background: canBegin ? 'var(--color-accent)' : 'var(--color-border)',
-                color: canBegin ? '#fff' : 'var(--color-text-muted)',
-                fontSize: '14px', fontWeight: 700,
-                cursor: canBegin ? 'pointer' : 'not-allowed',
-                transition: 'all 150ms',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-              }}
-            >
-              <ShieldCheck size={16} />
-              Begin Assessment
-            </button>
+            {/* Type "start" to begin — only shown once all checks pass and consent is checked */}
+            {allChecksPass && consentChecked && (
+              <div style={{ marginBottom: 'var(--space-3)' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    value={startInput}
+                    onChange={e => setStartInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleBegin(); }}
+                    placeholder='Type "start" to begin'
+                    style={{
+                      flex: 1,
+                      padding: '9px 12px',
+                      borderRadius: 'var(--radius-md)',
+                      border: `1px solid ${startTyped ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                      background: 'var(--color-surface)',
+                      color: 'var(--color-text-primary)',
+                      fontSize: '13px',
+                      outline: 'none',
+                      transition: 'border-color 150ms',
+                    }}
+                  />
+                  <button
+                    onClick={handleBegin}
+                    disabled={!startTyped || isBeginning}
+                    style={{
+                      padding: '9px 16px',
+                      borderRadius: 'var(--radius-md)',
+                      border: 'none',
+                      background: startTyped ? 'var(--color-accent)' : 'var(--color-border)',
+                      color: startTyped ? '#fff' : 'var(--color-text-muted)',
+                      fontSize: '13px', fontWeight: 600,
+                      cursor: startTyped && !isBeginning ? 'pointer' : 'not-allowed',
+                      display: 'flex', alignItems: 'center', gap: '6px',
+                      transition: 'all 150ms',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {isBeginning
+                      ? <Loader2 size={14} className="animate-spin" />
+                      : <>Start <ArrowRight size={14} /></>
+                    }
+                  </button>
+                </div>
+              </div>
+            )}
 
-            {!canBegin && (
+            {/* Begin button — shown until all checks + consent are done */}
+            {!(allChecksPass && consentChecked) && (
+              <button
+                disabled
+                style={{
+                  width: '100%', padding: '11px 16px',
+                  borderRadius: 'var(--radius-md)',
+                  border: 'none',
+                  background: 'var(--color-border)',
+                  color: 'var(--color-text-muted)',
+                  fontSize: '14px', fontWeight: 700,
+                  cursor: 'not-allowed',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                }}
+              >
+                <ShieldCheck size={16} />
+                {isResuming ? 'Resume Assessment' : 'Begin Assessment'}
+              </button>
+            )}
+
+            {!(allChecksPass && consentChecked) && (
               <p style={{ margin: 'var(--space-2) 0 0', fontSize: '11px', color: 'var(--color-text-muted)', textAlign: 'center' }}>
                 {!allChecksPass ? 'Complete all system checks to continue.' : 'Check the consent box to continue.'}
               </p>

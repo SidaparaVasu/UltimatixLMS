@@ -30,6 +30,7 @@ import {
   CheckCircle,
   UserCheck,
   ClipboardCheck,
+  FilePenLine,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { getFullName, getInitials, getPrimaryRoleName } from "@/utils/user.utils";
@@ -88,29 +89,31 @@ const NAV_CONFIG: NavSection[] = [
   {
     title: "Management",
     requiresAnyPermission: [
-      PERMISSIONS.EMPLOYEE_VIEW,
       PERMISSIONS.TNI_MANAGE,
       PERMISSIONS.TNI_APPROVE,
       PERMISSIONS.TRAINING_PLAN_VIEW,
       PERMISSIONS.TRAINING_PLAN_APPROVE,
       PERMISSIONS.TRAINING_CALENDAR_APPROVE,
       PERMISSIONS.ENROLLMENT_MANAGE,
+      PERMISSIONS.ASSESSMENT_REVIEW_MANAGE,
     ],
     items: [
-      { label: "Employees",           icon: Users,         path: "/admin/employees",         requiredPermission: PERMISSIONS.EMPLOYEE_VIEW },
       { label: "TNI Review",          icon: UserCheck,     path: "/manager/tni",             requiredPermission: PERMISSIONS.TNI_APPROVE },
       { label: "Training Needs",      icon: ClipboardList, path: "/admin/tni",               requiredPermission: PERMISSIONS.TNI_MANAGE },
       { label: "Training Plans",      icon: GraduationCap, path: "/admin/training-plans",    requiredPermission: PERMISSIONS.TRAINING_PLAN_VIEW },
+      { label: "Training Plan Approvals",           icon: CheckCircle,   path: "/admin/approvals",         requiredPermission: PERMISSIONS.TRAINING_PLAN_APPROVE },
       { label: "Training Calendar",   icon: CalendarDays,  path: "/admin/training-calendar", requiredPermission: PERMISSIONS.TRAINING_CALENDAR_APPROVE },
-      { label: "Approvals",           icon: CheckCircle,   path: "/admin/approvals",         requiredPermission: PERMISSIONS.TRAINING_PLAN_APPROVE },
+      { label: "Manage Assessments",          icon: FilePenLine, path: "/admin/assessments", requiredPermission: PERMISSIONS.ASSESSMENT_MANAGE},
+      { label: "Assessment Review",      icon: ClipboardCheck, path: "/admin/assessments/review",     requiredPermission: PERMISSIONS.ASSESSMENT_REVIEW_MANAGE },
     ],
   },
 
   // ── Organisation ──────────────────────────────────────────────────────────
   {
     title: "Organisation",
-    requiresAnyPermission: [PERMISSIONS.ORG_STRUCTURE_MANAGE],
+    requiresAnyPermission: [PERMISSIONS.ORG_STRUCTURE_MANAGE, PERMISSIONS.EMPLOYEE_VIEW],
     items: [
+      { label: "Employees",       icon: Users,         path: "/admin/employees",       requiredPermission: PERMISSIONS.EMPLOYEE_VIEW },
       { label: "Business Units",  icon: Building2,     path: "/admin/business-units",  requiredPermission: PERMISSIONS.ORG_STRUCTURE_MANAGE },
       { label: "Departments",     icon: Network,       path: "/admin/departments",     requiredPermission: PERMISSIONS.ORG_STRUCTURE_MANAGE },
       { label: "Job Roles",       icon: ClipboardList, path: "/admin/job-roles",       requiredPermission: PERMISSIONS.ORG_STRUCTURE_MANAGE },
@@ -128,13 +131,11 @@ const NAV_CONFIG: NavSection[] = [
       PERMISSIONS.SKILL_MANAGE,
       PERMISSIONS.SKILL_CATEGORY_MANAGE,
       PERMISSIONS.ASSESSMENT_MANAGE,
-      PERMISSIONS.ASSESSMENT_REVIEW_MANAGE,
     ],
     items: [
-      { label: "Courses",                icon: Blocks,         path: "/admin/courses",                requiredPermission: PERMISSIONS.COURSE_UPDATE },
+      { label: "Course Master",          icon: Blocks,         path: "/admin/courses",                requiredPermission: PERMISSIONS.COURSE_UPDATE },
       { label: "Course Categories",      icon: BookMarked,     path: "/admin/course-categories",      requiredPermission: PERMISSIONS.COURSE_CATEGORY_MANAGE },
       { label: "Competencies & Skills",  icon: Brain,          path: "/admin/competency",             requiredPermission: PERMISSIONS.SKILL_MANAGE },
-      { label: "Assessment Review",      icon: ClipboardCheck, path: "/admin/assessments/review",     requiredPermission: PERMISSIONS.ASSESSMENT_REVIEW_MANAGE },
     ],
   },
 

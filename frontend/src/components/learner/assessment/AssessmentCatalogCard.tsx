@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import {
   Clock, CheckCircle, XCircle, Timer, Target,
-  BookOpen, RotateCcw, AlertCircle, Loader2,
+  BookOpen, RotateCcw, AlertCircle, Play,
 } from 'lucide-react';
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { CatalogItem } from '@/types/assessment-catalog.types';
 
 interface AssessmentCatalogCardProps {
   item: CatalogItem;
-  onStart: (item: CatalogItem) => Promise<void>;
+  onStart: (item: CatalogItem) => void;
+  onResume: (item: CatalogItem) => void;
   isStarting: boolean;
 }
 
@@ -22,7 +23,7 @@ function formatDate(iso: string) {
 
 // ── Card ──────────────────────────────────────────────────────────────────────
 
-export function AssessmentCatalogCard({ item, onStart, isStarting }: AssessmentCatalogCardProps) {
+export function AssessmentCatalogCard({ item, onStart, onResume, isStarting }: AssessmentCatalogCardProps) {
   const [showConfirm, setShowConfirm] = useState(false);
 
   const hasPassed    = item.last_result_status === 'PASS';
@@ -31,9 +32,11 @@ export function AssessmentCatalogCard({ item, onStart, isStarting }: AssessmentC
   const hasAttempted = item.attempts_used > 0;
   const inCooldown   = item.cooldown_remaining_hours > 0;
   const noAttempts   = item.attempts_remaining === 0 && !hasPassed;
+  const hasActive    = !!item.active_attempt_id;
 
-  // Determine button state
+  // Determine button state — resume takes priority over all other states
   const getButtonState = () => {
+    if (hasActive)    return { label: 'Resume', disabled: false, variant: 'resume' as const };
     if (hasPassed)    return { label: 'Completed', disabled: true, variant: 'success' as const };
     if (isPending)    return { label: 'Result Pending', disabled: true, variant: 'pending' as const };
     if (noAttempts)   return { label: 'No Attempts Left', disabled: true, variant: 'disabled' as const };
@@ -46,6 +49,7 @@ export function AssessmentCatalogCard({ item, onStart, isStarting }: AssessmentC
 
   const buttonStyles: Record<string, React.CSSProperties> = {
     start:    { background: 'var(--color-accent)', color: '#fff', border: 'none' },
+    resume:   { background: 'var(--color-accent)', color: '#fff', border: 'none' },
     retake:   { background: 'transparent', color: 'var(--color-accent)', border: '1.5px solid var(--color-accent)' },
     success:  { background: 'rgba(22,163,74,0.10)', color: '#15803d', border: '1px solid rgba(22,163,74,0.3)', cursor: 'default' },
     pending:  { background: 'rgba(217,119,6,0.10)', color: '#b45309', border: '1px solid rgba(217,119,6,0.3)', cursor: 'default' },
@@ -55,12 +59,17 @@ export function AssessmentCatalogCard({ item, onStart, isStarting }: AssessmentC
 
   const handleButtonClick = () => {
     if (btn.disabled) return;
+    // Resume bypasses the confirmation dialog — open directly
+    if (btn.variant === 'resume') {
+      onResume(item);
+      return;
+    }
     setShowConfirm(true);
   };
 
-  const handleConfirm = async () => {
+  const handleConfirm = () => {
     setShowConfirm(false);
-    await onStart(item);
+    onStart(item);
   };
 
   return (
@@ -175,7 +184,7 @@ export function AssessmentCatalogCard({ item, onStart, isStarting }: AssessmentC
         <div style={{ padding: 'var(--space-3) var(--space-4)', marginTop: 'auto' }}>
           <button
             onClick={handleButtonClick}
-            disabled={btn.disabled || isStarting}
+            disabled={btn.disabled}
             style={{
               width: '100%',
               padding: '9px 16px',
@@ -187,15 +196,12 @@ export function AssessmentCatalogCard({ item, onStart, isStarting }: AssessmentC
               ...buttonStyles[btn.variant],
             }}
           >
-            {isStarting ? (
-              <><Loader2 size={14} className="animate-spin" /> Starting...</>
-            ) : (
-              <>
-                {btn.variant === 'retake' && <RotateCcw size={13} />}
-                {btn.variant === 'success' && <CheckCircle size={13} />}
-                {btn.label}
-              </>
-            )}
+            <>
+              {btn.variant === 'resume'  && <Play size={13} />}
+              {btn.variant === 'retake'  && <RotateCcw size={13} />}
+              {btn.variant === 'success' && <CheckCircle size={13} />}
+              {btn.label}
+            </>
           </button>
         </div>
       </div>

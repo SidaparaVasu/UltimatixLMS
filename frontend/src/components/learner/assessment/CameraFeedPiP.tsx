@@ -21,7 +21,7 @@ export default function CameraFeedPiP({ stream }: CameraFeedPiPProps) {
   return (
     <div style={{
       position: 'fixed',
-      bottom: '20px',
+      top: '100px',
       right: '20px',
       width: '160px',
       height: '120px',
