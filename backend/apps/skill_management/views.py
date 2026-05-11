@@ -193,14 +193,114 @@ class EmployeeSkillViewSet(BaseSkillViewSet):
 
 class EmployeeSkillHistoryViewSet(BaseSkillViewSet):
     """
-    History is read-only for employees/managers, usually generated via signals.
+    Read-only skill level change history.
+
+    Filters:
+      ?employee_id=<int>   — history for a specific employee
+      ?my=true             — history for the requesting user's own employee record
+      ?skill_id=<int>      — filter by skill
+      ?change_reason=<str> — filter by reason (SELF_RATING, MANAGER_RATING, etc.)
+
+    Scope: the queryset is filtered to employees visible to the requesting user
+    based on their UserRoleMaster scope_type (GLOBAL, COMPANY, BUSINESS_UNIT, DEPARTMENT).
     """
-    queryset = EmployeeSkillHistory.objects.all()
+    queryset = EmployeeSkillHistory.objects.select_related(
+        'employee__user__profile',
+        'skill',
+        'old_level',
+        'new_level',
+        'changed_by__user__profile',
+    ).order_by('-changed_at')
     serializer_class = EmployeeSkillHistorySerializer
     service_class = EmployeeSkillHistoryService
     model = EmployeeSkillHistory
-    required_permission = P.HR_MANAGEMENT.EMPLOYEE_VIEW  # skill history is a read-only view
+    required_permission = P.HR_MANAGEMENT.EMPLOYEE_VIEW
     http_method_names = ["get"]
+
+    def get_queryset(self):
+        from apps.org_management.models import EmployeeMaster
+        from apps.rbac.models import UserRoleMaster
+        from apps.rbac.constants import ScopeType
+
+        request = self.request
+        user = request.user
+
+        # ── Resolve the employee IDs visible to this user ─────────────────
+        # Superusers see everything
+        if user.is_superuser:
+            visible_qs = EmployeeSkillHistory.objects.all()
+        else:
+            # Collect all scope entries for this user
+            role_assignments = UserRoleMaster.objects.filter(
+                user=user, is_active=True
+            ).values('scope_type', 'scope_id')
+
+            employee_ids = set()
+            has_global = False
+
+            for ra in role_assignments:
+                scope = ra['scope_type']
+                sid   = ra['scope_id']
+
+                if scope == ScopeType.GLOBAL:
+                    has_global = True
+                    break
+                elif scope == ScopeType.COMPANY and sid:
+                    ids = EmployeeMaster.objects.filter(
+                        company_id=sid
+                    ).values_list('id', flat=True)
+                    employee_ids.update(ids)
+                elif scope == ScopeType.BUSINESS_UNIT and sid:
+                    ids = EmployeeMaster.objects.filter(
+                        business_unit_id=sid
+                    ).values_list('id', flat=True)
+                    employee_ids.update(ids)
+                elif scope == ScopeType.DEPARTMENT and sid:
+                    ids = EmployeeMaster.objects.filter(
+                        department_id=sid
+                    ).values_list('id', flat=True)
+                    employee_ids.update(ids)
+                elif scope == ScopeType.SELF:
+                    own = EmployeeMaster.objects.filter(user=user).values_list('id', flat=True)
+                    employee_ids.update(own)
+
+            if has_global:
+                visible_qs = EmployeeSkillHistory.objects.all()
+            else:
+                visible_qs = EmployeeSkillHistory.objects.filter(
+                    employee_id__in=employee_ids
+                )
+
+        visible_qs = visible_qs.select_related(
+            'employee__user__profile',
+            'skill',
+            'old_level',
+            'new_level',
+            'changed_by__user__profile',
+        ).order_by('-changed_at')
+
+        # ── Apply request filters ─────────────────────────────────────────
+        # ?my=true — shortcut for the requesting user's own record
+        if request.query_params.get('my', '').lower() == 'true':
+            own_employee = EmployeeMaster.objects.filter(user=user).first()
+            if own_employee:
+                visible_qs = visible_qs.filter(employee=own_employee)
+            else:
+                visible_qs = visible_qs.none()
+
+        employee_id = request.query_params.get('employee_id')
+        if employee_id:
+            visible_qs = visible_qs.filter(employee_id=employee_id)
+
+        skill_id = request.query_params.get('skill_id')
+        if skill_id:
+            visible_qs = visible_qs.filter(skill_id=skill_id)
+
+        change_reason = request.query_params.get('change_reason')
+        if change_reason:
+            visible_qs = visible_qs.filter(change_reason=change_reason)
+
+        return visible_qs
 
 
 class EmployeeSkillAssessmentViewSet(BaseSkillViewSet):

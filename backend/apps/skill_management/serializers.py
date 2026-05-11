@@ -74,13 +74,35 @@ class EmployeeSkillSerializer(serializers.ModelSerializer):
 
 
 class EmployeeSkillHistorySerializer(serializers.ModelSerializer):
-    old_level_name = serializers.CharField(source="old_level.level_name", read_only=True)
-    new_level_name = serializers.CharField(source="new_level.level_name", read_only=True)
-    skill_name = serializers.CharField(source="skill.skill_name", read_only=True)
+    old_level_name   = serializers.CharField(source="old_level.level_name",   read_only=True, allow_null=True)
+    old_level_rank   = serializers.IntegerField(source="old_level.level_rank", read_only=True, allow_null=True)
+    new_level_name   = serializers.CharField(source="new_level.level_name",   read_only=True, allow_null=True)
+    new_level_rank   = serializers.IntegerField(source="new_level.level_rank", read_only=True, allow_null=True)
+    skill_name       = serializers.CharField(source="skill.skill_name",        read_only=True)
+    employee_name    = serializers.SerializerMethodField()
+    employee_code    = serializers.CharField(source="employee.employee_code",  read_only=True)
+    changed_by_name  = serializers.SerializerMethodField()
+    change_reason_display = serializers.CharField(source="get_change_reason_display", read_only=True)
 
     class Meta:
         model = EmployeeSkillHistory
         fields = "__all__"
+
+    def get_employee_name(self, obj):
+        try:
+            p = obj.employee.user.profile
+            return f"{p.first_name} {p.last_name}".strip() or obj.employee.employee_code
+        except Exception:
+            return obj.employee.employee_code
+
+    def get_changed_by_name(self, obj):
+        if not obj.changed_by:
+            return None
+        try:
+            p = obj.changed_by.user.profile
+            return f"{p.first_name} {p.last_name}".strip() or obj.changed_by.employee_code
+        except Exception:
+            return obj.changed_by.employee_code
 
 
 class EmployeeSkillAssessmentSerializer(serializers.ModelSerializer):

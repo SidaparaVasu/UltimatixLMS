@@ -746,11 +746,13 @@ class SkillUpgradeProposalViewSet(viewsets.ReadOnlyModelViewSet):
     def approve(self, request, pk=None):
         """
         Approve a skill upgrade proposal.
-        Updates EmployeeSkill if the proposed level is higher than current.
-        Skips silently if the employee already holds an equal or higher level.
+        - Updates EmployeeSkill to the proposed level (if not already at or above it).
+        - Writes EmployeeSkillHistory via the signal with change_reason=ASSESSMENT_APPROVED.
+        - Notifies the learner with old level → new level context.
+        - Skips the skill update silently if the employee already holds an equal or higher level.
         """
         from django.utils import timezone
-        from apps.skill_management.models import EmployeeSkill, SkillIdentifiedBy
+        from apps.skill_management.models import EmployeeSkill, EmployeeSkillHistory, SkillIdentifiedBy
 
         proposal = self.get_object()
 
@@ -760,23 +762,37 @@ class SkillUpgradeProposalViewSet(viewsets.ReadOnlyModelViewSet):
         approver = getattr(request.user, 'employee_record', None)
         approver = approver.first() if approver else None
 
-        # Update or create EmployeeSkill — only if proposed level is higher
+        # Capture old level before any update for the notification message
         existing = EmployeeSkill.objects.filter(
             employee=proposal.employee,
             skill=proposal.skill,
             is_active=True,
         ).select_related('current_level').first()
 
+        old_level_name = existing.current_level.level_name if existing else None
+
+        # Update EmployeeSkill only if proposed level is strictly higher
         if not existing or existing.current_level.level_rank < proposal.proposed_level.level_rank:
-            EmployeeSkill.objects.update_or_create(
-                employee=proposal.employee,
-                skill=proposal.skill,
-                defaults={
-                    'current_level': proposal.proposed_level,
-                    'identified_by': SkillIdentifiedBy.ASSESSMENT,
-                    'is_active': True,
-                },
-            )
+            if existing:
+                # Update in-place so the pre_save signal captures the old level
+                existing.current_level = proposal.proposed_level
+                existing.identified_by = SkillIdentifiedBy.ASSESSMENT
+                existing.is_active = True
+                existing._changed_by    = approver
+                existing._change_reason = EmployeeSkillHistory.ChangeReason.ASSESSMENT_APPROVED
+                existing.save()
+            else:
+                # No existing row — create fresh
+                new_skill = EmployeeSkill(
+                    employee=proposal.employee,
+                    skill=proposal.skill,
+                    current_level=proposal.proposed_level,
+                    identified_by=SkillIdentifiedBy.ASSESSMENT,
+                    is_active=True,
+                )
+                new_skill._changed_by    = approver
+                new_skill._change_reason = EmployeeSkillHistory.ChangeReason.ASSESSMENT_APPROVED
+                new_skill.save()
 
         # Mark proposal approved
         proposal.status = 'APPROVED'
@@ -784,17 +800,31 @@ class SkillUpgradeProposalViewSet(viewsets.ReadOnlyModelViewSet):
         proposal.approved_at = timezone.now()
         proposal.save(update_fields=['status', 'approved_by', 'approved_at'])
 
-        # Notify the learner
+        # Notify the learner with old level → new level context
         try:
             from apps.notifications.models import Notification
             from apps.notifications.constants import NotificationType
+
+            approver_name = "Admin"
+            if approver:
+                try:
+                    p = approver.user.profile
+                    approver_name = f"{p.first_name} {p.last_name}".strip() or approver.employee_code
+                except Exception:
+                    approver_name = approver.employee_code
+
+            if old_level_name:
+                level_change = f"from {old_level_name} to {proposal.proposed_level.level_name}"
+            else:
+                level_change = f"to {proposal.proposed_level.level_name}"
+
             Notification.objects.create(
                 user=proposal.employee.user,
                 notification_type=NotificationType.SKILL_UPGRADE,
                 title="Skill upgrade approved",
                 message=(
                     f"Your skill upgrade for \"{proposal.skill.skill_name}\" "
-                    f"to {proposal.proposed_level.level_name} has been approved."
+                    f"{level_change} has been approved by {approver_name}."
                 ),
                 action_url="/my-skills",
                 entity_type="SkillUpgradeProposal",
