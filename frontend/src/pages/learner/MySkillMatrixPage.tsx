@@ -5,6 +5,7 @@ import { useMySkillMatrix } from '@/queries/tni/useTNIQueries';
 import { SkillMatrixTable } from '@/components/tni/SkillMatrixTable';
 import { SkillGapBadge } from '@/components/tni/SkillGapBadge';
 import { RatingStatusBanner } from '@/components/tni/RatingStatusBanner';
+import SkillHistoryDrawer from '@/components/learner/skills/SkillHistoryDrawer';
 import { SkillMatrixRow, GapSeverity } from '@/types/tni.types';
 
 // ---------------------------------------------------------------------------
@@ -41,6 +42,7 @@ const StatCard: React.FC<{
 export default function MySkillMatrixPage() {
   const { data: matrixData, isLoading, refetch, isFetching } = useMySkillMatrix();
   const [categoryFilter, setCategoryFilter] = useState<string>('');
+  const [historySkill, setHistorySkill] = useState<{ id: number; name: string } | null>(null);
 
   const rows: SkillMatrixRow[] = matrixData ?? [];
 
@@ -208,9 +210,21 @@ export default function MySkillMatrixPage() {
           </div>
 
           {/* Matrix table */}
-          <SkillMatrixTable rows={filteredRows} showCategory={!categoryFilter} />
+          <SkillMatrixTable
+            rows={filteredRows}
+            showCategory={!categoryFilter}
+            onHistoryClick={(id, name) => setHistorySkill({ id, name })}
+          />
         </>
       )}
+
+      {/* Skill history drawer */}
+      <SkillHistoryDrawer
+        open={historySkill !== null}
+        skillId={historySkill?.id ?? 0}
+        skillName={historySkill?.name ?? ''}
+        onClose={() => setHistorySkill(null)}
+      />
     </div>
   );
 }

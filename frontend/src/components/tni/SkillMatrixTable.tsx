@@ -1,4 +1,5 @@
 import React from 'react';
+import { History } from 'lucide-react';
 import { SkillMatrixRow } from '@/types/tni.types';
 import { SkillGapBadge } from './SkillGapBadge';
 import { ProficiencyBadge } from '@/components/ui/proficiency-badge';
@@ -15,6 +16,8 @@ interface SkillMatrixTableProps {
   rows: SkillMatrixRow[];
   /** Show category column — useful when not already grouped by category */
   showCategory?: boolean;
+  /** If provided, a history icon button is rendered on each row */
+  onHistoryClick?: (skillId: number, skillName: string) => void;
 }
 
 const identifiedByLabel: Record<string, string> = {
@@ -35,6 +38,7 @@ const identifiedByLabel: Record<string, string> = {
 export const SkillMatrixTable: React.FC<SkillMatrixTableProps> = ({
   rows,
   showCategory = true,
+  onHistoryClick,
 }) => {
   if (rows.length === 0) {
     return (
@@ -64,6 +68,7 @@ export const SkillMatrixTable: React.FC<SkillMatrixTableProps> = ({
           <TableHead>Current Level</TableHead>
           <TableHead>Identified By</TableHead>
           <TableHead>Gap</TableHead>
+          {onHistoryClick && <TableHead style={{ width: '40px' }} />}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -166,6 +171,30 @@ export const SkillMatrixTable: React.FC<SkillMatrixTableProps> = ({
                 gapValue={row.gap_value}
               />
             </TableCell>
+
+            {/* History icon */}
+            {onHistoryClick && (
+              <TableCell>
+                <button
+                  onClick={() => onHistoryClick(row.skill_id, row.skill_name)}
+                  title="View skill history"
+                  style={{
+                    padding: '4px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: 'none',
+                    background: 'transparent',
+                    color: 'var(--color-text-muted)',
+                    cursor: 'pointer',
+                    display: 'flex', alignItems: 'center',
+                    transition: 'color 150ms',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-accent)')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-text-muted)')}
+                >
+                  <History size={14} />
+                </button>
+              </TableCell>
+            )}
           </TableRow>
         ))}
       </TableBody>

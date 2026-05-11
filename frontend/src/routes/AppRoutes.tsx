@@ -50,6 +50,7 @@ const AssessmentFormPage         = lazy(() => import('@/pages/admin/assessments/
 const SkillUpgradeApprovalsPage  = lazy(() => import('@/pages/admin/assessments/SkillUpgradeApprovalsPage'));
 const AssessmentCatalogPage      = lazy(() => import('@/pages/learner/AssessmentCatalogPage'));
 const AssessmentPlayerPage       = lazy(() => import('@/pages/learner/AssessmentPlayerPage'));
+const SkillHistoryPage           = lazy(() => import('@/pages/admin/skills/SkillHistoryPage'));
 const NotificationsPage    = lazy(() => import('@/pages/NotificationsPage'));
 const RolesPage            = lazy(() => import('@/pages/admin/rbac/RolesPage'));
 // RoleDetailPage is preserved for future use — unlinked from routing intentionally
@@ -142,6 +143,11 @@ export const AppRoutes = () => {
                 {/* Assessments — Skill Upgrade Approvals (requires SKILL_UPGRADE_APPROVE) */}
                 <Route element={<RoleGuard requiredPermissions={[PERMISSIONS.SKILL_UPGRADE_APPROVE]} />}>
                   <Route path="/admin/assessments/skill-upgrades" element={<SkillUpgradeApprovalsPage />} />
+                </Route>
+
+                {/* Skill History — requires EMPLOYEE_VIEW */}
+                <Route element={<RoleGuard requiredPermissions={[PERMISSIONS.EMPLOYEE_VIEW]} />}>
+                  <Route path="/admin/skill-history" element={<SkillHistoryPage />} />
                 </Route>
 
                 {/* RBAC management — requires ROLE_VIEW */}

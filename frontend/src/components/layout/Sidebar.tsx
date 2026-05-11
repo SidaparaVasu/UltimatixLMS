@@ -32,6 +32,7 @@ import {
   ClipboardCheck,
   FilePenLine,
   BadgeCheck,
+  History,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { getFullName, getInitials, getPrimaryRoleName } from "@/utils/user.utils";
@@ -98,6 +99,7 @@ const NAV_CONFIG: NavSection[] = [
       PERMISSIONS.ENROLLMENT_MANAGE,
       PERMISSIONS.ASSESSMENT_REVIEW_MANAGE,
       PERMISSIONS.SKILL_UPGRADE_APPROVE,
+      PERMISSIONS.EMPLOYEE_VIEW,
     ],
     items: [
       { label: "TNI Review",          icon: UserCheck,     path: "/manager/tni",             requiredPermission: PERMISSIONS.TNI_APPROVE },
@@ -108,6 +110,7 @@ const NAV_CONFIG: NavSection[] = [
       { label: "Manage Assessments",          icon: FilePenLine, path: "/admin/assessments", requiredPermission: PERMISSIONS.ASSESSMENT_MANAGE},
       { label: "Assessment Review",      icon: ClipboardCheck, path: "/admin/assessments/review",     requiredPermission: PERMISSIONS.ASSESSMENT_REVIEW_MANAGE },
       { label: "Skill Upgrade Approval",      icon: BadgeCheck, path: "/admin/assessments/skill-upgrades", requiredPermission: PERMISSIONS.SKILL_UPGRADE_APPROVE },
+      { label: "Skill History",          icon: History,     path: "/admin/skill-history",              requiredPermission: PERMISSIONS.EMPLOYEE_VIEW },
     ],
   },
 
