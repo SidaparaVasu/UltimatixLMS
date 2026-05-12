@@ -160,6 +160,27 @@ export const courseApi = {
     }
   },
 
+  /** Check whether any learner has progress records for a lesson. */
+  hasLessonProgress: async (id: number): Promise<boolean> => {
+    try {
+      const response = await apiClient.get(`/courses/lessons/${id}/has-progress/`);
+      const data = handleApiResponse<{ has_progress: boolean }>(response.data, false);
+      return data?.has_progress ?? false;
+    } catch {
+      return false;
+    }
+  },
+
+  /** Hard-delete a lesson — only succeeds when no progress records exist. */
+  forceDeleteLesson: async (id: number) => {
+    try {
+      const response = await apiClient.delete(`/courses/lessons/${id}/?force=true`);
+      return handleApiResponse(response.data);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
   syncCurriculum: async (id: number, data: CurriculumSyncPayload) => {
     try {
       const response = await apiClient.patch(`/courses/courses/${id}/curriculum-sync/`, data);

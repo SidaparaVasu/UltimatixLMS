@@ -70,12 +70,16 @@ class CourseService(BaseService):
 
             # 2. Handle LESSONS within this section
             lessons_data = s_data.get('lessons', [])
-            existing_lessons = {l.id: l for l in CourseLesson.objects.filter(section=section)}
+            existing_lessons = {l.id: l for l in CourseLesson.objects.filter(section=section, is_active=True)}
             payload_lesson_ids = {l.get('id') for l in lessons_data if l.get('id')}
             
             for l_id in existing_lessons.keys():
                 if l_id not in payload_lesson_ids:
-                    existing_lessons[l_id].delete()
+                    # Soft-delete: preserve the row so PROTECT FK constraints on
+                    # UserLessonProgress / UserContentProgress are not violated.
+                    lesson = existing_lessons[l_id]
+                    lesson.is_active = False
+                    lesson.save(update_fields=['is_active'])
 
             for l_idx, l_data in enumerate(lessons_data):
                 l_id = l_data.get('id')

@@ -201,13 +201,14 @@ export const VideoPlayer = ({
       </div>
 
       {/* Auto-complete hint */}
-      {!isAlreadyCompleted && (
+      {/** Hide auto-complete hint from user */}
+      {/* {!isAlreadyCompleted && (
         <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
           <p className="text-xs text-gray-400">
             Video will auto-complete when you reach 90% progress
           </p>
         </div>
-      )}
+      )} */}
 
       <LessonNavFooter
         lesson={lesson}

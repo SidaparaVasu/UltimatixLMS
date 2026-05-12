@@ -34,6 +34,12 @@ const CourseBuilderStudio: React.FC = () => {
   const [isPublishing, setIsPublishing] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
+
+  // Delete confirmation state
+  const [deleteTarget, setDeleteTarget] = useState<CurriculumNode | null>(null);
+  const [deleteHasProgress, setDeleteHasProgress] = useState(false);
+  const [isCheckingProgress, setIsCheckingProgress] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   // Track course title + status separately so edits propagate to header instantly
   const [courseTitle, setCourseTitle] = useState(course?.course_title ?? '');
   const [courseStatus, setCourseStatus] = useState<CourseStatus>(course?.status ?? 'DRAFT');
@@ -117,10 +123,57 @@ const CourseBuilderStudio: React.FC = () => {
     }
   };
 
-  const handleDeleteNode = (node: CurriculumNode) => {
-    draft.removeNode(node.id, node.type, node.type === 'LESSON' ? getParentSectionId(node.id) : undefined);
-    if (selectedNodeId === node.id) {
-      setSelectedNodeId(null);
+  const handleDeleteNode = async (node: CurriculumNode) => {
+    // Sections and unsaved lessons (no dbId) can be removed from draft immediately
+    if (node.type === 'SECTION' || !node.dbId) {
+      draft.removeNode(node.id, node.type, node.type === 'LESSON' ? getParentSectionId(node.id) : undefined);
+      if (selectedNodeId === node.id) setSelectedNodeId(null);
+      return;
+    }
+
+    // Persisted lesson — check if any learner has progress before showing the modal
+    setIsCheckingProgress(true);
+    setDeleteTarget(node);
+    const hasProgress = await courseApi.hasLessonProgress(node.dbId);
+    setDeleteHasProgress(hasProgress);
+    setIsCheckingProgress(false);
+  };
+
+  const confirmArchiveLesson = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      // Soft-delete on the backend (sets is_active=False)
+      if (deleteTarget.dbId) {
+        await courseApi.deleteLesson(deleteTarget.dbId);
+      }
+      // Remove from local draft so it disappears from the tree
+      draft.removeNode(
+        deleteTarget.id,
+        deleteTarget.type,
+        getParentSectionId(deleteTarget.id),
+      );
+      if (selectedNodeId === deleteTarget.id) setSelectedNodeId(null);
+    } finally {
+      setIsDeleting(false);
+      setDeleteTarget(null);
+    }
+  };
+
+  const confirmForceDeleteLesson = async () => {
+    if (!deleteTarget?.dbId) return;
+    setIsDeleting(true);
+    try {
+      await courseApi.forceDeleteLesson(deleteTarget.dbId);
+      draft.removeNode(
+        deleteTarget.id,
+        deleteTarget.type,
+        getParentSectionId(deleteTarget.id),
+      );
+      if (selectedNodeId === deleteTarget.id) setSelectedNodeId(null);
+    } finally {
+      setIsDeleting(false);
+      setDeleteTarget(null);
     }
   };
 
@@ -218,6 +271,74 @@ const CourseBuilderStudio: React.FC = () => {
                 Confirm Publish
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete / Archive Lesson Confirmation Modal ── */}
+      {(deleteTarget || isCheckingProgress) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#1a1d27] border border-slate-700 rounded-xl p-6 w-full max-w-sm shadow-2xl space-y-4">
+            {isCheckingProgress ? (
+              <div className="flex flex-col items-center gap-3 py-4">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-600 border-t-blue-400" />
+                <p className="text-xs text-slate-400">Checking learner progress…</p>
+              </div>
+            ) : deleteHasProgress ? (
+              <>
+                <h3 className="text-sm font-bold text-white">Learners have progress on this lesson</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  This lesson has been started by one or more learners. Their progress records will be preserved.
+                  You can <strong className="text-white">archive</strong> it (hidden from learners, data kept) or cancel.
+                </p>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setDeleteTarget(null)}
+                    disabled={isDeleting}
+                    className="flex-1 py-2 text-xs font-semibold text-slate-400 bg-slate-800 hover:bg-slate-700 rounded transition disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmArchiveLesson}
+                    disabled={isDeleting}
+                    className="flex-1 py-2 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-500 rounded transition disabled:opacity-50"
+                  >
+                    {isDeleting ? 'Archiving…' : 'Archive Lesson'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="text-sm font-bold text-white">Delete this lesson?</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  No learner progress exists for this lesson. You can permanently delete it or archive it instead.
+                </p>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setDeleteTarget(null)}
+                    disabled={isDeleting}
+                    className="flex-1 py-2 text-xs font-semibold text-slate-400 bg-slate-800 hover:bg-slate-700 rounded transition disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmArchiveLesson}
+                    disabled={isDeleting}
+                    className="flex-1 py-2 text-xs font-semibold text-amber-300 bg-slate-700 hover:bg-slate-600 rounded transition disabled:opacity-50"
+                  >
+                    Archive
+                  </button>
+                  <button
+                    onClick={confirmForceDeleteLesson}
+                    disabled={isDeleting}
+                    className="flex-1 py-2 text-xs font-semibold text-white bg-red-700 hover:bg-red-600 rounded transition disabled:opacity-50"
+                  >
+                    {isDeleting ? 'Deleting…' : 'Delete'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

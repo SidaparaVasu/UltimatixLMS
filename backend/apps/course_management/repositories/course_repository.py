@@ -30,12 +30,19 @@ class CourseRepository(BaseRepository[CourseMaster]):
     def get_full_course_structure(self, course_id):
         """
         Retrieves a course with its complete hierarchy (Sections > Lessons > Content).
+        Only active lessons are included — soft-deleted lessons are excluded.
         Use select_related/prefetch_related to optimize performance.
         """
+        from django.db.models import Prefetch
+        from ..models import CourseLesson, CourseContent
+
+        active_lessons = CourseLesson.objects.filter(is_active=True)
+        active_contents = CourseContent.objects.all()
+
         return self.model.objects.filter(id=course_id).prefetch_related(
-            "sections", 
-            "sections__lessons", 
-            "sections__lessons__contents",
+            Prefetch("sections__lessons", queryset=active_lessons),
+            Prefetch("sections__lessons__contents", queryset=active_contents),
+            "sections",
             "tags__tag",
             "skilled_outcomes__skill"
         ).first()

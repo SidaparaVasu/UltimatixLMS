@@ -251,6 +251,41 @@ class CourseLessonViewSet(BaseCourseViewSet):
     service_class = CourseLessonService
     model = CourseLesson
 
+    @action(detail=True, methods=["get"], url_path="has-progress")
+    def has_progress(self, request, pk=None):
+        """
+        GET /courses/lessons/{id}/has-progress/
+        Returns whether any learner has progress records for this lesson.
+        Used by the frontend to decide between Archive and Force Delete.
+        """
+        from apps.learning_progress.models import UserLessonProgress
+        has_records = UserLessonProgress.objects.filter(lesson_id=pk).exists()
+        return success_response(data={"has_progress": has_records})
+
+    def destroy(self, request, *args, **kwargs):
+        """
+        Soft-delete by default (sets is_active=False).
+        Pass ?force=true to hard-delete — only allowed when no progress records exist.
+        """
+        from apps.learning_progress.models import UserLessonProgress
+        pk = kwargs.get("pk")
+        force = request.query_params.get("force", "false").lower() == "true"
+
+        if force:
+            has_records = UserLessonProgress.objects.filter(lesson_id=pk).exists()
+            if has_records:
+                return error_response(
+                    message="Cannot permanently delete this lesson because learners have progress records for it. Archive it instead.",
+                    status_code=status.HTTP_409_CONFLICT,
+                )
+            # Hard delete — no progress records, safe to remove
+            self.service_class().delete(pk=pk, soft_delete=False)
+            return success_response(message="Lesson permanently deleted.")
+
+        # Default: soft delete
+        self.service_class().delete(pk=pk, soft_delete=True)
+        return success_response(message="Lesson archived successfully.")
+
 
 class CourseContentViewSet(BaseCourseViewSet):
     queryset = CourseContent.objects.all()
