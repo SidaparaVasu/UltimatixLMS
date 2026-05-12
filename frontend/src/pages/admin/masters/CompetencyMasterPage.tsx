@@ -9,11 +9,13 @@ import {
   ADMIN_QUERY_KEYS,
 } from '@/queries/admin/useAdminMasters';
 import {
-  SkillCategory,
-  Skill,
-  SkillLevel,
   skillApi,
 } from '@/api/skill-api';
+import {
+  Skill,
+  SkillCategory,
+  SkillLevel,
+} from "@/types/skills.types";
 import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
 import { SplitLayout, SidebarCard } from '@/components/ui/split-layout';
 import { GridCard, ResponsiveGrid } from '@/components/ui/grid-card';
