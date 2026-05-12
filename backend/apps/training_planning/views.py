@@ -300,6 +300,13 @@ class TrainingSessionEnrollmentViewSet(BaseTPViewSet):
     model = TrainingSessionEnrollment
     required_permission = P.HR_MANAGEMENT.ENROLLMENT_MANAGE
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        training_session = self.request.query_params.get('training_session')
+        if training_session:
+            qs = qs.filter(training_session_id=training_session)
+        return qs.order_by('enrolled_at')
+
     @action(detail=False, methods=["post"], url_path="sign-up")
     def sign_up(self, request):
         """Action for employee self-enrollment with automatic waitlist handling."""
@@ -327,6 +334,13 @@ class TrainingAttendanceViewSet(BaseTPViewSet):
     service_class = TrainingAttendanceService
     model = TrainingAttendance
     required_permission = P.HR_MANAGEMENT.TRAINING_PLAN_MANAGE
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        training_session = self.request.query_params.get('training_session')
+        if training_session:
+            qs = qs.filter(training_session_id=training_session)
+        return qs.order_by('recorded_at')
 
     @action(detail=False, methods=["post"], url_path="bulk-upsert")
     def bulk_upsert(self, request):

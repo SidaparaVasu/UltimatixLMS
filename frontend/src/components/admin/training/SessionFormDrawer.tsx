@@ -5,10 +5,24 @@ import { useCreateSession, useUpdateSession } from '@/queries/training/useTraini
 import { useCourses } from '@/queries/admin/useAdminMasters';
 import { TrainingSession, TrainingSessionType, CreateTrainingSessionPayload } from '@/types/training.types';
 
+interface DeptOption {
+  id: number;
+  name: string;
+}
+
 interface SessionFormDrawerProps {
   open: boolean;
   onClose: () => void;
-  calendarId: number;
+  /** Resolved calendar ID — null when no dept is pre-selected */
+  calendarId: number | null;
+  /** Year used to auto-create a calendar if needed */
+  selectedYear: number;
+  /** Pre-selected department from the page filter (may be empty string) */
+  selectedDept: string;
+  /** All available departments for the inline picker */
+  allDepts: DeptOption[];
+  /** Resolves (or creates) a calendar for the given dept+year, returns its ID */
+  ensureCalendar: (deptId: number) => Promise<number | null>;
   editTarget: TrainingSession | null;
   defaultDate?: Date | null;
 }
@@ -22,6 +36,7 @@ interface SessionForm {
   capacity: string;
   location: string;
   meeting_link: string;
+  department: string; // only used when calendarId is null (no pre-selected dept)
 }
 
 const EMPTY: SessionForm = {
@@ -33,6 +48,7 @@ const EMPTY: SessionForm = {
   capacity: '30',
   location: '',
   meeting_link: '',
+  department: '',
 };
 
 const toDatetimeLocal = (iso: string) => iso ? iso.slice(0, 16) : '';
@@ -41,11 +57,14 @@ const FieldError: React.FC<{ msg?: string }> = ({ msg }) =>
   msg ? <span style={{ fontSize: '12px', color: 'var(--color-danger)', marginTop: '3px', display: 'block' }}>{msg}</span> : null;
 
 export const SessionFormDrawer: React.FC<SessionFormDrawerProps> = ({
-  open, onClose, calendarId, editTarget, defaultDate,
+  open, onClose, calendarId, selectedYear, selectedDept, allDepts, ensureCalendar, editTarget, defaultDate,
 }) => {
   const isEdit = !!editTarget;
   const [form, setForm] = useState<SessionForm>(EMPTY);
   const [errors, setErrors] = useState<Partial<Record<keyof SessionForm, string>>>({});
+
+  // Whether the page already has a dept selected (edit always has a calendar)
+  const hasDeptContext = isEdit || !!selectedDept || !!calendarId;
 
   const { data: coursesData } = useCourses({ page_size: 200, is_active: true });
   const allCourses = coursesData?.results ?? [];
@@ -66,14 +85,15 @@ export const SessionFormDrawer: React.FC<SessionFormDrawerProps> = ({
           capacity:           String(editTarget.capacity),
           location:           editTarget.location ?? '',
           meeting_link:       editTarget.meeting_link ?? '',
+          department:         selectedDept,
         });
       } else {
         const base = defaultDate ? defaultDate.toISOString().slice(0, 16) : '';
-        setForm({ ...EMPTY, session_start_date: base });
+        setForm({ ...EMPTY, session_start_date: base, department: selectedDept });
       }
       setErrors({});
     }
-  }, [open, editTarget, defaultDate]);
+  }, [open, editTarget, defaultDate, selectedDept]);
 
   const setField = <K extends keyof SessionForm>(k: K, v: SessionForm[K]) => {
     setForm(p => ({ ...p, [k]: v }));
@@ -88,14 +108,27 @@ export const SessionFormDrawer: React.FC<SessionFormDrawerProps> = ({
     if (form.session_start_date && form.session_end_date && form.session_end_date < form.session_start_date) {
       e.session_end_date = 'End must be after start.';
     }
+    // Department is required only when creating a new session without a pre-selected dept
+    if (!isEdit && !hasDeptContext && !form.department) {
+      e.department = 'Department is required.';
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const handleSave = async () => {
     if (!validate()) return;
+
+    // Resolve the calendar ID — use existing one or create for the chosen dept
+    let resolvedCalendarId = calendarId;
+    if (!resolvedCalendarId) {
+      const deptId = Number(form.department || selectedDept);
+      resolvedCalendarId = await ensureCalendar(deptId);
+    }
+    if (!resolvedCalendarId) return; // ensureCalendar failed
+
     const payload: CreateTrainingSessionPayload = {
-      calendar:           calendarId,
+      calendar:           resolvedCalendarId,
       session_title:      form.session_title.trim(),
       course:             form.course ? Number(form.course) : null,
       session_type:       form.session_type,
@@ -154,6 +187,25 @@ export const SessionFormDrawer: React.FC<SessionFormDrawerProps> = ({
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+
+        {/* Department — only shown when no dept is pre-selected from the page filter */}
+        {!hasDeptContext && (
+          <div className="form-group">
+            <label className="form-label">Department <span className="input-requied"> *</span></label>
+            <select
+              className="form-input"
+              value={form.department}
+              onChange={e => setField('department', e.target.value)}
+              style={{ width: '100%', cursor: 'pointer', borderColor: errors.department ? 'var(--color-danger)' : undefined }}
+            >
+              <option value="">— Select department —</option>
+              {allDepts.map(d => (
+                <option key={d.id} value={String(d.id)}>{d.name}</option>
+              ))}
+            </select>
+            <FieldError msg={errors.department} />
+          </div>
+        )}
 
         <div className="form-group">
           <label className="form-label">Session Title <span className="input-requied"> *</span></label>

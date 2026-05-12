@@ -101,6 +101,7 @@ export default function TrainingCalendarPage() {
 
   // ── Resolve calendar for creating new sessions ────────────────────────
   // We still need a specific dept+year calendar to attach new sessions to.
+  // Department is optional for viewing — but required when creating a session.
   const { data: calendarsData } = useTrainingCalendars(
     selectedDept ? { year: selectedYear, department: Number(selectedDept) } : undefined
   );
@@ -110,13 +111,13 @@ export default function TrainingCalendarPage() {
 
   const deleteSession = useDeleteSession();
 
-  // ── Ensure calendar exists before opening form ────────────────────────
-  const ensureCalendar = async (): Promise<number | null> => {
+  // ── Ensure calendar exists before saving a session ────────────────────
+  // dept + year are passed explicitly so this can be called from the drawer
+  const ensureCalendar = async (deptId: number): Promise<number | null> => {
     if (calendarId) return calendarId;
-    if (!selectedDept) return null;
     const created = await createCalendar.mutateAsync({
       year:       selectedYear,
-      department: Number(selectedDept),
+      department: deptId,
     });
     return created?.id ?? null;
   };
@@ -124,20 +125,17 @@ export default function TrainingCalendarPage() {
   // ── Handlers ──────────────────────────────────────────────────────────
   const handleSelectSlot = useCallback(async (slot: SlotInfo) => {
     if (!selectedDept) return;
-    await ensureCalendar();
     setEditTarget(null);
     setDefaultDate(slot.start);
     setFormOpen(true);
-  }, [selectedDept, calendarId]);
+  }, [selectedDept]);
 
   const handleSelectEvent = useCallback((event: CalEvent) => {
     setSelectedSession(event.resource);
     setDetailOpen(true);
   }, []);
 
-  const handleNewSession = async () => {
-    if (!selectedDept) return;
-    await ensureCalendar();
+  const handleNewSession = () => {
     setEditTarget(null);
     setDefaultDate(null);
     setFormOpen(true);
@@ -163,8 +161,6 @@ export default function TrainingCalendarPage() {
     };
   }, []);
 
-  const resolvedCalendarId = calendarId ?? 0;
-
   return (
     <div className="content-inner" style={{ paddingBottom: '50px' }}>
 
@@ -186,14 +182,10 @@ export default function TrainingCalendarPage() {
           </h1>
           <button
             onClick={handleNewSession}
-            disabled={!selectedDept}
-            title={!selectedDept ? 'Select a department to add a session' : undefined}
             style={{
               padding: '8px 18px', borderRadius: 'var(--radius-md)',
               border: 'none', background: 'var(--color-accent)', color: '#fff',
-              fontSize: '13px', fontWeight: 600,
-              cursor: !selectedDept ? 'not-allowed' : 'pointer',
-              opacity: !selectedDept ? 0.5 : 1,
+              fontSize: '13px', fontWeight: 600, cursor: 'pointer',
             }}
           >
             + New Session
@@ -253,7 +245,7 @@ export default function TrainingCalendarPage() {
         </div>
       </div>
 
-      {/* Hint when no dept selected — creating sessions requires a department */}
+      {/* Hint when no dept selected — sessions can still be viewed for all depts */}
       {!selectedDept && (
         <div style={{
           padding: '8px 14px', marginBottom: '16px',
@@ -262,7 +254,7 @@ export default function TrainingCalendarPage() {
           borderRadius: 'var(--radius-md)',
           color: 'var(--color-text-secondary)', fontSize: '12px',
         }}>
-          Showing all sessions for {selectedYear}. Select a department to add new sessions.
+          Showing all sessions for {selectedYear}. You can filter by department using the dropdown above.
         </div>
       )}
 
@@ -307,16 +299,18 @@ export default function TrainingCalendarPage() {
         />
       </div>
 
-      {/* Session Form Drawer — only available when a dept calendar is resolved */}
-      {resolvedCalendarId > 0 && (
-        <SessionFormDrawer
-          open={formOpen}
-          onClose={() => { setFormOpen(false); setEditTarget(null); }}
-          calendarId={resolvedCalendarId}
-          editTarget={editTarget}
-          defaultDate={defaultDate}
-        />
-      )}
+      {/* Session Form Drawer — always available; resolves calendar on save */}
+      <SessionFormDrawer
+        open={formOpen}
+        onClose={() => { setFormOpen(false); setEditTarget(null); }}
+        calendarId={calendarId}
+        selectedYear={selectedYear}
+        selectedDept={selectedDept}
+        allDepts={allDepts}
+        ensureCalendar={ensureCalendar}
+        editTarget={editTarget}
+        defaultDate={defaultDate}
+      />
 
       {/* Session Detail Panel */}
       <SessionDetailPanel
