@@ -40,6 +40,7 @@ const genKey = () => Math.random().toString(36).slice(2, 9);
 const EMPTY_FORM: AssessmentFormValues = {
   title: '',
   description: '',
+  question_selection_mode: 'DYNAMIC',
   number_of_questions: 20,
   duration_minutes: 30,
   passing_percentage: 60,
@@ -89,6 +90,7 @@ export default function AssessmentFormPage() {
       setForm({
         title:                      assessment.title,
         description:                assessment.description,
+        question_selection_mode:    assessment.question_selection_mode,
         number_of_questions:        assessment.number_of_questions,
         duration_minutes:           assessment.duration_minutes,
         passing_percentage:         parseFloat(assessment.passing_percentage),

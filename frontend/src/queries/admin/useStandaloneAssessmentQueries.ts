@@ -3,18 +3,21 @@ import { standaloneAssessmentApi } from '@/api/standalone-assessment-api';
 import {
   AssessmentFormValues,
   SkillMappingPayload,
+  QuestionMappingPayload,
+  ReorderMappingsPayload,
 } from '@/types/standalone-assessment.types';
 
 export const STANDALONE_ASSESSMENT_KEYS = {
-  all:    () => ['standalone-assessment'] as const,
-  list:   (params?: object) => ['standalone-assessment', 'list', params] as const,
-  detail: (id: number)      => ['standalone-assessment', 'detail', id] as const,
-  mappings: (assessmentId: number) => ['standalone-assessment', 'mappings', assessmentId] as const,
+  all:              () => ['standalone-assessment'] as const,
+  list:             (params?: object) => ['standalone-assessment', 'list', params] as const,
+  detail:           (id: number)      => ['standalone-assessment', 'detail', id] as const,
+  mappings:         (assessmentId: number) => ['standalone-assessment', 'mappings', assessmentId] as const,
+  questionMappings: (assessmentId: number) => ['standalone-assessment', 'question-mappings', assessmentId] as const,
+  availability:     (assessmentId: number) => ['standalone-assessment', 'availability', assessmentId] as const,
 };
 
-/**
- * Fetches the paginated list of standalone assessments.
- */
+// ── Assessment list ───────────────────────────────────────────────────────────
+
 export const useStandaloneAssessmentList = (params?: { page?: number; page_size?: number }) =>
   useQuery({
     queryKey: STANDALONE_ASSESSMENT_KEYS.list(params),
@@ -22,9 +25,8 @@ export const useStandaloneAssessmentList = (params?: { page?: number; page_size?
     staleTime: 30_000,
   });
 
-/**
- * Fetches a single standalone assessment by ID (includes skill_mappings).
- */
+// ── Assessment detail ─────────────────────────────────────────────────────────
+
 export const useStandaloneAssessmentDetail = (id: number | null) =>
   useQuery({
     queryKey: STANDALONE_ASSESSMENT_KEYS.detail(id!),
@@ -33,9 +35,8 @@ export const useStandaloneAssessmentDetail = (id: number | null) =>
     staleTime: 0,
   });
 
-/**
- * Fetches skill mappings for a given assessment.
- */
+// ── Skill mappings ────────────────────────────────────────────────────────────
+
 export const useAssessmentSkillMappings = (assessmentId: number | null) =>
   useQuery({
     queryKey: STANDALONE_ASSESSMENT_KEYS.mappings(assessmentId!),
@@ -44,9 +45,8 @@ export const useAssessmentSkillMappings = (assessmentId: number | null) =>
     staleTime: 0,
   });
 
-/**
- * Creates a new standalone assessment. Invalidates the list on success.
- */
+// ── Create / Update ───────────────────────────────────────────────────────────
+
 export const useCreateStandaloneAssessment = () => {
   const qc = useQueryClient();
   return useMutation({
@@ -57,9 +57,6 @@ export const useCreateStandaloneAssessment = () => {
   });
 };
 
-/**
- * Updates an existing standalone assessment. Invalidates list and detail on success.
- */
 export const useUpdateStandaloneAssessment = (id: number) => {
   const qc = useQueryClient();
   return useMutation({
@@ -72,9 +69,8 @@ export const useUpdateStandaloneAssessment = (id: number) => {
   });
 };
 
-/**
- * Adds a skill mapping to an assessment.
- */
+// ── Skill mapping mutations ───────────────────────────────────────────────────
+
 export const useAddSkillMapping = (assessmentId: number) => {
   const qc = useQueryClient();
   return useMutation({
@@ -86,9 +82,6 @@ export const useAddSkillMapping = (assessmentId: number) => {
   });
 };
 
-/**
- * Deletes a skill mapping by ID.
- */
 export const useDeleteSkillMapping = (assessmentId: number) => {
   const qc = useQueryClient();
   return useMutation({
@@ -99,3 +92,89 @@ export const useDeleteSkillMapping = (assessmentId: number) => {
     },
   });
 };
+
+// ── Question mappings (CURATED mode) ─────────────────────────────────────────
+
+/**
+ * Fetches all questions mapped to a CURATED assessment, ordered by display_order.
+ */
+export const useQuestionMappings = (assessmentId: number | null) =>
+  useQuery({
+    queryKey: STANDALONE_ASSESSMENT_KEYS.questionMappings(assessmentId!),
+    queryFn:  () => standaloneAssessmentApi.listQuestionMappings(assessmentId!),
+    enabled:  assessmentId !== null,
+    staleTime: 0,
+  });
+
+/**
+ * Maps a question to a CURATED assessment.
+ * Invalidates the question mappings list and assessment detail on success.
+ */
+export const useAddQuestionMapping = (assessmentId: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: QuestionMappingPayload) =>
+      standaloneAssessmentApi.addQuestionMapping(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: STANDALONE_ASSESSMENT_KEYS.questionMappings(assessmentId) });
+      qc.invalidateQueries({ queryKey: STANDALONE_ASSESSMENT_KEYS.detail(assessmentId) });
+    },
+  });
+};
+
+/**
+ * Removes a question from a CURATED assessment.
+ */
+export const useRemoveQuestionMapping = (assessmentId: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (mappingId: number) =>
+      standaloneAssessmentApi.removeQuestionMapping(mappingId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: STANDALONE_ASSESSMENT_KEYS.questionMappings(assessmentId) });
+      qc.invalidateQueries({ queryKey: STANDALONE_ASSESSMENT_KEYS.detail(assessmentId) });
+    },
+  });
+};
+
+/**
+ * Bulk-updates display_order for a list of question mappings.
+ * Used by the drag-to-reorder interaction in the question picker.
+ */
+export const useReorderQuestionMappings = (assessmentId: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: ReorderMappingsPayload) =>
+      standaloneAssessmentApi.reorderQuestionMappings(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: STANDALONE_ASSESSMENT_KEYS.questionMappings(assessmentId) });
+    },
+  });
+};
+
+// ── Studio actions ────────────────────────────────────────────────────────────
+
+/**
+ * Runs the DynamicQuestionSelector and returns a suggested question list
+ * WITHOUT saving anything. Used by the Auto Suggestion flow.
+ */
+export const useSuggestQuestions = (assessmentId: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => standaloneAssessmentApi.suggestQuestions(assessmentId),
+  });
+};
+
+/**
+ * Checks whether the question bank has enough questions for this assessment.
+ * Runs automatically when the assessment has skill mappings.
+ * staleTime is short (10s) so the indicator stays fresh as the admin edits.
+ */
+export const useCheckAvailability = (assessmentId: number | null) =>
+  useQuery({
+    queryKey: STANDALONE_ASSESSMENT_KEYS.availability(assessmentId!),
+    queryFn:  () => standaloneAssessmentApi.checkAvailability(assessmentId!),
+    enabled:  assessmentId !== null,
+    staleTime: 10_000,
+    refetchOnWindowFocus: false,
+  });

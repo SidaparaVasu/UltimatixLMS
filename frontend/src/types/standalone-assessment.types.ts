@@ -1,3 +1,6 @@
+// ── Question selection mode ───────────────────────────────────────────────────
+export type QuestionSelectionMode = 'FIXED' | 'DYNAMIC' | 'CURATED';
+
 // ── Skill mapping row (used in form and API responses) ────────────────────────
 export interface SkillMappingRow {
   id?: number;             // present for existing mappings, absent for new rows
@@ -13,7 +16,7 @@ export interface StandaloneAssessment {
   id: number;
   title: string;
   description: string;
-  question_selection_mode: 'DYNAMIC';
+  question_selection_mode: QuestionSelectionMode;
   number_of_questions: number;
   duration_minutes: number;
   passing_percentage: string;
@@ -24,6 +27,8 @@ export interface StandaloneAssessment {
   negative_marking_percentage: string;
   status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
   skill_mappings: SkillMappingRow[];
+  /** Number of questions currently mapped (CURATED/FIXED only; 0 for DYNAMIC). */
+  mapped_question_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -33,11 +38,13 @@ export interface StandaloneAssessmentListItem {
   id: number;
   title: string;
   description: string;
+  question_selection_mode: QuestionSelectionMode;
   number_of_questions: number;
   duration_minutes: number;
   passing_percentage: string;
   status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
   skill_mappings: SkillMappingRow[];
+  mapped_question_count: number;
   created_at: string;
 }
 
@@ -45,6 +52,7 @@ export interface StandaloneAssessmentListItem {
 export interface AssessmentFormValues {
   title: string;
   description: string;
+  question_selection_mode: QuestionSelectionMode;
   number_of_questions: number;
   duration_minutes: number;
   passing_percentage: number;
@@ -61,4 +69,62 @@ export interface SkillMappingPayload {
   assessment: number;
   skill: number;
   skill_level: number;
+}
+
+// ── Question mapping (for CURATED assessments) ────────────────────────────────
+export interface QuestionMappingItem {
+  id: number;
+  assessment: number;
+  question: string;          // UUID
+  display_order: number;
+  weight_points: string;
+  time_limit_seconds: number;
+  question_detail: MappedQuestionDetail;
+}
+
+export interface MappedQuestionDetail {
+  id: string;                // UUID
+  question_text: string;
+  question_type: 'MCQ' | 'MSQ' | 'TRUE_FALSE' | 'DESCRIPTIVE' | 'SCENARIO';
+  scenario_text: string;
+  explanation_text: string;
+  difficulty_complexity: number;
+  skill: number | null;
+  skill_name: string | null;
+  skill_level: number | null;
+  skill_level_name: string | null;
+  is_active: boolean;
+  options: Array<{
+    id: number;
+    option_text: string;
+    is_correct: boolean;
+    display_order: number;
+  }>;
+}
+
+// ── Question mapping payload ──────────────────────────────────────────────────
+export interface QuestionMappingPayload {
+  assessment: number;
+  question: string;          // UUID
+  display_order: number;
+}
+
+// ── Reorder payload ───────────────────────────────────────────────────────────
+export interface ReorderMappingsPayload {
+  mappings: Array<{ id: number; display_order: number }>;
+}
+
+// ── Availability check response ───────────────────────────────────────────────
+export interface QuestionAvailability {
+  available: number;
+  required: number;
+  sufficient: boolean;
+  breakdown: Array<{
+    skill: string;
+    target_level_rank: number;
+    target_level_name: string;
+    available: number;
+  }>;
+  /** Only present when no skill mappings exist */
+  message?: string;
 }
