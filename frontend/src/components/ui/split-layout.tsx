@@ -1,6 +1,50 @@
 import React from 'react';
 
 /* ─────────────────────────────────────────────────────────────
+   RESPONSIVE STYLES
+   Below 1024px the layout stacks vertically: sidebar moves
+   below the main panel, loses its sticky positioning, and
+   expands to full width so nothing overlaps on small screens.
+───────────────────────────────────────────────────────────── */
+const SPLIT_LAYOUT_STYLES = `
+  .split-layout {
+    display: flex;
+    align-items: flex-start;
+    width: 100%;
+  }
+  .split-layout__main {
+    flex: 1;
+    min-width: 0;
+  }
+  .split-layout__sidebar {
+    flex-shrink: 0;
+    overflow: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .split-layout__sidebar--sticky {
+    position: sticky;
+    top: calc(var(--topnav-h, 60px) + var(--space-4, 16px));
+    max-height: calc(100vh - var(--topnav-h, 60px) - var(--space-8, 32px));
+    overflow-y: auto;
+  }
+  @media (max-width: 1370px) {
+    .split-layout {
+      flex-direction: column;
+    }
+    .split-layout__main {
+      width: 100%;
+    }
+    .split-layout__sidebar {
+      width: 100% !important;
+      position: static !important;
+      max-height: none !important;
+      margin-top: var(--space-6, 24px);
+    }
+  }
+`;
+
+/* ─────────────────────────────────────────────────────────────
    TYPES
 ───────────────────────────────────────────────────────────── */
 interface SplitLayoutProps {
@@ -26,6 +70,9 @@ interface SplitLayoutProps {
  * panel scrolls. Designed for information-dense pages like the
  * Competency Master, where quick reference data lives on the right.
  *
+ * Below 1024px the layout automatically stacks vertically so the
+ * sidebar never overlaps the main content on small screens.
+ *
  * Usage:
  *   <SplitLayout
  *     main={<SkillCategoryGrid />}
@@ -41,38 +88,21 @@ export const SplitLayout: React.FC<SplitLayoutProps> = ({
   stickySection = true,
 }) => {
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap,
-        width: '100%',
-      }}
-    >
-      {/* ── Main panel ── */}
-      <div style={{ flex: 1, minWidth: 0 }}>{main}</div>
+    <>
+      <style>{SPLIT_LAYOUT_STYLES}</style>
+      <div className="split-layout" style={{ gap }}>
+        {/* ── Main panel ── */}
+        <div className="split-layout__main">{main}</div>
 
-      {/* ── Sidebar panel ── */}
-      <div
-        style={{
-          width: sidebarWidth,
-          flexShrink: 0,
-          overflow: 'auto',
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none',
-          ...(stickySection
-            ? {
-                position: 'sticky',
-                top: 'calc(var(--topnav-h) + var(--space-4))',
-                maxHeight: 'calc(100vh - var(--topnav-h) - var(--space-8))',
-                overflowY: 'auto',
-              }
-            : {}),
-        }}
-      >
-        {sidebar}
+        {/* ── Sidebar panel ── */}
+        <div
+          className={`split-layout__sidebar${stickySection ? ' split-layout__sidebar--sticky' : ''}`}
+          style={{ width: sidebarWidth }}
+        >
+          {sidebar}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
