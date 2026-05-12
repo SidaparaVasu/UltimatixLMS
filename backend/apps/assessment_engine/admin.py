@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import (
     AssessmentMaster, QuestionBank, QuestionOption, 
     AssessmentQuestionMapping, AssessmentAttempt, 
-    UserAnswer, AssessmentResult
+    UserAnswer, AssessmentResult, AssessmentSkillMapping
 )
 
 
@@ -61,3 +61,10 @@ class AssessmentResultAdmin(admin.ModelAdmin):
     list_filter = ("status", "grading_type")
     search_fields = ("attempt__employee__employee_code", "attempt__assessment__title")
     readonly_fields = ("total_score", "score_percentage", "graded_at")
+
+@admin.register(AssessmentSkillMapping)
+class AssessmentSkillMappingAdmin(admin.ModelAdmin):
+    list_display = ("id", "assessment", "skill", "skill_level")
+    list_filter = ("assessment", "skill", "skill_level")
+    search_fields = ("assessment", "skill", "skill_level")
+    readonly_fields = ("id",)
