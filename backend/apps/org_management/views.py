@@ -120,7 +120,7 @@ class BaseOrgViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data)
         serializer.is_valid(raise_exception=True)
-        updated_instance = self.service_class().update(pk=instance.pk, partial=False, **serializer.validated_data)
+        updated_instance = self.service_class().update(pk=instance.pk, **serializer.validated_data)
         return success_response(
             message=f"{self.model.__name__} updated successfully.",
             data=self.get_serializer(updated_instance).data
@@ -131,7 +131,7 @@ class BaseOrgViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        updated_instance = self.service_class().update(pk=instance.pk, partial=True, **serializer.validated_data)
+        updated_instance = self.service_class().update(pk=instance.pk, **serializer.validated_data)
         return success_response(
             message=f"{self.model.__name__} partially updated successfully.",
             data=self.get_serializer(updated_instance).data
