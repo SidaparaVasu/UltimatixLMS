@@ -30,10 +30,55 @@ class AssessmentMasterStudioSerializer(serializers.ModelSerializer):
     """
     questions = serializers.SerializerMethodField()
     skill_mappings = serializers.SerializerMethodField()
+    mapped_question_count = serializers.SerializerMethodField()
 
     class Meta:
         model = AssessmentMaster
         fields = "__all__"
+
+    def validate(self, data):
+        """
+        Cross-field validation:
+        - CURATED assessments being published must have exactly number_of_questions
+          questions mapped (attempt__isnull=True).
+        - DYNAMIC assessments cannot be set to CURATED on existing instances
+          (mode switching is blocked on edit — enforced here as a safety net).
+        """
+        from .constants import QuestionSelectionMode
+
+        instance = self.instance  # None on create, set on update
+        mode = data.get('question_selection_mode',
+                        getattr(instance, 'question_selection_mode', QuestionSelectionMode.DYNAMIC))
+        new_status = data.get('status', getattr(instance, 'status', 'DRAFT'))
+
+        # Block mode switching on existing assessments
+        if instance and 'question_selection_mode' in data:
+            old_mode = instance.question_selection_mode
+            if old_mode != mode:
+                raise serializers.ValidationError({
+                    'question_selection_mode': (
+                        f"Cannot switch question selection mode from {old_mode} to {mode} "
+                        f"on an existing assessment. Create a new assessment instead."
+                    )
+                })
+
+        # CURATED publish validation
+        if mode == QuestionSelectionMode.CURATED and new_status == 'PUBLISHED' and instance:
+            from .models import AssessmentQuestionMapping
+            mapped_count = AssessmentQuestionMapping.objects.filter(
+                assessment=instance,
+                attempt__isnull=True,
+            ).count()
+            required = data.get('number_of_questions', instance.number_of_questions)
+            if mapped_count != required:
+                raise serializers.ValidationError({
+                    'status': (
+                        f"Cannot publish: {mapped_count} question(s) mapped, "
+                        f"but {required} required. Add or remove questions to match."
+                    )
+                })
+
+        return data
 
     def get_questions(self, obj):
         """Return questions ordered by their mapping display_order."""
@@ -85,6 +130,16 @@ class AssessmentMasterStudioSerializer(serializers.ModelSerializer):
             }
             for m in mappings
         ]
+
+    def get_mapped_question_count(self, obj):
+        """
+        Number of questions currently mapped to this assessment (CURATED/FIXED mode).
+        Returns 0 for DYNAMIC assessments (questions are selected at attempt start).
+        """
+        from .constants import QuestionSelectionMode
+        if obj.question_selection_mode == QuestionSelectionMode.DYNAMIC:
+            return 0
+        return obj.question_mappings.filter(attempt__isnull=True).count()
 
 
 # --- LEARNER CONTEXT (Students - Sanitized) ---
@@ -554,6 +609,49 @@ class AssessmentSkillMappingSerializer(serializers.ModelSerializer):
         from .models import AssessmentSkillMapping
         model = AssessmentSkillMapping
         fields = ["id", "assessment", "skill", "skill_name", "skill_level", "skill_level_name", "skill_level_rank"]
+
+
+class AssessmentQuestionMappingSerializer(serializers.ModelSerializer):
+    """
+    Serializer for AssessmentQuestionMapping rows (CURATED mode).
+    Exposes the full question detail alongside mapping metadata so the
+    frontend question picker can render the mapped list without extra fetches.
+    """
+    question_detail = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AssessmentQuestionMapping
+        fields = [
+            "id", "assessment", "question", "display_order",
+            "weight_points", "time_limit_seconds", "question_detail",
+        ]
+        read_only_fields = ["id"]
+
+    def get_question_detail(self, obj):
+        """Inline question data for the picker list."""
+        q = obj.question
+        return {
+            "id":                   str(q.id),
+            "question_text":        q.question_text,
+            "question_type":        q.question_type,
+            "scenario_text":        q.scenario_text,
+            "explanation_text":     q.explanation_text,
+            "difficulty_complexity": q.difficulty_complexity,
+            "skill":                q.skill_id,
+            "skill_name":           q.skill.skill_name if q.skill else None,
+            "skill_level":          q.skill_level_id,
+            "skill_level_name":     q.skill_level.level_name if q.skill_level else None,
+            "is_active":            q.is_active,
+            "options": [
+                {
+                    "id":            opt.id,
+                    "option_text":   opt.option_text,
+                    "is_correct":    opt.is_correct,
+                    "display_order": opt.display_order,
+                }
+                for opt in q.options.all().order_by("display_order")
+            ],
+        }
 
 
 class AssessmentCatalogSerializer(serializers.ModelSerializer):

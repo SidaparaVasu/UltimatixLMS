@@ -19,6 +19,7 @@ class AssessmentStatus(models.TextChoices):
 class QuestionSelectionMode(models.TextChoices):
     FIXED   = "FIXED",   "Fixed — questions pre-mapped at assessment creation (course quizzes)"
     DYNAMIC = "DYNAMIC", "Dynamic — questions selected from bank at attempt start (standalone)"
+    CURATED = "CURATED", "Curated — manually selects questions from question bank (standalone)"
 
 
 class AttemptStatus(models.TextChoices):

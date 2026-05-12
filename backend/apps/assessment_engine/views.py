@@ -19,7 +19,8 @@ from .serializers import (
     UserAnswerLifecycleSerializer,
     ReviewAttemptListSerializer, ReviewAttemptDetailSerializer,
     ManualGradeSubmitSerializer, RetakeGrantSerializer,
-    AssessmentSkillMappingSerializer, AssessmentCatalogSerializer,
+    AssessmentSkillMappingSerializer, AssessmentQuestionMappingSerializer,
+    AssessmentCatalogSerializer,
     SkillUpgradeProposalSerializer,
 )
 from .services import AssessmentBuildService, AttemptService, GradingService, ReviewService
@@ -101,6 +102,131 @@ class AssessmentStudioViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return error_response(message=str(e))
 
+    @action(detail=True, methods=['post'], url_path='suggest-questions')
+    def suggest_questions(self, request, pk=None):
+        """
+        POST /assessment/studio/:id/suggest-questions/
+
+        Runs the DynamicQuestionSelector against the assessment's skill mappings
+        and returns a suggested question list WITHOUT saving anything.
+
+        Requires:
+          - assessment.question_selection_mode in (DYNAMIC, CURATED)
+          - at least one AssessmentSkillMapping on the assessment
+
+        Returns the same shape as QuestionBankWithSkillSerializer so the
+        frontend can render the suggestions in the question picker.
+        """
+        from .constants import QuestionSelectionMode
+        from .question_selector import DynamicQuestionSelector, InsufficientQuestionsError
+
+        assessment = self.get_object()
+
+        if assessment.question_selection_mode == QuestionSelectionMode.FIXED:
+            return error_response(
+                message="Auto-suggestion is not available for FIXED (course quiz) assessments."
+            )
+
+        skill_mappings = AssessmentSkillMapping.objects.filter(assessment=assessment)
+        if not skill_mappings.exists():
+            return error_response(
+                message="Add at least one skill mapping before using auto-suggestion."
+            )
+
+        employee = getattr(request.user, 'employee_record', None)
+        employee = employee.first() if employee else None
+        employee_id = employee.id if employee else 0
+
+        selector = DynamicQuestionSelector()
+        try:
+            questions = selector.select(
+                assessment=assessment,
+                employee_id=employee_id,
+                number_of_questions=assessment.number_of_questions,
+            )
+        except InsufficientQuestionsError as e:
+            return error_response(
+                message=str(e),
+                errors=e.breakdown,
+                status_code=422,
+            )
+
+        from .serializers import QuestionBankWithSkillSerializer
+        serializer = QuestionBankWithSkillSerializer(questions, many=True)
+        return success_response(
+            message=f"{len(questions)} question(s) suggested based on skill mappings.",
+            data=serializer.data,
+        )
+
+    @action(detail=True, methods=['get'], url_path='check-availability')
+    def check_availability(self, request, pk=None):
+        """
+        GET /assessment/studio/:id/check-availability/
+
+        Checks whether the question bank has enough questions to satisfy
+        this assessment's number_of_questions requirement given its skill mappings.
+
+        Returns:
+          {
+            available: int,       — total eligible questions across all skill mappings
+            required:  int,       — assessment.number_of_questions
+            sufficient: bool,     — available >= required
+            breakdown: [          — per-skill detail
+              { skill: str, target_level_rank: int, available: int }
+            ]
+          }
+
+        Used by the assessment form to show a real-time availability indicator.
+        """
+        from .constants import QuestionSelectionMode
+        from .models import QuestionBank
+
+        assessment = self.get_object()
+
+        if assessment.question_selection_mode == QuestionSelectionMode.FIXED:
+            return error_response(
+                message="Availability check is not applicable for FIXED assessments."
+            )
+
+        skill_mappings = AssessmentSkillMapping.objects.filter(
+            assessment=assessment
+        ).select_related('skill', 'skill_level')
+
+        if not skill_mappings.exists():
+            return success_response(data={
+                "available":  0,
+                "required":   assessment.number_of_questions,
+                "sufficient": False,
+                "breakdown":  [],
+                "message":    "No skill mappings defined. Add skill mappings to check availability.",
+            })
+
+        breakdown = []
+        total_available = 0
+
+        for sm in skill_mappings:
+            count = QuestionBank.objects.filter(
+                skill=sm.skill,
+                skill_level__level_rank__gte=sm.skill_level.level_rank,
+                is_active=True,
+                question_type__in=["MCQ", "MSQ", "TRUE_FALSE", "DESCRIPTIVE", "SCENARIO"],
+            ).count()
+            breakdown.append({
+                "skill":              sm.skill.skill_name,
+                "target_level_rank":  sm.skill_level.level_rank,
+                "target_level_name":  sm.skill_level.level_name,
+                "available":          count,
+            })
+            total_available += count
+
+        required = assessment.number_of_questions
+        return success_response(data={
+            "available":  total_available,
+            "required":   required,
+            "sufficient": total_available >= required,
+            "breakdown":  breakdown,
+        })
+
 
 class QuestionBankViewSet(viewsets.ModelViewSet):
     """
@@ -126,6 +252,9 @@ class QuestionBankViewSet(viewsets.ModelViewSet):
         q_type       = self.request.query_params.get('question_type')
         is_active    = self.request.query_params.get('is_active')
         search       = self.request.query_params.get('search')
+        # ?exclude_assessment=<id> — exclude questions already mapped to this assessment
+        exclude_assessment = self.request.query_params.get('exclude_assessment')
+
         if skill_id:
             qs = qs.filter(skill_id=skill_id)
         if level_id:
@@ -136,6 +265,13 @@ class QuestionBankViewSet(viewsets.ModelViewSet):
             qs = qs.filter(is_active=is_active.lower() not in ('false', '0'))
         if search:
             qs = qs.filter(question_text__icontains=search)
+        if exclude_assessment:
+            from .models import AssessmentQuestionMapping
+            already_mapped = AssessmentQuestionMapping.objects.filter(
+                assessment_id=exclude_assessment,
+                attempt__isnull=True,
+            ).values_list('question_id', flat=True)
+            qs = qs.exclude(id__in=already_mapped)
         return qs.order_by('-created_at')
 
     def get_serializer_class(self):
@@ -699,6 +835,115 @@ class AssessmentSkillMappingViewSet(viewsets.ModelViewSet):
         queryset = self.filter_queryset(self.get_queryset())
         serializer = self.get_serializer(queryset, many=True)
         return success_response(data=serializer.data)
+
+
+class QuestionMappingViewSet(viewsets.ModelViewSet):
+    """
+    CRUD for question mappings on CURATED standalone assessments.
+
+    GET    /api/v1/assessment/question-mappings/?assessment=<id>
+           Returns all questions mapped to the assessment (attempt__isnull=True).
+
+    POST   /api/v1/assessment/question-mappings/
+           Maps a question to an assessment.
+           Payload: { assessment: int, question: uuid, display_order: int }
+
+    DELETE /api/v1/assessment/question-mappings/:id/
+           Removes a question mapping.
+
+    POST   /api/v1/assessment/question-mappings/reorder/
+           Bulk-updates display_order.
+           Payload: { mappings: [{ id: int, display_order: int }] }
+    """
+    from .serializers import AssessmentQuestionMappingSerializer
+    serializer_class = AssessmentQuestionMappingSerializer
+    permission_classes = [HasScopedPermission]
+    required_permission = P.CONTENT_MANAGEMENT.ASSESSMENT_MANAGE
+
+    def get_queryset(self):
+        from .models import AssessmentQuestionMapping
+        qs = AssessmentQuestionMapping.objects.filter(
+            attempt__isnull=True,
+        ).select_related('question__skill', 'question__skill_level').prefetch_related(
+            'question__options'
+        )
+        assessment_id = self.request.query_params.get('assessment')
+        if assessment_id:
+            qs = qs.filter(assessment_id=assessment_id)
+        return qs.order_by('display_order')
+
+    def create(self, request, *args, **kwargs):
+        from .models import AssessmentQuestionMapping
+        from .serializers import AssessmentQuestionMappingSerializer
+
+        assessment_id = request.data.get('assessment')
+        question_id   = request.data.get('question')
+        display_order = request.data.get('display_order', 1)
+
+        if not assessment_id or not question_id:
+            return error_response(message="assessment and question are required.")
+
+        # Prevent duplicate mapping
+        if AssessmentQuestionMapping.objects.filter(
+            assessment_id=assessment_id,
+            question_id=question_id,
+            attempt__isnull=True,
+        ).exists():
+            return error_response(message="This question is already mapped to the assessment.")
+
+        instance = AssessmentQuestionMapping.objects.create(
+            assessment_id=assessment_id,
+            question_id=question_id,
+            display_order=display_order,
+            weight_points=1.00,
+            time_limit_seconds=0,
+        )
+        return created_response(
+            message="Question mapped to assessment.",
+            data=AssessmentQuestionMappingSerializer(instance).data,
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.delete()
+        return success_response(message="Question mapping removed.")
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        from .serializers import AssessmentQuestionMappingSerializer
+        serializer = AssessmentQuestionMappingSerializer(queryset, many=True)
+        return success_response(data=serializer.data)
+
+    @action(detail=False, methods=['post'], url_path='reorder')
+    def reorder(self, request):
+        """
+        POST /assessment/question-mappings/reorder/
+        Bulk-updates display_order for a list of mappings.
+        Payload: { mappings: [{ id: int, display_order: int }] }
+        """
+        from .models import AssessmentQuestionMapping
+        mappings_data = request.data.get('mappings', [])
+        if not mappings_data:
+            return error_response(message="mappings list is required.")
+
+        ids = [m['id'] for m in mappings_data]
+        mapping_objs = {
+            m.id: m
+            for m in AssessmentQuestionMapping.objects.filter(id__in=ids, attempt__isnull=True)
+        }
+
+        updated = []
+        for item in mappings_data:
+            obj = mapping_objs.get(item['id'])
+            if obj:
+                obj.display_order = item['display_order']
+                updated.append(obj)
+
+        AssessmentQuestionMapping.objects.bulk_update(updated, ['display_order'])
+        return success_response(
+            message=f"{len(updated)} mapping(s) reordered.",
+            data={"updated": len(updated)},
+        )
 
 
 class SkillUpgradeProposalViewSet(viewsets.ReadOnlyModelViewSet):

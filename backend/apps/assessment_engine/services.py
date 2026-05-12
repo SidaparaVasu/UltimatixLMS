@@ -160,10 +160,18 @@ class AttemptService(BaseService):
             ])
 
         else:
-            # Fixed: read pre-mapped questions (existing course quiz behavior)
+            # Fixed / Curated: read pre-mapped questions (attempt__isnull=True)
             mappings = list(
-                assessment.question_mappings.filter(attempt__isnull=True)
+                assessment.question_mappings.filter(attempt__isnull=True).order_by('display_order')
             )
+
+            if not mappings:
+                attempt.delete()
+                raise ValueError(
+                    "This assessment has no questions mapped. "
+                    "Add questions before learners can attempt it."
+                )
+
             if assessment.is_randomized:
                 random.shuffle(mappings)
 

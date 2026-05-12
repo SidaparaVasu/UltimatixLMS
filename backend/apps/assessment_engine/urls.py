@@ -8,6 +8,7 @@ from .views import (
     AssessmentAttemptViewSet,
     AssessmentReviewViewSet,
     AssessmentSkillMappingViewSet,
+    QuestionMappingViewSet,
     SkillUpgradeProposalViewSet,
 )
 
@@ -19,6 +20,7 @@ router.register(r"questions",             QuestionBankViewSet,            basena
 router.register(r"attempts",              AssessmentAttemptViewSet,       basename="assessment_attempts")
 router.register(r"review",                AssessmentReviewViewSet,        basename="assessment_review")
 router.register(r"skill-mappings",        AssessmentSkillMappingViewSet,  basename="assessment_skill_mappings")
+router.register(r"question-mappings",     QuestionMappingViewSet,         basename="assessment_question_mappings")
 router.register(r"skill-upgrade-proposals", SkillUpgradeProposalViewSet,  basename="skill_upgrade_proposals")
 
 urlpatterns = [
