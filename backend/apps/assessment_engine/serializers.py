@@ -26,9 +26,10 @@ class QuestionBankStudioSerializer(serializers.ModelSerializer):
 
 class AssessmentMasterStudioSerializer(serializers.ModelSerializer):
     """
-    Full assessment serializer including nested questions for the Studio.
+    Full assessment serializer including nested questions and skill mappings for the Studio.
     """
     questions = serializers.SerializerMethodField()
+    skill_mappings = serializers.SerializerMethodField()
 
     class Meta:
         model = AssessmentMaster
@@ -65,6 +66,25 @@ class AssessmentMasterStudioSerializer(serializers.ModelSerializer):
                 ],
             })
         return result
+
+    def get_skill_mappings(self, obj):
+        """Return all skill mappings for this assessment."""
+        from .models import AssessmentSkillMapping
+        mappings = AssessmentSkillMapping.objects.filter(
+            assessment=obj
+        ).select_related('skill', 'skill_level')
+        return [
+            {
+                'id':              m.id,
+                'assessment':      m.assessment_id,
+                'skill':           m.skill_id,
+                'skill_name':      m.skill.skill_name,
+                'skill_level':     m.skill_level_id,
+                'skill_level_name': m.skill_level.level_name,
+                'skill_level_rank': m.skill_level.level_rank,
+            }
+            for m in mappings
+        ]
 
 
 # --- LEARNER CONTEXT (Students - Sanitized) ---
