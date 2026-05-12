@@ -9,6 +9,9 @@ import type {
   RecentEnrollment,
   HrOverview,
   ScopedEmployee,
+  PendingApprovals,
+  SkillMatrixRow,
+  TrainingSession,
 } from "@/types/dashboard.types";
 
 /**
@@ -64,6 +67,16 @@ export const dashboardApi = {
     }
   },
 
+  /** GET /api/v1/dashboard/pending-approvals/ */
+  getPendingApprovals: async () => {
+    try {
+      const response = await apiClient.get("/dashboard/pending-approvals/");
+      return handleApiResponse<PendingApprovals>(response.data, false);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
   // -------------------------------------------------------------------------
   // Admin
   // -------------------------------------------------------------------------
@@ -97,6 +110,35 @@ export const dashboardApi = {
         params: { limit },
       });
       return handleApiResponse<RecentEnrollment[]>(response.data, false);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  // -------------------------------------------------------------------------
+  // Employee — Skill Matrix & Training Calendar
+  // -------------------------------------------------------------------------
+
+  /** GET /api/v1/skills/my-skill-matrix/ */
+  getMySkillMatrix: async () => {
+    try {
+      const response = await apiClient.get("/skills/my-skill-matrix/");
+      return handleApiResponse<SkillMatrixRow[]>(response.data, false);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  /**
+   * GET /api/v1/training/sessions/
+   * Fetches sessions within a date range for the calendar panel.
+   */
+  getTrainingSessions: async (startAfter: string, startBefore: string) => {
+    try {
+      const response = await apiClient.get("/planning/sessions/", {
+        params: { start_date_after: startAfter, start_date_before: startBefore },
+      });
+      return handleApiResponse<TrainingSession[]>(response.data, false);
     } catch (error) {
       return handleApiError(error);
     }

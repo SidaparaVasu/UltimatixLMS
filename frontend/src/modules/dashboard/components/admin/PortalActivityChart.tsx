@@ -22,36 +22,55 @@ const FILTERS: { id: ActivityChartFilter; label: string }[] = [
   { id: 'annual', label: 'Annual' },
 ];
 
+// Colour tokens for the three series
+const COLORS = {
+  completions:  { line: 'oklch(0.63 0.17 155)',  fill: 'oklch(0.63 0.17 155 / 0.08)'  },
+  enrollments:  { line: 'oklch(0.5461 0.2152 262.8809)', fill: 'oklch(0.5461 0.2152 262.8809 / 0.08)' },
+  certificates: { line: 'oklch(0.72 0.19 55)',   fill: 'oklch(0.72 0.19 55 / 0.08)'   },
+};
+
 export const PortalActivityChart: React.FC = () => {
-  const [activeFilter, setActiveFilter] = useState<ActivityChartFilter>('daily');
+  const [activeFilter, setActiveFilter] = useState<ActivityChartFilter>('monthly');
   const { data: chartData, isLoading } = useActivityChart(activeFilter);
 
-  const labels = chartData?.data?.map((d) => d.label) ?? [];
-  const logins = chartData?.data?.map((d) => d.logins) ?? [];
-  const completions = chartData?.data?.map((d) => d.course_completions) ?? [];
+  const labels       = chartData?.data?.map((d) => d.label) ?? [];
+  const completions  = chartData?.data?.map((d) => d.course_completions) ?? [];
+  const enrollments  = chartData?.data?.map((d) => d.new_enrollments) ?? [];
+  const certificates = chartData?.data?.map((d) => d.certificates_issued) ?? [];
 
   const data = {
     labels,
     datasets: [
       {
-        label: 'Logins',
-        data: logins,
-        borderColor: 'oklch(0.5461 0.2152 262.8809)',
-        backgroundColor: 'oklch(0.5461 0.2152 262.8809 / 0.08)',
+        label: 'Completions',
+        data: completions,
+        borderColor: COLORS.completions.line,
+        backgroundColor: COLORS.completions.fill,
         borderWidth: 2,
         pointRadius: 3,
-        pointBackgroundColor: 'oklch(0.5461 0.2152 262.8809)',
+        pointBackgroundColor: COLORS.completions.line,
         fill: true,
         tension: 0.4,
       },
       {
-        label: 'Completions',
-        data: completions,
-        borderColor: 'oklch(0.63 0.17 155)',
-        backgroundColor: 'oklch(0.63 0.17 155 / 0.08)',
+        label: 'New Enrollments',
+        data: enrollments,
+        borderColor: COLORS.enrollments.line,
+        backgroundColor: COLORS.enrollments.fill,
         borderWidth: 2,
         pointRadius: 3,
-        pointBackgroundColor: 'oklch(0.63 0.17 155)',
+        pointBackgroundColor: COLORS.enrollments.line,
+        fill: true,
+        tension: 0.4,
+      },
+      {
+        label: 'Certificates',
+        data: certificates,
+        borderColor: COLORS.certificates.line,
+        backgroundColor: COLORS.certificates.fill,
+        borderWidth: 2,
+        pointRadius: 3,
+        pointBackgroundColor: COLORS.certificates.line,
         fill: true,
         tension: 0.4,
       },
@@ -75,7 +94,11 @@ export const PortalActivityChart: React.FC = () => {
     plugins: {
       legend: {
         position: 'top' as const,
-        labels: { font: { family: 'DM Sans', size: 11 }, color: 'var(--color-text-secondary)', boxWidth: 12 },
+        labels: {
+          font: { family: 'DM Sans', size: 11 },
+          color: 'var(--color-text-secondary)',
+          boxWidth: 12,
+        },
       },
       tooltip: { mode: 'index' as const, intersect: false },
     },
@@ -84,7 +107,7 @@ export const PortalActivityChart: React.FC = () => {
   return (
     <div className="chart-panel">
       <div className="section-header" style={{ marginBottom: 'var(--space-4)' }}>
-        <span className="section-title">Portal Activity</span>
+        <span className="section-title">Learning Activity</span>
         <div style={{ display: 'flex', gap: 4 }}>
           {FILTERS.map((f) => (
             <button

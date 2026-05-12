@@ -3,6 +3,7 @@ import { useManagerStats, useHrStats, useHrEmployees } from '@/queries/dashboard
 import { TeamStatsGrid } from '@/modules/dashboard/components/manager/TeamStatsGrid';
 import { TeamCompletionChart } from '@/modules/dashboard/components/manager/TeamCompletionChart';
 import { TeamMemberTable } from '@/modules/dashboard/components/manager/TeamMemberTable';
+import { PendingApprovalsPanel } from '@/modules/dashboard/components/manager/PendingApprovalsPanel';
 
 const ManagerDashboard: React.FC = () => {
   // KPI cards — company-wide stats scoped by HR role assignment
@@ -41,32 +42,10 @@ const ManagerDashboard: React.FC = () => {
         isLoading={hrLoading}
       />
 
-      {/* Chart + Pending approvals stub */}
+      {/* Chart + Pending approvals */}
       <div className="two-col anim delay-3">
         <TeamCompletionChart members={scopedEmployees} isLoading={empLoading} />
-
-        {/* Pending approvals — stub until Feature 4/5 */}
-        <div className="chart-panel" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-          <div className="section-header" style={{ marginBottom: 0 }}>
-            <span className="section-title">Pending Approvals</span>
-          </div>
-          <div
-            style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 'var(--space-3)',
-              padding: 'var(--space-8)',
-              color: 'var(--color-text-muted)',
-              fontSize: 'var(--text-sm)',
-              textAlign: 'center',
-            }}
-          >
-            TNI and Training Plan approvals will appear here once those modules are enabled.
-          </div>
-        </div>
+        <PendingApprovalsPanel />
       </div>
 
       {/* Employee table — scoped by HR role assignment */}

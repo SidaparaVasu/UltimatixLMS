@@ -49,8 +49,9 @@ export interface AdminPortalStats {
 
 export interface ActivityChartDataPoint {
   label: string;
-  logins: number;
   course_completions: number;
+  new_enrollments: number;
+  certificates_issued: number;
 }
 
 export interface ActivityChartData {
@@ -90,3 +91,70 @@ export interface RecentEnrollment {
 }
 
 export type ActivityChartFilter = 'daily' | 'weekly' | 'monthly' | 'annual';
+
+// ---------------------------------------------------------------------------
+// Manager — Pending Approvals
+// ---------------------------------------------------------------------------
+
+export interface TrainingPlanApprovalItem {
+  id: number;
+  plan_name: string;
+  department: string;
+  submitted_by: string | null;
+  submitted_at: string;
+}
+
+export interface TniReviewPendingItem {
+  employee_id: number;
+  employee_name: string;
+  employee_code: string;
+  submitted_at: string | null;
+}
+
+export interface PendingApprovals {
+  training_plan_approvals: TrainingPlanApprovalItem[];
+  tni_reviews_pending: TniReviewPendingItem[];
+  total: number;
+}
+
+// ---------------------------------------------------------------------------
+// Employee — Skill Matrix
+// ---------------------------------------------------------------------------
+
+export interface SkillLevel {
+  id: number;
+  level_name: string;
+  level_rank: number;
+}
+
+export interface SkillMatrixRow {
+  skill_id: number;
+  skill_name: string;
+  skill_code: string;
+  category_id: number | null;
+  category_name: string | null;
+  required_level: SkillLevel | null;
+  current_level: SkillLevel | null;
+  identified_by: string | null;
+  self_rating: { id: number; rated_level: SkillLevel | null; status: string; submitted_at: string } | null;
+  manager_rating: { id: number; rated_level: SkillLevel | null; status: string; submitted_at: string } | null;
+  gap_value: number | null;
+  gap_severity: 'NONE' | 'MINOR' | 'CRITICAL' | 'NOT_RATED' | null;
+}
+
+// ---------------------------------------------------------------------------
+// Employee — Training Sessions (Calendar)
+// ---------------------------------------------------------------------------
+
+export interface TrainingSession {
+  id: number;
+  session_title: string;
+  session_type: 'ONLINE' | 'CLASSROOM' | 'LIVE' | string;
+  session_start_date: string;
+  session_end_date: string;
+  location: string;
+  meeting_link: string;
+  course_title: string | null;
+  capacity: number;
+  current_enrollments: number;
+}

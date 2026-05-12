@@ -18,6 +18,7 @@ from .serializers import (
     RecentEnrollmentSerializer,
     HrOverviewSerializer,
     ScopedEmployeeSerializer,
+    PendingApprovalsSerializer,
 )
 
 
@@ -186,6 +187,27 @@ class DashboardViewSet(viewsets.ViewSet):
         )
 
     @extend_schema(
+        summary="Manager Pending Approvals",
+        description="Returns pending training plan approvals and TNI self-rating reviews awaiting manager action.",
+        responses={200: PendingApprovalsSerializer}
+    )
+    @action(detail=False, methods=["get"], url_path="pending-approvals")
+    def pending_approvals(self, request):
+        """
+        GET /api/v1/dashboard/pending-approvals/
+
+        Returns two categories of pending items for the manager:
+          1. Training plan approvals where this user is the designated approver.
+          2. TNI self-ratings submitted by direct reports awaiting manager review.
+        """
+        data = self.service.get_pending_approvals(request.user)
+        serializer = PendingApprovalsSerializer(data)
+        return success_response(
+            message="Pending approvals retrieved successfully.",
+            data=serializer.data
+        )
+
+    @extend_schema(
         summary="Admin Portal Statistics",
         description="Returns portal-wide statistics for admin dashboard.",
         responses={200: AdminPortalStatsSerializer}
@@ -210,7 +232,7 @@ class DashboardViewSet(viewsets.ViewSet):
 
     @extend_schema(
         summary="Portal Activity Chart Data",
-        description="Returns time-bucketed login and course completion data for activity chart.",
+        description="Returns time-bucketed course completions, new enrollments, and certificates issued for the activity chart.",
         parameters=[
             OpenApiParameter(
                 name="filter",
@@ -226,10 +248,13 @@ class DashboardViewSet(viewsets.ViewSet):
     def activity_chart(self, request):
         """
         GET /api/v1/dashboard/activity-chart/?filter=daily
-        
-        Returns activity chart data with time-bucketed metrics.
+
+        Returns activity chart data with time-bucketed learning metrics:
+          - course_completions : enrollments that reached COMPLETED status
+          - new_enrollments    : new enrollments created in the period
+          - certificates_issued: certificates awarded in the period
         Query params:
-            - filter: 'daily' (last 7 days), 'weekly' (last 8 weeks), 
+            - filter: 'daily' (last 7 days), 'weekly' (last 8 weeks),
                       'monthly' (last 12 months), 'annual' (last 5 years)
         """
         filter_type = request.query_params.get("filter", "daily")

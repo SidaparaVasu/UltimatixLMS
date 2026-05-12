@@ -9,38 +9,16 @@ import {
   Legend,
 } from 'chart.js';
 import { Radar } from 'react-chartjs-2';
+import { useMySkillMatrix } from '@/queries/dashboard/useDashboardQueries';
+import type { SkillMatrixRow } from '@/types/dashboard.types';
 
-ChartJS.register(
-  RadialLinearScale,
-  PointElement,
-  LineElement,
-  Filler,
-  Tooltip,
-  Legend
-);
+ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
-const data = {
-  labels: ['Python/SQL', 'Cloud', 'Project Mgmt', 'Communication', 'Data Viz'],
-  datasets: [
-    {
-      label: 'Required',
-      data: [5, 4, 4, 5, 4],
-      backgroundColor: 'rgba(58, 142, 232, 0.12)',
-      borderColor: 'oklch(0.5461 0.2152 262.8809)',
-      borderWidth: 2,
-      pointBackgroundColor: 'oklch(0.5461 0.2152 262.8809)',
-      pointRadius: 3,
-    },
-    {
-      label: 'Current',
-      data: [3.5, 2, 4, 5, 2],
-      backgroundColor: 'rgba(28, 42, 58, 0.12)',
-      borderColor: 'rgba(28, 42, 58, 0.7)',
-      borderWidth: 2,
-      pointBackgroundColor: 'rgba(28, 42, 58, 0.8)',
-      pointRadius: 3,
-    },
-  ],
+const GAP_COLOR: Record<string, string> = {
+  NONE:     'var(--color-success)',
+  MINOR:    'var(--color-warning)',
+  CRITICAL: 'var(--color-danger)',
+  NOT_RATED:'var(--color-text-muted)',
 };
 
 const options = {
@@ -52,36 +30,90 @@ const options = {
       grid: { color: 'rgba(226, 224, 216, 0.8)' },
       angleLines: { color: 'rgba(226, 224, 216, 0.6)' },
       pointLabels: {
-        font: { family: 'DM Sans', size: 11, weight: '500' },
+        font: { family: 'DM Sans', size: 11, weight: '500' as const },
         color: '#5C6478',
       },
     },
   },
-  plugins: {
-    legend: { display: false },
-  },
+  plugins: { legend: { display: false } },
   maintainAspectRatio: true,
   responsive: true,
 };
 
-const skills = [
-  { name: 'Python / SQL', req: 'Advanced', curr: 'Intermediate', progress: 70, color: 'var(--color-accent)' },
-  { name: 'Cloud (AWS)', req: 'Intermediate', curr: 'Basic', progress: 30, color: 'var(--color-warning)' },
-  { name: 'Project Mgmt', req: 'Intermediate', curr: 'Intermediate', progress: 100, color: 'var(--color-success)' },
-  { name: 'Communication', req: 'Advanced', curr: 'Advanced', progress: 100, color: 'var(--color-success)' },
-  { name: 'Data Viz', req: 'Intermediate', curr: 'Basic', progress: 40, color: 'var(--color-danger)' },
-];
+/* ── Skeleton ── */
+const SkeletonPanel: React.FC = () => (
+  <div className="chart-panel">
+    <div className="section-header">
+      <span className="section-title">Skill Gap Analysis</span>
+    </div>
+    <div className="pulse" style={{ height: 200, background: 'var(--color-border)', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-4)' }} />
+    {[1, 2, 3].map((i) => (
+      <div key={i} className="pulse" style={{ height: 36, background: 'var(--color-border)', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-2)' }} />
+    ))}
+  </div>
+);
+
+/* ── Empty state ── */
+const EmptyPanel: React.FC = () => (
+  <div className="chart-panel">
+    <div className="section-header">
+      <span className="section-title">Skill Gap Analysis</span>
+      <a href="/my-skills" className="section-link">Full matrix</a>
+    </div>
+    <div style={{ textAlign: 'center', padding: 'var(--space-8)', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>
+      No skill requirements defined for your role yet.
+    </div>
+  </div>
+);
 
 export const SkillGapPanel: React.FC = () => {
+  const { data: matrix, isLoading } = useMySkillMatrix();
+
+  if (isLoading) return <SkeletonPanel />;
+
+  // Only show skills that have a required level defined
+  const rows: SkillMatrixRow[] = (matrix ?? []).filter((r) => r.required_level);
+
+  if (rows.length === 0) return <EmptyPanel />;
+
+  // Cap radar at 8 skills to keep it readable
+  const radarRows = rows.slice(0, 8);
+
+  const radarData = {
+    labels: radarRows.map((r) => r.skill_name),
+    datasets: [
+      {
+        label: 'Required',
+        data: radarRows.map((r) => r.required_level?.level_rank ?? 0),
+        backgroundColor: 'rgba(58, 142, 232, 0.12)',
+        borderColor: 'oklch(0.5461 0.2152 262.8809)',
+        borderWidth: 2,
+        pointBackgroundColor: 'oklch(0.5461 0.2152 262.8809)',
+        pointRadius: 3,
+      },
+      {
+        label: 'Current',
+        data: radarRows.map((r) => r.current_level?.level_rank ?? 0),
+        backgroundColor: 'rgba(28, 42, 58, 0.12)',
+        borderColor: 'rgba(28, 42, 58, 0.7)',
+        borderWidth: 2,
+        pointBackgroundColor: 'rgba(28, 42, 58, 0.8)',
+        pointRadius: 3,
+      },
+    ],
+  };
+
   return (
     <div className="chart-panel">
       <div className="section-header">
         <span className="section-title">Skill Gap Analysis</span>
-        <a href="#" className="section-link">Full matrix</a>
+        <a href="/my-skills" className="section-link">Full matrix</a>
       </div>
+
       <div className="skill-gap-inner">
+        {/* Radar chart */}
         <div className="chart-canvas-wrap">
-          <Radar data={data} options={options as any} />
+          <Radar data={radarData} options={options as any} />
           <div className="chart-legend">
             <div className="chart-legend-item">
               <span className="legend-dot legend-required" /> Required
@@ -91,25 +123,39 @@ export const SkillGapPanel: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
+        {/* Skill list */}
         <div className="skill-list">
-          {skills.map((skill) => (
-            <div key={skill.name} className="skill-row">
-              <div className="skill-row-top">
-                <span className="skill-name">{skill.name}</span>
-                <div className="skill-badges">
-                  <span className="skill-badge badge-required">{skill.req}</span>
-                  <span className="skill-badge badge-current">{skill.curr}</span>
+          {rows.map((row) => {
+            const severity = row.gap_severity ?? 'NOT_RATED';
+            const barColor = GAP_COLOR[severity] ?? 'var(--color-text-muted)';
+            // Progress = current_rank / required_rank * 100, capped at 100
+            const reqRank  = row.required_level?.level_rank ?? 1;
+            const currRank = row.current_level?.level_rank ?? 0;
+            const progress = Math.min(100, Math.round((currRank / reqRank) * 100));
+
+            return (
+              <div key={row.skill_id} className="skill-row">
+                <div className="skill-row-top">
+                  <span className="skill-name">{row.skill_name}</span>
+                  <div className="skill-badges">
+                    <span className="skill-badge badge-required">
+                      {row.required_level?.level_name ?? '—'}
+                    </span>
+                    <span className="skill-badge badge-current">
+                      {row.current_level?.level_name ?? 'Not Rated'}
+                    </span>
+                  </div>
+                </div>
+                <div className="skill-gap-bar">
+                  <div
+                    className="skill-gap-fill"
+                    style={{ width: `${progress}%`, background: barColor }}
+                  />
                 </div>
               </div>
-              <div className="skill-gap-bar">
-                <div 
-                  className="skill-gap-fill" 
-                  style={{ width: `${skill.progress}%`, background: skill.color }} 
-                />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

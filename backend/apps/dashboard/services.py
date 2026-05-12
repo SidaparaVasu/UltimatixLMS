@@ -48,17 +48,20 @@ class DashboardService(BaseService):
 
     def get_activity_chart(self, filter_type="daily", company_id=None):
         """
-        Returns activity chart data with time-bucketed logins and completions.
-        
-        Args:
-            filter_type: 'daily', 'weekly', 'monthly', or 'annual'
-            company_id: Optional company filter
+        Returns activity chart data with time-bucketed learning metrics:
+        completions, new enrollments, and certificates issued.
         """
         valid_filters = ["daily", "weekly", "monthly", "annual"]
         if filter_type not in valid_filters:
             filter_type = "daily"
         
         return self.repository.get_activity_chart_data(filter_type, company_id)
+
+    def get_pending_approvals(self, user):
+        """
+        Returns pending training plan approvals and TNI reviews for the manager dashboard.
+        """
+        return self.repository.get_pending_approvals(user)
 
     def get_recent_enrollments(self, company_id=None, limit=10):
         """

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { dashboardApi } from "@/api/dashboard-api";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 import type { ActivityChartFilter } from "@/types/dashboard.types";
 
 export const DASHBOARD_QUERY_KEYS = {
@@ -7,9 +8,12 @@ export const DASHBOARD_QUERY_KEYS = {
   hrStats: ["dashboard", "hr-stats"],
   hrEmployees: ["dashboard", "hr-employees"],
   managerStats: ["dashboard", "manager-stats"],
+  pendingApprovals: ["dashboard", "pending-approvals"],
   adminStats: ["dashboard", "admin-stats"],
   activityChart: (filter: ActivityChartFilter) => ["dashboard", "activity-chart", filter],
   recentEnrollments: (limit: number) => ["dashboard", "recent-enrollments", limit],
+  mySkillMatrix: ["dashboard", "my-skill-matrix"],
+  trainingSessions: (month: string) => ["dashboard", "training-sessions", month],
 };
 
 /** Employee dashboard — enrollment counts + certificates */
@@ -44,6 +48,14 @@ export const useManagerStats = () =>
     staleTime: 5 * 60 * 1000,
   });
 
+/** Manager dashboard — pending training plan approvals + TNI reviews */
+export const usePendingApprovals = () =>
+  useQuery({
+    queryKey: DASHBOARD_QUERY_KEYS.pendingApprovals,
+    queryFn: dashboardApi.getPendingApprovals,
+    staleTime: 2 * 60 * 1000, // refresh more frequently — action-oriented data
+  });
+
 /** Admin dashboard — portal-wide stats */
 export const useAdminStats = () =>
   useQuery({
@@ -67,3 +79,27 @@ export const useRecentEnrollments = (limit = 10) =>
     queryFn: () => dashboardApi.getRecentEnrollments(limit),
     staleTime: 5 * 60 * 1000,
   });
+
+/** Employee dashboard — skill matrix from job role requirements */
+export const useMySkillMatrix = () =>
+  useQuery({
+    queryKey: DASHBOARD_QUERY_KEYS.mySkillMatrix,
+    queryFn: dashboardApi.getMySkillMatrix,
+    staleTime: 10 * 60 * 1000,
+  });
+
+/**
+ * Employee dashboard — training sessions for a given month.
+ * Defaults to the current calendar month.
+ */
+export const useTrainingSessions = (date: Date = new Date()) => {
+  const startAfter = format(startOfMonth(date), "yyyy-MM-dd");
+  const startBefore = format(endOfMonth(date), "yyyy-MM-dd");
+  const monthKey = format(date, "yyyy-MM");
+
+  return useQuery({
+    queryKey: DASHBOARD_QUERY_KEYS.trainingSessions(monthKey),
+    queryFn: () => dashboardApi.getTrainingSessions(startAfter, startBefore),
+    staleTime: 5 * 60 * 1000,
+  });
+};

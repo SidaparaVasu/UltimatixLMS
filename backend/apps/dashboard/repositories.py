@@ -12,8 +12,7 @@ from apps.learning_progress.models import UserCourseEnrollment, CourseCertificat
 from apps.learning_progress.constants import ProgressStatus, EnrollmentType
 from apps.course_management.models import CourseMaster, CourseStatus
 from apps.org_management.models import EmployeeMaster, EmployeeReportingManager
-from apps.auth_security.models import AuthUser, AuthLoginAttempt
-from apps.auth_security.constants import AttemptStatus
+from apps.auth_security.models import AuthUser
 
 
 class DashboardRepository(BaseRepository):
@@ -210,25 +209,36 @@ class DashboardRepository(BaseRepository):
 
     def get_activity_chart_data(self, filter_type="daily", company_id=None):
         """
-        Returns time-bucketed login and course completion data for activity chart.
-        
+        Returns time-bucketed course activity data for the admin activity chart.
+
+        Tracks three meaningful learning metrics per bucket:
+          - course_completions : enrollments that reached COMPLETED status
+          - new_enrollments    : enrollments created in the period (pipeline)
+          - certificates_issued: certificates awarded in the period (outcomes)
+
+        Logins have been removed — they are a different scale/category and
+        are not meaningful alongside learning-progress metrics.
+
         Args:
             filter_type: 'daily', 'weekly', 'monthly', or 'annual'
             company_id: Optional company filter
-        
+
         Returns:
-            List of dicts with {label, logins, course_completions}
+            List of dicts with {label, course_completions, new_enrollments, certificates_issued}
         """
+        from django.db.models.functions import TruncDate, TruncWeek, TruncMonth, TruncYear
+        import datetime as dt
+
         now = timezone.now()
-        
-        # Determine time range and bucket format
+
+        # ── Time range & bucket config ────────────────────────────────────
         if filter_type == "daily":
             start_date = now - timedelta(days=7)
             date_format = "%Y-%m-%d"
             bucket_count = 7
         elif filter_type == "weekly":
             start_date = now - timedelta(weeks=8)
-            date_format = "%Y-W%W"  # ISO week format
+            date_format = "%Y-W%W"
             bucket_count = 8
         elif filter_type == "monthly":
             start_date = now - timedelta(days=365)
@@ -239,73 +249,85 @@ class DashboardRepository(BaseRepository):
             date_format = "%Y"
             bucket_count = 5
         else:
-            # Default to daily
             start_date = now - timedelta(days=7)
             date_format = "%Y-%m-%d"
             bucket_count = 7
-        
-        # Query login attempts (successful only)
-        login_query = AuthLoginAttempt.objects.filter(
-            attempt_status=AttemptStatus.SUCCESS,
-            attempt_time__gte=start_date
-        )
-        
-        # Query course completions
-        completion_query = UserCourseEnrollment.objects.filter(
-            status=ProgressStatus.COMPLETED,
-            completed_at__gte=start_date
-        )
-        if company_id:
-            completion_query = completion_query.filter(employee__company_id=company_id)
-        
-        # Aggregate by time bucket
-        # Note: pass tzinfo=datetime.timezone.utc to avoid timezone conversion
-        from django.db.models.functions import TruncDate, TruncWeek, TruncMonth, TruncYear
-        import datetime as dt
 
+        # ── Trunc functions per bucket size ───────────────────────────────
         if filter_type == "daily":
-            login_trunc = TruncDate('attempt_time')
-            completion_trunc = TruncDate('completed_at')
+            completion_trunc  = TruncDate('completed_at')
+            enrollment_trunc  = TruncDate('enrolled_at')
+            certificate_trunc = TruncDate('issued_at')
         elif filter_type == "weekly":
-            login_trunc = TruncWeek('attempt_time', tzinfo=dt.timezone.utc)
-            completion_trunc = TruncWeek('completed_at', tzinfo=dt.timezone.utc)
+            completion_trunc  = TruncWeek('completed_at',  tzinfo=dt.timezone.utc)
+            enrollment_trunc  = TruncWeek('enrolled_at',   tzinfo=dt.timezone.utc)
+            certificate_trunc = TruncWeek('issued_at',     tzinfo=dt.timezone.utc)
         elif filter_type == "monthly":
-            login_trunc = TruncMonth('attempt_time', tzinfo=dt.timezone.utc)
-            completion_trunc = TruncMonth('completed_at', tzinfo=dt.timezone.utc)
+            completion_trunc  = TruncMonth('completed_at',  tzinfo=dt.timezone.utc)
+            enrollment_trunc  = TruncMonth('enrolled_at',   tzinfo=dt.timezone.utc)
+            certificate_trunc = TruncMonth('issued_at',     tzinfo=dt.timezone.utc)
         else:  # annual
-            login_trunc = TruncYear('attempt_time', tzinfo=dt.timezone.utc)
-            completion_trunc = TruncYear('completed_at', tzinfo=dt.timezone.utc)
-        
-        # Aggregate logins
-        login_data = login_query.annotate(
-            bucket=login_trunc
-        ).values('bucket').annotate(
-            count=Count('id')
-        ).order_by('bucket')
+            completion_trunc  = TruncYear('completed_at',  tzinfo=dt.timezone.utc)
+            enrollment_trunc  = TruncYear('enrolled_at',   tzinfo=dt.timezone.utc)
+            certificate_trunc = TruncYear('issued_at',     tzinfo=dt.timezone.utc)
 
-        # Aggregate completions
-        completion_data = completion_query.annotate(
-            bucket=completion_trunc
-        ).values('bucket').annotate(
-            count=Count('id')
-        ).order_by('bucket')
-        # (can occur when Trunc returns NULL for timezone-aware datetimes with no data)
-        login_dict = {
-            item['bucket'].strftime(date_format): item['count']
-            for item in login_data
-            if item['bucket'] is not None
-        }
+        # ── Base querysets ────────────────────────────────────────────────
+        enrollment_base = UserCourseEnrollment.objects.all()
+        certificate_base = CourseCertificate.objects.all()
+        if company_id:
+            enrollment_base  = enrollment_base.filter(employee__company_id=company_id)
+            certificate_base = certificate_base.filter(enrollment__employee__company_id=company_id)
+
+        # ── Completions ───────────────────────────────────────────────────
+        completion_data = (
+            enrollment_base
+            .filter(status=ProgressStatus.COMPLETED, completed_at__gte=start_date)
+            .annotate(bucket=completion_trunc)
+            .values('bucket')
+            .annotate(count=Count('id'))
+            .order_by('bucket')
+        )
         completion_dict = {
             item['bucket'].strftime(date_format): item['count']
             for item in completion_data
             if item['bucket'] is not None
         }
-        
-        # Generate all buckets in range
+
+        # ── New enrollments ───────────────────────────────────────────────
+        enrollment_data = (
+            enrollment_base
+            .filter(enrolled_at__gte=start_date)
+            .annotate(bucket=enrollment_trunc)
+            .values('bucket')
+            .annotate(count=Count('id'))
+            .order_by('bucket')
+        )
+        enrollment_dict = {
+            item['bucket'].strftime(date_format): item['count']
+            for item in enrollment_data
+            if item['bucket'] is not None
+        }
+
+        # ── Certificates issued ───────────────────────────────────────────
+        certificate_data = (
+            certificate_base
+            .filter(issued_at__gte=start_date)
+            .annotate(bucket=certificate_trunc)
+            .values('bucket')
+            .annotate(count=Count('id'))
+            .order_by('bucket')
+        )
+        certificate_dict = {
+            item['bucket'].strftime(date_format): item['count']
+            for item in certificate_data
+            if item['bucket'] is not None
+        }
+
+        # ── Generate all buckets in range ─────────────────────────────────
         result = []
         current = start_date
-        
-        for i in range(bucket_count):
+
+        for _ in range(bucket_count):
             if filter_type == "daily":
                 label = current.strftime("%b %d")
                 key = current.strftime(date_format)
@@ -317,22 +339,22 @@ class DashboardRepository(BaseRepository):
             elif filter_type == "monthly":
                 label = current.strftime("%b %Y")
                 key = current.strftime(date_format)
-                # Move to next month
-                if current.month == 12:
-                    current = current.replace(year=current.year + 1, month=1)
-                else:
-                    current = current.replace(month=current.month + 1)
+                current = current.replace(
+                    year=current.year + 1 if current.month == 12 else current.year,
+                    month=1 if current.month == 12 else current.month + 1,
+                )
             else:  # annual
                 label = current.strftime("%Y")
                 key = current.strftime(date_format)
                 current = current.replace(year=current.year + 1)
-            
+
             result.append({
                 "label": label,
-                "logins": login_dict.get(key, 0),
                 "course_completions": completion_dict.get(key, 0),
+                "new_enrollments": enrollment_dict.get(key, 0),
+                "certificates_issued": certificate_dict.get(key, 0),
             })
-        
+
         return result
 
     def get_company_employee_stats(self, company_id=None, scope_type="GLOBAL", scope_id=None):
@@ -468,3 +490,119 @@ class DashboardRepository(BaseRepository):
             })
         
         return result
+
+    def get_pending_approvals(self, user):
+        """
+        Returns pending approval items for the manager dashboard.
+
+        Two categories:
+          1. Training plan approvals where this user is the designated approver
+             and the approval is still PENDING.
+          2. TNI self-ratings submitted by direct reports that are awaiting
+             manager review (no SUBMITTED manager rating yet).
+
+        Returns a dict with:
+          - training_plan_approvals: list of {id, plan_name, department, submitted_by, submitted_at}
+          - tni_reviews_pending: list of {employee_id, employee_name, employee_code, submitted_at}
+          - total: combined count
+        """
+        from apps.training_planning.models import TrainingPlanApproval
+        from apps.skill_management.models import EmployeeSkillRating, SkillRatingType, SkillRatingStatus
+        from apps.org_management.models import EmployeeMaster, EmployeeReportingManager
+
+        # ── 1. Training plan approvals ────────────────────────────────────
+        employee = EmployeeMaster.objects.filter(user=user).first()
+
+        plan_approvals = []
+        if employee:
+            pending_approvals = TrainingPlanApproval.objects.filter(
+                approver=employee,
+                approval_status="PENDING",
+            ).select_related(
+                "training_plan",
+                "training_plan__department",
+                "submitted_by__user__profile",
+            ).order_by("-created_at")
+
+            for approval in pending_approvals:
+                submitted_by_name = None
+                if approval.submitted_by:
+                    try:
+                        p = approval.submitted_by.user.profile
+                        submitted_by_name = f"{p.first_name} {p.last_name}".strip()
+                    except Exception:
+                        submitted_by_name = approval.submitted_by.employee_code
+
+                plan_approvals.append({
+                    "id": approval.id,
+                    "plan_name": approval.training_plan.plan_name,
+                    "department": approval.training_plan.department.department_name,
+                    "submitted_by": submitted_by_name,
+                    "submitted_at": approval.created_at.isoformat(),
+                })
+
+        # ── 2. TNI reviews pending ────────────────────────────────────────
+        tni_pending = []
+        if employee:
+            direct_report_ids = EmployeeReportingManager.objects.filter(
+                manager_id=employee.id,
+                relationship_type="DIRECT",
+            ).values_list("employee_id", flat=True)
+
+            # Employees who have SUBMITTED self-ratings
+            submitted_employee_ids = (
+                EmployeeSkillRating.objects.filter(
+                    employee_id__in=direct_report_ids,
+                    rating_type=SkillRatingType.SELF,
+                    status=SkillRatingStatus.SUBMITTED,
+                )
+                .values_list("employee_id", flat=True)
+                .distinct()
+            )
+
+            # Exclude those already reviewed by manager (have a SUBMITTED manager rating)
+            reviewed_employee_ids = (
+                EmployeeSkillRating.objects.filter(
+                    employee_id__in=submitted_employee_ids,
+                    rating_type=SkillRatingType.MANAGER,
+                    status=SkillRatingStatus.SUBMITTED,
+                )
+                .values_list("employee_id", flat=True)
+                .distinct()
+            )
+
+            pending_review_ids = set(submitted_employee_ids) - set(reviewed_employee_ids)
+
+            for emp in EmployeeMaster.objects.filter(
+                id__in=pending_review_ids
+            ).select_related("user__profile"):
+                name = emp.employee_code
+                try:
+                    p = emp.user.profile
+                    name = f"{p.first_name} {p.last_name}".strip() or name
+                except Exception:
+                    pass
+
+                # Get the most recent self-rating submission time
+                latest = (
+                    EmployeeSkillRating.objects.filter(
+                        employee=emp,
+                        rating_type=SkillRatingType.SELF,
+                        status=SkillRatingStatus.SUBMITTED,
+                    )
+                    .order_by("-submitted_at")
+                    .first()
+                )
+
+                tni_pending.append({
+                    "employee_id": emp.id,
+                    "employee_name": name,
+                    "employee_code": emp.employee_code,
+                    "submitted_at": latest.submitted_at.isoformat() if latest and latest.submitted_at else None,
+                })
+
+        return {
+            "training_plan_approvals": plan_approvals,
+            "tni_reviews_pending": tni_pending,
+            "total": len(plan_approvals) + len(tni_pending),
+        }

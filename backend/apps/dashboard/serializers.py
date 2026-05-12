@@ -59,10 +59,15 @@ class AdminPortalStatsSerializer(serializers.Serializer):
 class ActivityChartDataPointSerializer(serializers.Serializer):
     """
     Single data point in activity chart.
+    Tracks three learning-progress metrics per time bucket:
+      - course_completions : enrollments that reached COMPLETED status
+      - new_enrollments    : new enrollments created in the period (pipeline)
+      - certificates_issued: certificates awarded in the period (outcomes)
     """
     label = serializers.CharField()
-    logins = serializers.IntegerField()
     course_completions = serializers.IntegerField()
+    new_enrollments = serializers.IntegerField()
+    certificates_issued = serializers.IntegerField()
 
 
 class ActivityChartSerializer(serializers.Serializer):
@@ -111,3 +116,30 @@ class RecentEnrollmentSerializer(serializers.Serializer):
     enrolled_at = serializers.CharField()
     status = serializers.CharField()
     progress_percentage = serializers.FloatField()
+
+
+class TrainingPlanApprovalItemSerializer(serializers.Serializer):
+    """Single pending training plan approval."""
+    id = serializers.IntegerField()
+    plan_name = serializers.CharField()
+    department = serializers.CharField()
+    submitted_by = serializers.CharField(allow_null=True)
+    submitted_at = serializers.CharField()
+
+
+class TniReviewPendingItemSerializer(serializers.Serializer):
+    """Single employee awaiting TNI manager review."""
+    employee_id = serializers.IntegerField()
+    employee_name = serializers.CharField()
+    employee_code = serializers.CharField()
+    submitted_at = serializers.CharField(allow_null=True)
+
+
+class PendingApprovalsSerializer(serializers.Serializer):
+    """
+    Manager dashboard pending approvals — combines training plan approvals
+    and TNI self-rating reviews awaiting manager action.
+    """
+    training_plan_approvals = TrainingPlanApprovalItemSerializer(many=True)
+    tni_reviews_pending = TniReviewPendingItemSerializer(many=True)
+    total = serializers.IntegerField()
