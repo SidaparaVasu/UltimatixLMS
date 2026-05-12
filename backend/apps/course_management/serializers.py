@@ -146,6 +146,7 @@ class CourseMasterSerializer(serializers.ModelSerializer):
 
 class CourseResourceSerializer(serializers.ModelSerializer):
     file_url = serializers.SerializerMethodField()
+    original_name = serializers.SerializerMethodField()
 
     class Meta:
         model = CourseResource
@@ -154,6 +155,11 @@ class CourseResourceSerializer(serializers.ModelSerializer):
     def get_file_url(self, obj):
         if obj.file_ref and obj.file_ref.file:
             return obj.file_ref.file.url
+        return None
+
+    def get_original_name(self, obj):
+        if obj.file_ref:
+            return obj.file_ref.original_name
         return None
         
 
@@ -164,10 +170,14 @@ class CourseDetailSerializer(CourseMasterSerializer):
     sections = CourseSectionSerializer(many=True, read_only=True)
     tags = CourseTagMapSerializer(many=True, read_only=True)
     skills = CourseSkillMappingSerializer(source="skilled_outcomes", many=True, read_only=True)
-    resources = CourseResourceSerializer(many=True, read_only=True)
+    resources = serializers.SerializerMethodField()
 
     class Meta(CourseMasterSerializer.Meta):
         fields = CourseMasterSerializer.Meta.fields + ("sections", "tags", "skills", "resources")
+
+    def get_resources(self, obj):
+        active_resources = obj.resources.filter(is_active=True)
+        return CourseResourceSerializer(active_resources, many=True).data
 
 
 

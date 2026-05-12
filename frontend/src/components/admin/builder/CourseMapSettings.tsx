@@ -3,7 +3,7 @@ import { CourseMaster, CourseResource } from "@/types/courses.types";
 import { CourseSkillMapping, CourseTagMap } from "@/types/courses.types";
 import {
   Target, Tag as TagIcon, BarChart, Plus, X, Loader2, AlertCircle,
-  Pencil, Check, ChevronDown, Paperclip, Link as LinkIcon, Trash2, UploadCloud,
+  Pencil, Check, ChevronDown, Paperclip, Link as LinkIcon, Trash2, UploadCloud, Download,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSkills, useSkillLevels, useTags, useCourseCategories, ADMIN_QUERY_KEYS } from "@/queries/admin/useAdminMasters";
@@ -199,6 +199,7 @@ export const CourseMapSettings: React.FC<CourseMapSettingsProps> = ({ course, on
   const [isAddingResource, setIsAddingResource] = useState(false);
   const [isUploadingResource, setIsUploadingResource] = useState(false);
   const [resourceError, setResourceError] = useState<string | null>(null);
+  const [downloadingResourceId, setDownloadingResourceId] = useState<number | null>(null);
 
   const handleAddResource = async () => {
     if (!newResourceTitle.trim()) {
@@ -264,6 +265,19 @@ export const CourseMapSettings: React.FC<CourseMapSettingsProps> = ({ course, on
     if (result === null) {
       setResources(prev => [...prev, resource]);
       setResourceError('Failed to remove resource.');
+    }
+  };
+
+  const handleDownloadResource = async (resource: CourseResource) => {
+    if (!resource.file_ref) return;
+    setDownloadingResourceId(resource.id);
+    try {
+      await fileApi.downloadResource(
+        resource.file_ref,
+        resource.original_name || resource.resource_title,
+      );
+    } finally {
+      setDownloadingResourceId(null);
     }
   };
 
@@ -523,7 +537,7 @@ export const CourseMapSettings: React.FC<CourseMapSettingsProps> = ({ course, on
                     <Paperclip size={10} className="text-slate-400 shrink-0" />
                   )}
                   <span className="flex-1 truncate text-slate-300 font-medium">{r.resource_title}</span>
-                  {r.resource_url && (
+                  {r.resource_url ? (
                     <a
                       href={r.resource_url}
                       target="_blank"
@@ -533,7 +547,20 @@ export const CourseMapSettings: React.FC<CourseMapSettingsProps> = ({ course, on
                     >
                       <LinkIcon size={9} />
                     </a>
-                  )}
+                  ) : r.file_ref ? (
+                    <button
+                      onClick={() => handleDownloadResource(r)}
+                      disabled={downloadingResourceId === r.id}
+                      className="text-blue-400 hover:text-blue-300 shrink-0 disabled:opacity-50"
+                      title="Download file"
+                    >
+                      {downloadingResourceId === r.id ? (
+                        <Loader2 size={9} className="animate-spin" />
+                      ) : (
+                        <Download size={9} />
+                      )}
+                    </button>
+                  ) : null}
                   <button
                     onClick={() => handleDeleteResource(r)}
                     className="text-slate-600 hover:text-red-400 transition-colors shrink-0"
@@ -616,7 +643,7 @@ export const CourseMapSettings: React.FC<CourseMapSettingsProps> = ({ course, on
                 <input
                   type="file"
                   className="hidden"
-                  disabled={isUploadingResource || !newResourceTitle.trim()}
+                  disabled={isUploadingResource}
                   onChange={handleResourceFileUpload}
                 />
                 {isUploadingResource

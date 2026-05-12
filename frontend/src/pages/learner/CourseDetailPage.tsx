@@ -4,7 +4,9 @@ import { DifficultyBadge } from "@/components/learner/DifficultyBadge";
 import { EnrollButton } from "@/components/learner/EnrollButton";
 import { CurriculumPreview } from "@/components/learner/CurriculumPreview";
 import { ArrowLeft, Clock, User, Download, ExternalLink, Award } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { fileApi } from "@/api/file-api";
+import type { CourseResource } from "@/types/courses.types";
 
 export default function CourseDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -13,6 +15,8 @@ export default function CourseDetailPage() {
   const { data: courseData, isLoading: courseLoading, error: courseError } = useCourseDetail(courseId);
   const { data: enrollmentsData } = useMyEnrollments();
   const enrollMutation = useEnrollInCourse();
+
+  const [downloadingResourceId, setDownloadingResourceId] = useState<number | null>(null);
 
   // Find current user's enrollment for this course
   const enrollment = useMemo(() => {
@@ -23,6 +27,19 @@ export default function CourseDetailPage() {
   const handleEnroll = () => {
     if (courseId) {
       enrollMutation.mutate({ course_id: courseId });
+    }
+  };
+
+  const handleDownloadResource = async (resource: CourseResource) => {
+    if (!resource.file_ref) return;
+    setDownloadingResourceId(resource.id);
+    try {
+      await fileApi.downloadResource(
+        resource.file_ref,
+        resource.original_name || resource.resource_title,
+      );
+    } finally {
+      setDownloadingResourceId(null);
     }
   };
 
@@ -221,14 +238,25 @@ export default function CourseDetailPage() {
                         {resource.resource_title}
                       </span>
                     </div>
-                    <a
-                      href={resource.file_url || resource.resource_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-xs ml-6"
-                    >
-                      <span>View Resource</span>
-                    </a>
+                    {resource.file_ref ? (
+                      <button
+                        onClick={() => handleDownloadResource(resource)}
+                        disabled={downloadingResourceId === resource.id}
+                        className="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-xs ml-6 disabled:opacity-50"
+                      >
+                        <Download className="h-3 w-3" />
+                        <span>{downloadingResourceId === resource.id ? 'Downloading…' : 'Download'}</span>
+                      </button>
+                    ) : (
+                      <a
+                        href={resource.resource_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-xs ml-6"
+                      >
+                        <span>View Resource</span>
+                      </a>
+                    )}
                   </div>
                 ))}
               </div>

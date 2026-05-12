@@ -259,7 +259,7 @@ export const courseApi = {
     }
   },
 
-  createResource: async (data: { course: number; resource_title: string; resource_url?: string; file_ref?: number | null }) => {
+  createResource: async (data: { course: number; resource_title: string; resource_url?: string; file_ref?: string | null }) => {
     try {
       const response = await apiClient.post("/courses/resources/", data);
       return handleApiResponse<import('@/types/courses.types').CourseResource>(response.data);

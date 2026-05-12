@@ -48,8 +48,9 @@ export interface CourseResource {
   course: number;
   resource_title: string;
   resource_url: string;
-  file_ref?: number | null;
+  file_ref?: string | null;   // UUID — FileRegistry.id is a UUIDField
   file_url?: string | null;
+  original_name?: string | null;
   is_active: boolean;
   created_at: string;
 }

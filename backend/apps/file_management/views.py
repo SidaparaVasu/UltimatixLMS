@@ -310,4 +310,11 @@ class SecureFileServeView(APIView):
 
         # 6. Stream with security + caching headers
         range_header = request.META.get('HTTP_RANGE')
-        return _build_secure_response(abs_path, mime_type, range_header)
+        response = _build_secure_response(abs_path, mime_type, range_header)
+
+        # 7. Override Content-Disposition for downloads
+        if request.query_params.get('download', '').lower() == 'true':
+            download_name = effective.original_name or os.path.basename(abs_path)
+            response['Content-Disposition'] = f'attachment; filename="{download_name}"'
+
+        return response
