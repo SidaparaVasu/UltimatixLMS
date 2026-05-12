@@ -390,7 +390,7 @@ export const CourseMapSettings: React.FC<CourseMapSettingsProps> = ({ course, on
                 <div className="relative">
                   <select
                     value={editDifficulty}
-                    onChange={e => setEditDifficulty(e.target.value as CourseMaster['difficulty_level'])}
+                    onChange={e => setEditDifficulty(e.target.value as Exclude<CourseMaster['difficulty_level'], undefined>)}
                     className="w-full appearance-none px-3 py-2 bg-slate-800/50 border border-slate-700 rounded text-xs text-white focus:outline-none focus:border-blue-500 transition pr-7"
                   >
                     {DIFFICULTY_OPTIONS.map(d => (
