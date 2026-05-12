@@ -130,13 +130,29 @@ export const dashboardApi = {
   },
 
   /**
-   * GET /api/v1/training/sessions/
+   * GET /api/v1/planning/sessions/
    * Fetches sessions within a date range for the calendar panel.
    */
   getTrainingSessions: async (startAfter: string, startBefore: string) => {
     try {
       const response = await apiClient.get("/planning/sessions/", {
         params: { start_date_after: startAfter, start_date_before: startBefore },
+      });
+      return handleApiResponse<TrainingSession[]>(response.data, false);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  /**
+   * GET /api/v1/planning/sessions/
+   * Fetches all upcoming sessions (from today onwards) for the sessions panel.
+   */
+  getUpcomingSessions: async () => {
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const response = await apiClient.get("/planning/sessions/", {
+        params: { start_date_after: today, ordering: "session_start_date" },
       });
       return handleApiResponse<TrainingSession[]>(response.data, false);
     } catch (error) {

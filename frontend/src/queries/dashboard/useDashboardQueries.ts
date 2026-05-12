@@ -14,6 +14,7 @@ export const DASHBOARD_QUERY_KEYS = {
   recentEnrollments: (limit: number) => ["dashboard", "recent-enrollments", limit],
   mySkillMatrix: ["dashboard", "my-skill-matrix"],
   trainingSessions: (month: string) => ["dashboard", "training-sessions", month],
+  upcomingSessions: ["dashboard", "upcoming-sessions"],
 };
 
 /** Employee dashboard — enrollment counts + certificates */
@@ -103,3 +104,11 @@ export const useTrainingSessions = (date: Date = new Date()) => {
     staleTime: 5 * 60 * 1000,
   });
 };
+
+/** Employee dashboard — all upcoming sessions from today onwards */
+export const useUpcomingSessions = () =>
+  useQuery({
+    queryKey: DASHBOARD_QUERY_KEYS.upcomingSessions,
+    queryFn: dashboardApi.getUpcomingSessions,
+    staleTime: 5 * 60 * 1000,
+  });
