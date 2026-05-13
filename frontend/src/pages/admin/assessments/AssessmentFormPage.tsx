@@ -185,18 +185,47 @@ export default function AssessmentFormPage() {
     setSkillRows(prev => prev.filter(r => r._key !== key));
   };
 
+  // ── CURATED: keep number_of_questions in sync with staged count ──────────
+  useEffect(() => {
+    if (form.question_selection_mode === 'CURATED') {
+      const count = stagedQuestions.length > 0
+        ? stagedQuestions.length
+        : existingMappings.length;
+      if (count > 0 && count !== form.number_of_questions) {
+        setForm(prev => ({ ...prev, number_of_questions: count }));
+      }
+    }
+  }, [stagedQuestions.length, existingMappings.length, form.question_selection_mode]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Validation ────────────────────────────────────────────────────────────
   const validate = (): boolean => {
     const errs: typeof errors = {};
     if (!form.title.trim()) errs.title = 'Title is required.';
-    if (!form.number_of_questions || form.number_of_questions < 1) errs.number_of_questions = 'Must be at least 1.';
     if (!form.duration_minutes || form.duration_minutes < 1) errs.duration_minutes = 'Must be at least 1 minute.';
     if (form.passing_percentage < 0 || form.passing_percentage > 100) errs.passing_percentage = 'Must be between 0 and 100.';
     if (form.retake_limit < 1) errs.retake_limit = 'Must be at least 1.';
     if (skillRows.some(r => !r.skill || !r.skill_level)) errs.skill_mappings = 'All skill mappings must have a skill and level selected.';
-    // Check for duplicate skills
     const skillIds = skillRows.map(r => r.skill).filter(Boolean);
     if (new Set(skillIds).size !== skillIds.length) errs.skill_mappings = 'Each skill can only be mapped once.';
+
+    // DYNAMIC: number_of_questions must be set
+    if (form.question_selection_mode === 'DYNAMIC') {
+      if (!form.number_of_questions || form.number_of_questions < 1) errs.number_of_questions = 'Must be at least 1.';
+    }
+
+    // CURATED: must have questions staged or saved before publishing
+    if (form.question_selection_mode === 'CURATED') {
+      const totalMapped = stagedQuestions.length > 0
+        ? stagedQuestions.length
+        : existingMappings.length;
+      if (totalMapped === 0) {
+        errs.questions = 'Add at least one question before saving a Curated assessment.';
+      }
+      if (form.status === 'PUBLISHED' && totalMapped !== form.number_of_questions && form.number_of_questions > 0) {
+        errs.questions = `Cannot publish: ${totalMapped} question(s) mapped but ${form.number_of_questions} required. Adjust the question count or add more questions.`;
+      }
+    }
+
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -363,6 +392,11 @@ export default function AssessmentFormPage() {
         <div className="form-group">
           <label className="form-label">
             Number of Questions <span style={{ color: 'var(--color-danger)' }}>*</span>
+            {form.question_selection_mode === 'CURATED' && (
+              <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--color-text-muted)', marginLeft: '6px' }}>
+                (derived from selected questions)
+              </span>
+            )}
           </label>
           <input
             type="number"
@@ -370,7 +404,12 @@ export default function AssessmentFormPage() {
             value={form.number_of_questions}
             onChange={e => setField('number_of_questions', parseInt(e.target.value, 10) || 0)}
             min={1}
-            style={{ borderColor: errors.number_of_questions ? 'var(--color-danger)' : undefined }}
+            readOnly={form.question_selection_mode === 'CURATED'}
+            style={{
+              borderColor: errors.number_of_questions ? 'var(--color-danger)' : undefined,
+              background: form.question_selection_mode === 'CURATED' ? 'var(--color-surface-alt)' : undefined,
+              cursor: form.question_selection_mode === 'CURATED' ? 'default' : undefined,
+            }}
           />
           <FieldError msg={errors.number_of_questions} />
         </div>

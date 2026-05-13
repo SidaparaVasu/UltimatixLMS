@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, Clock, CheckCircle2, Archive,
-  BookOpen, Timer, Target, RotateCcw, Pencil,
+  BookOpen, Timer, Target, Pencil, Shuffle, Database,
 } from 'lucide-react';
 import { AdminMasterLayout } from '@/components/admin/layout/AdminMasterLayout';
 import { AdminPagination } from '@/components/ui/pagination';
@@ -21,6 +21,12 @@ const STATUS_ACCENT: Record<string, string> = {
   DRAFT:     'var(--color-border)',
   PUBLISHED: '#16a34a',
   ARCHIVED:  '#94a3b8',
+};
+
+const MODE_CONFIG = {
+  DYNAMIC:  { label: 'System Picked', icon: Shuffle,   color: '#6d28d9', bg: 'rgba(124,58,237,0.08)' },
+  CURATED:  { label: 'Curated',       icon: Database,  color: '#1d4ed8', bg: 'rgba(37,99,235,0.08)'  },
+  FIXED:    { label: 'Fixed',         icon: BookOpen,  color: '#64748b', bg: 'var(--color-surface-alt)' },
 };
 
 const PAGE_SIZE = 12;
@@ -57,17 +63,35 @@ const AssessmentCard: React.FC<{
       {/* Card header */}
       <div style={{ padding: 'var(--space-4) var(--space-4) var(--space-3)' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
-          {/* Status badge */}
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: '4px',
-            padding: '2px 9px', borderRadius: 'var(--radius-full)',
-            fontSize: '10px', fontWeight: 700, letterSpacing: '0.03em',
-            background: cfg.bg, color: cfg.color,
-            flexShrink: 0,
-          }}>
-            <StatusIcon size={10} />
-            {cfg.label}
-          </span>
+          {/* Status + mode badges */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: '4px',
+              padding: '2px 9px', borderRadius: 'var(--radius-full)',
+              fontSize: '10px', fontWeight: 700, letterSpacing: '0.03em',
+              background: cfg.bg, color: cfg.color,
+              flexShrink: 0,
+            }}>
+              <StatusIcon size={10} />
+              {cfg.label}
+            </span>
+            {(() => {
+              const modeCfg = MODE_CONFIG[item.question_selection_mode] ?? MODE_CONFIG.DYNAMIC;
+              const ModeIcon = modeCfg.icon;
+              return (
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '4px',
+                  padding: '2px 9px', borderRadius: 'var(--radius-full)',
+                  fontSize: '10px', fontWeight: 600,
+                  background: modeCfg.bg, color: modeCfg.color,
+                  flexShrink: 0,
+                }}>
+                  <ModeIcon size={10} />
+                  {modeCfg.label}
+                </span>
+              );
+            })()}
+          </div>
 
           {/* Edit button */}
           <button
