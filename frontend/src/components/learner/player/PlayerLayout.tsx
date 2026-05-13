@@ -5,7 +5,7 @@
 
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, PanelLeftClose, PanelLeftOpen, MessageSquare, BookOpen } from 'lucide-react';
+import { ArrowLeft, PanelLeftClose, PanelLeftOpen, MessageSquare, BookOpen, StickyNote } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useCoursePlayerStore } from '@/stores/coursePlayerStore';
 import { DetailedEnrollmentProgress } from '@/types/player.types';
@@ -14,9 +14,10 @@ import { ContentRenderer } from '@/components/learner/player/ContentRenderer';
 import { LessonCompleteOverlay } from '@/components/learner/player/LessonCompleteOverlay';
 import { CourseCompletionModal } from '@/components/learner/player/CourseCompletionModal';
 import { DiscussionPanel } from '@/components/learner/player/DiscussionPanel';
+import { NotesPanel } from '@/components/learner/player/NotesPanel';
 import { useCourseDetail } from '@/queries/learner/useLearnerQueries';
 
-type PlayerTab = 'content' | 'discussion';
+type PlayerTab = 'content' | 'discussion' | 'notes';
 
 interface PlayerLayoutProps {
   enrollment: DetailedEnrollmentProgress;
@@ -156,6 +157,18 @@ export const PlayerLayout = ({ enrollment }: PlayerLayoutProps) => {
               Content
             </button>
             <button
+              onClick={() => setActiveTab('notes')}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 transition-colors',
+                activeTab === 'notes'
+                  ? 'border-amber-500 text-amber-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              )}
+            >
+              <StickyNote className="h-3.5 w-3.5" />
+              Notes
+            </button>
+            <button
               onClick={() => setActiveTab('discussion')}
               className={cn(
                 'flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 transition-colors',
@@ -166,6 +179,18 @@ export const PlayerLayout = ({ enrollment }: PlayerLayoutProps) => {
             >
               <MessageSquare className="h-3.5 w-3.5" />
               Discussion
+            </button>
+            <button
+              onClick={() => setActiveTab('notes')}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 transition-colors',
+                activeTab === 'notes'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              )}
+            >
+              <StickyNote className="h-3.5 w-3.5" />
+              Notes
             </button>
           </div>
 
@@ -183,6 +208,12 @@ export const PlayerLayout = ({ enrollment }: PlayerLayoutProps) => {
                   <p className="text-sm text-gray-500">Select a lesson to begin.</p>
                 </div>
               )
+            ) : activeTab === 'notes' ? (
+              <NotesPanel
+                enrollmentId={enrollment.id}
+                sections={courseData?.sections ?? []}
+                activeLessonId={activeLessonId}
+              />
             ) : (
               <DiscussionPanel courseId={enrollment.course} />
             )}

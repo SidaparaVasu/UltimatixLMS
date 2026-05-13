@@ -13,6 +13,9 @@ import {
   TagMaster,
   CourseDiscussionThread,
   CourseDiscussionReply,
+  CourseNote,
+  CourseNoteCreatePayload,
+  CourseNoteUpdatePayload,
 } from "@/types/courses.types";
 
 /**
@@ -369,6 +372,53 @@ export const courseApi = {
   deleteDiscussionReply: async (id: number) => {
     try {
       const response = await apiClient.delete(`/courses/discussion-replies/${id}/`);
+      return handleApiResponse(response.data);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  // ── Notes ─────────────────────────────────────────────────────────────────
+
+  /**
+   * GET /courses/notes/?enrollment_id=<id>
+   * Returns all notes for the given enrollment, ordered by lesson then recency.
+   */
+  getNotes: async (enrollmentId: number) => {
+    try {
+      const response = await apiClient.get("/courses/notes/", {
+        params: { enrollment_id: enrollmentId },
+      });
+      return handleApiResponse<CourseNote[]>(response.data, false);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  /** POST /courses/notes/ */
+  createNote: async (data: CourseNoteCreatePayload) => {
+    try {
+      const response = await apiClient.post("/courses/notes/", data);
+      return handleApiResponse<CourseNote>(response.data);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  /** PATCH /courses/notes/<id>/ */
+  updateNote: async (id: number, data: CourseNoteUpdatePayload) => {
+    try {
+      const response = await apiClient.patch(`/courses/notes/${id}/`, data);
+      return handleApiResponse<CourseNote>(response.data);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  /** DELETE /courses/notes/<id>/ */
+  deleteNote: async (id: number) => {
+    try {
+      const response = await apiClient.delete(`/courses/notes/${id}/`);
       return handleApiResponse(response.data);
     } catch (error) {
       return handleApiError(error);

@@ -213,6 +213,29 @@ export interface EnrollRequest {
   course_id: number;
 }
 
+// ── Notes ─────────────────────────────────────────────────────────────────────
+
+export interface CourseNote {
+  id: number;
+  enrollment: number;
+  lesson: number | null;
+  lesson_title: string | null;
+  section_title: string | null;
+  note_text: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CourseNoteCreatePayload {
+  enrollment_id: number;
+  lesson_id?: number | null;
+  note_text: string;
+}
+
+export interface CourseNoteUpdatePayload {
+  note_text: string;
+}
+
 // ── Discussion ────────────────────────────────────────────────────────────────
 
 export interface CourseDiscussionReply {
