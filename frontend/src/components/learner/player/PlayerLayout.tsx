@@ -157,18 +157,6 @@ export const PlayerLayout = ({ enrollment }: PlayerLayoutProps) => {
               Content
             </button>
             <button
-              onClick={() => setActiveTab('notes')}
-              className={cn(
-                'flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 transition-colors',
-                activeTab === 'notes'
-                  ? 'border-amber-500 text-amber-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              )}
-            >
-              <StickyNote className="h-3.5 w-3.5" />
-              Notes
-            </button>
-            <button
               onClick={() => setActiveTab('discussion')}
               className={cn(
                 'flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 transition-colors',
