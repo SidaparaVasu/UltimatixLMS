@@ -203,4 +203,24 @@ export const standaloneAssessmentApi = {
       return handleApiError(error);
     }
   },
+
+  /**
+   * POST /assessment/studio/check-availability-preview/
+   * Checks availability WITHOUT a saved assessment ID.
+   * Used by the create form to show real-time availability as skill mappings change.
+   */
+  checkAvailabilityPreview: async (payload: {
+    skill_mappings: Array<{ skill: number; skill_level: number }>;
+    number_of_questions: number;
+  }) => {
+    try {
+      const response = await apiClient.post(
+        `${STUDIO_BASE}/check-availability-preview/`,
+        payload,
+      );
+      return handleApiResponse<QuestionAvailability>(response.data, false);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
 };

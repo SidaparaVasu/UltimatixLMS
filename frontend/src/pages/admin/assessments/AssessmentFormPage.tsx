@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
-  Plus, Loader2, Database, Wand2, Shuffle,
-  CheckCircle2, AlertTriangle, AlertCircle, BookOpen,
+  Plus, Loader2, Database,
+  CheckCircle2, AlertCircle, BookOpen, Shuffle, Lock,
 } from 'lucide-react';
 import {
   useStandaloneAssessmentDetail,
   useCreateStandaloneAssessment,
   useUpdateStandaloneAssessment,
   useQuestionMappings,
-  useCheckAvailability,
+  useCheckAvailabilityPreview,
 } from '@/queries/admin/useStandaloneAssessmentQueries';
 import { useSkills, useSkillLevels } from '@/queries/admin/useAdminMasters';
 import { standaloneAssessmentApi } from '@/api/standalone-assessment-api';
@@ -20,10 +20,12 @@ import {
   QuestionSelectionMode,
   StagedQuestion,
   QuestionMappingItem,
+  QuestionAvailability,
 } from '@/types/standalone-assessment.types';
 import { SkillMappingRowItem, SkillMappingFormRow } from '@/components/admin/assessments/SkillMappingRow';
 import { QuestionPickerDrawer } from '@/components/admin/assessments/QuestionPickerDrawer';
 import { AutoSuggestPanel } from '@/components/admin/assessments/AutoSuggestPanel';
+import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 
 // ── Mode selector config ──────────────────────────────────────────────────────
 
@@ -112,6 +114,7 @@ export default function AssessmentFormPage() {
   // ── Mutations ─────────────────────────────────────────────────────────────
   const createAssessment = useCreateStandaloneAssessment();
   const updateAssessment = useUpdateStandaloneAssessment(assessmentId ?? 0);
+  const checkPreview     = useCheckAvailabilityPreview();
 
   // ── Form state ────────────────────────────────────────────────────────────
   const [form, setForm] = useState<AssessmentFormValues>(EMPTY_FORM);
@@ -121,8 +124,15 @@ export default function AssessmentFormPage() {
 
   // ── CURATED: question picker state ────────────────────────────────────────
   const [pickerOpen, setPickerOpen] = useState(false);
-  // Staged questions are the local pending list (not yet saved to DB)
   const [stagedQuestions, setStagedQuestions] = useState<StagedQuestion[]>([]);
+
+  // ── Mode switch confirmation (edit DRAFT only) ────────────────────────────
+  const [pendingMode, setPendingMode]           = useState<QuestionSelectionMode | null>(null);
+  const [modeConfirmOpen, setModeConfirmOpen]   = useState(false);
+
+  // ── Availability: preview result (create + edit) ──────────────────────────
+  const [previewAvailability, setPreviewAvailability] = useState<QuestionAvailability | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── CURATED: existing question mappings (saved to DB) ─────────────────────
   const { data: existingMappingsData } = useQuestionMappings(
@@ -130,13 +140,8 @@ export default function AssessmentFormPage() {
   );
   const existingMappings: QuestionMappingItem[] = existingMappingsData ?? [];
 
-  // ── DYNAMIC: availability check ───────────────────────────────────────────
+  // ── hasSkillMappings — used by availability preview and AutoSuggestPanel ──
   const hasSkillMappings = skillRows.some(r => r.skill && r.skill_level);
-  const { data: availability } = useCheckAvailability(
-    isEdit && form.question_selection_mode === 'DYNAMIC' && hasSkillMappings
-      ? assessmentId
-      : null
-  );
 
   // ── Populate on edit ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -197,7 +202,66 @@ export default function AssessmentFormPage() {
     }
   }, [stagedQuestions.length, existingMappings.length, form.question_selection_mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Validation ────────────────────────────────────────────────────────────
+  // ── Availability preview — fires whenever skill mappings or question count changes
+  // Works in both create and edit mode. Debounced 500ms to avoid hammering the API.
+  useEffect(() => {
+    const validRows = skillRows.filter(r => r.skill && r.skill_level);
+    if (validRows.length === 0) {
+      setPreviewAvailability(null);
+      return;
+    }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      checkPreview.mutate(
+        {
+          skill_mappings: validRows.map(r => ({
+            skill:       parseInt(r.skill, 10),
+            skill_level: parseInt(r.skill_level, 10),
+          })),
+          number_of_questions: form.number_of_questions,
+        },
+        {
+          onSuccess: (data) => {
+            if (data) setPreviewAvailability(data as QuestionAvailability);
+          },
+        },
+      );
+    }, 500);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [skillRows, form.number_of_questions]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Mode change handler — confirmation required when switching away from CURATED on edit
+  const handleModeChange = (newMode: QuestionSelectionMode) => {
+    if (newMode === form.question_selection_mode) return;
+
+    // On edit: if current mode is CURATED and has mapped questions, warn before switching
+    const hasMappedQuestions = existingMappings.length > 0 || stagedQuestions.length > 0;
+    if (isEdit && form.question_selection_mode === 'CURATED' && hasMappedQuestions) {
+      setPendingMode(newMode);
+      setModeConfirmOpen(true);
+      return;
+    }
+
+    setField('question_selection_mode', newMode);
+    // Clear staged questions when switching away from CURATED
+    if (newMode !== 'CURATED') setStagedQuestions([]);
+  };
+
+  const handleModeConfirm = async () => {
+    if (!pendingMode) return;
+    setModeConfirmOpen(false);
+
+    // Delete all existing CURATED question mappings from DB
+    if (isEdit && assessmentId) {
+      for (const mapping of existingMappings) {
+        await standaloneAssessmentApi.removeQuestionMapping(mapping.id);
+      }
+    }
+
+    setStagedQuestions([]);
+    setField('question_selection_mode', pendingMode);
+    setPendingMode(null);
+  };
   const validate = (): boolean => {
     const errs: typeof errors = {};
     if (!form.title.trim()) errs.title = 'Title is required.';
@@ -568,12 +632,43 @@ export default function AssessmentFormPage() {
         </div>
       )}
 
-      {/* ── Section 2b: Question Selection Mode (new assessments only) ── */}
-      {!isEdit && (
+      {/* ── Section 2b: Question Selection Mode ── */}
+      {/* Shown on create, on DRAFT edit (editable), and on non-DRAFT edit (read-only badge) */}
+      <SectionLabel style={{ marginTop: '24px' }}>Question Selection Mode</SectionLabel>
+
+      {/* Non-DRAFT edit: locked read-only badge */}
+      {isEdit && assessment?.status !== 'DRAFT' ? (
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: '10px',
+          padding: '10px 16px', borderRadius: 'var(--radius-md)',
+          border: '1px solid var(--color-border)', background: 'var(--color-surface-alt)',
+          marginBottom: 'var(--space-2)',
+        }}>
+          {(() => {
+            const opt = MODE_OPTIONS.find(o => o.value === form.question_selection_mode);
+            const Icon = opt?.icon ?? BookOpen;
+            return (
+              <>
+                <Icon size={15} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+                  {opt?.label ?? form.question_selection_mode}
+                </span>
+              </>
+            );
+          })()}
+          <Lock size={13} style={{ color: 'var(--color-text-muted)', marginLeft: '4px' }} />
+          <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
+            Locked — mode cannot be changed on a {assessment?.status?.toLowerCase()} assessment
+          </span>
+        </div>
+      ) : (
+        /* Create or DRAFT edit: interactive selector */
         <>
-          <SectionLabel style={{ marginTop: '24px' }}>Question Selection Mode</SectionLabel>
           <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: 'var(--space-4)', marginTop: '-8px' }}>
-            Choose how questions are selected for this assessment. This cannot be changed after creation.
+            {isEdit
+              ? 'You can change the mode while this assessment is in Draft.'
+              : 'Choose how questions are selected. This can only be changed while the assessment is in Draft.'
+            }
           </p>
           <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap', marginBottom: 'var(--space-2)' }}>
             {MODE_OPTIONS.map(opt => {
@@ -583,7 +678,7 @@ export default function AssessmentFormPage() {
                 <button
                   key={opt.value}
                   type="button"
-                  onClick={() => setField('question_selection_mode', opt.value)}
+                  onClick={() => handleModeChange(opt.value)}
                   style={{
                     flex: 1, minWidth: '180px',
                     display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
@@ -732,44 +827,6 @@ export default function AssessmentFormPage() {
         </>
       )}
 
-      {/* ── Section 2d: Availability indicator (DYNAMIC mode, edit only) ── */}
-      {form.question_selection_mode === 'DYNAMIC' && isEdit && hasSkillMappings && availability && (
-        <div style={{
-          marginTop: 'var(--space-4)',
-          padding: 'var(--space-3) var(--space-4)',
-          borderRadius: 'var(--radius-md)',
-          border: `1px solid ${availability.sufficient ? 'rgba(22,163,74,0.25)' : 'rgba(220,38,38,0.25)'}`,
-          background: availability.sufficient ? 'rgba(22,163,74,0.04)' : 'rgba(220,38,38,0.04)',
-          display: 'flex', alignItems: 'flex-start', gap: '10px',
-        }}>
-          {availability.sufficient
-            ? <CheckCircle2 size={15} style={{ color: '#16a34a', flexShrink: 0, marginTop: '1px' }} />
-            : <AlertCircle size={15} style={{ color: '#dc2626', flexShrink: 0, marginTop: '1px' }} />
-          }
-          <div>
-            <p style={{ margin: '0 0 2px', fontSize: '13px', fontWeight: 600, color: availability.sufficient ? '#15803d' : '#dc2626' }}>
-              {availability.sufficient
-                ? `${availability.available} questions available (need ${availability.required})`
-                : `Only ${availability.available} questions available — need ${availability.required}`
-              }
-            </p>
-            {!availability.sufficient && availability.breakdown.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
-                {availability.breakdown.map((b, i) => (
-                  <span key={i} style={{
-                    fontSize: '11px', padding: '2px 8px', borderRadius: '999px',
-                    background: b.available === 0 ? 'rgba(220,38,38,0.1)' : 'rgba(217,119,6,0.1)',
-                    color: b.available === 0 ? '#dc2626' : '#b45309',
-                  }}>
-                    {b.skill} · {b.target_level_name}: {b.available} available
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* ── Section 3: Skill Mappings ── */}
       <SectionLabel style={{ marginTop: '24px' }}>Skill Mappings</SectionLabel>
       <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: 'var(--space-3)', marginTop: '-8px' }}>
@@ -813,6 +870,53 @@ export default function AssessmentFormPage() {
         <Plus size={14} />
         Add Skill Mapping
       </button>
+
+      {/* ── Availability indicator — shown after skill mappings for all modes ── */}
+      {previewAvailability && (
+        <div style={{
+          marginTop: 'var(--space-4)',
+          padding: 'var(--space-3) var(--space-4)',
+          borderRadius: 'var(--radius-md)',
+          border: `1px solid ${previewAvailability.sufficient ? 'rgba(22,163,74,0.25)' : 'rgba(220,38,38,0.25)'}`,
+          background: previewAvailability.sufficient ? 'rgba(22,163,74,0.04)' : 'rgba(220,38,38,0.04)',
+          display: 'flex', alignItems: 'flex-start', gap: '10px',
+        }}>
+          {previewAvailability.sufficient
+            ? <CheckCircle2 size={15} style={{ color: '#16a34a', flexShrink: 0, marginTop: '1px' }} />
+            : <AlertCircle size={15} style={{ color: '#dc2626', flexShrink: 0, marginTop: '1px' }} />
+          }
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: '0 0 2px', fontSize: '13px', fontWeight: 600, color: previewAvailability.sufficient ? '#15803d' : '#dc2626' }}>
+              {previewAvailability.sufficient
+                ? `${previewAvailability.available} questions available (need ${previewAvailability.required})`
+                : `Only ${previewAvailability.available} questions available — need ${previewAvailability.required}`
+              }
+            </p>
+            {!previewAvailability.sufficient && (
+              <>
+                {previewAvailability.breakdown.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
+                    {previewAvailability.breakdown.map((b, i) => (
+                      <span key={i} style={{
+                        fontSize: '11px', padding: '2px 8px', borderRadius: '999px',
+                        background: b.available === 0 ? 'rgba(220,38,38,0.1)' : 'rgba(217,119,6,0.1)',
+                        color: b.available === 0 ? '#dc2626' : '#b45309',
+                      }}>
+                        {b.skill} · {b.target_level_name}: {b.available} available
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {form.question_selection_mode === 'DYNAMIC' && (
+                  <p style={{ margin: '6px 0 0', fontSize: '11px', color: '#b45309' }}>
+                    Consider switching to <strong>Curated</strong> mode to manually select from available questions.
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Section 4: Status ── */}
       <SectionLabel style={{ marginTop: '24px' }}>Publication Status</SectionLabel>
@@ -900,6 +1004,17 @@ export default function AssessmentFormPage() {
           }}
         />
       )}
+
+      {/* ── Mode switch confirmation dialog ── */}
+      <ConfirmationDialog
+        open={modeConfirmOpen}
+        onClose={() => { setModeConfirmOpen(false); setPendingMode(null); }}
+        onConfirm={handleModeConfirm}
+        title="Change Question Selection Mode?"
+        description={`Switching to "${MODE_OPTIONS.find(o => o.value === pendingMode)?.label ?? pendingMode}" will permanently remove all ${existingMappings.length + stagedQuestions.length} question(s) currently mapped to this assessment. This cannot be undone.`}
+        confirmLabel="Change Mode"
+        variant="danger"
+      />
     </div>
   );
 }

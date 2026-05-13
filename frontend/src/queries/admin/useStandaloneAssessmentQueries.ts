@@ -178,3 +178,18 @@ export const useCheckAvailability = (assessmentId: number | null) =>
     staleTime: 10_000,
     refetchOnWindowFocus: false,
   });
+
+/**
+ * Checks availability WITHOUT a saved assessment ID.
+ * Used by the create form (and edit form when skill mappings change) to show
+ * real-time availability feedback before the assessment is saved.
+ *
+ * Returns a mutation so the caller controls when to fire it (debounced).
+ */
+export const useCheckAvailabilityPreview = () =>
+  useMutation({
+    mutationFn: (payload: {
+      skill_mappings: Array<{ skill: number; skill_level: number }>;
+      number_of_questions: number;
+    }) => standaloneAssessmentApi.checkAvailabilityPreview(payload),
+  });

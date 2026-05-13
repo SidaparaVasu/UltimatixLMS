@@ -39,10 +39,12 @@ class AssessmentMasterStudioSerializer(serializers.ModelSerializer):
     def validate(self, data):
         """
         Cross-field validation:
+        - Mode switching is allowed only when the assessment is still DRAFT.
+          Once PUBLISHED or ARCHIVED, the mode is locked.
         - CURATED assessments being published must have exactly number_of_questions
           questions mapped (attempt__isnull=True).
-        - DYNAMIC assessments cannot be set to CURATED on existing instances
-          (mode switching is blocked on edit — enforced here as a safety net).
+        - When switching away from CURATED on a DRAFT assessment, the caller is
+          responsible for deleting orphaned question mappings before saving.
         """
         from .constants import QuestionSelectionMode
 
@@ -51,14 +53,15 @@ class AssessmentMasterStudioSerializer(serializers.ModelSerializer):
                         getattr(instance, 'question_selection_mode', QuestionSelectionMode.DYNAMIC))
         new_status = data.get('status', getattr(instance, 'status', 'DRAFT'))
 
-        # Block mode switching on existing assessments
+        # Block mode switching on non-DRAFT assessments
         if instance and 'question_selection_mode' in data:
             old_mode = instance.question_selection_mode
-            if old_mode != mode:
+            current_status = instance.status  # status before this update
+            if old_mode != mode and current_status != 'DRAFT':
                 raise serializers.ValidationError({
                     'question_selection_mode': (
-                        f"Cannot switch question selection mode from {old_mode} to {mode} "
-                        f"on an existing assessment. Create a new assessment instead."
+                        f"Question selection mode cannot be changed on a {current_status} assessment. "
+                        f"Only DRAFT assessments allow mode changes."
                     )
                 })
 

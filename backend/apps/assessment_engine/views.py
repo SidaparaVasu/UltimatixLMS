@@ -227,6 +227,78 @@ class AssessmentStudioViewSet(viewsets.ModelViewSet):
             "breakdown":  breakdown,
         })
 
+    @action(detail=False, methods=['post'], url_path='check-availability-preview')
+    def check_availability_preview(self, request):
+        """
+        POST /assessment/studio/check-availability-preview/
+
+        Checks question availability WITHOUT a saved assessment.
+        Used by the create form to show real-time availability as skill mappings
+        are added, before the assessment is saved.
+
+        Payload:
+          {
+            "skill_mappings": [
+              { "skill": <int>, "skill_level": <int> }
+            ],
+            "number_of_questions": <int>
+          }
+
+        Returns the same shape as check-availability/:id/ so the frontend
+        can use the same component for both create and edit.
+        """
+        from apps.skill_management.models import SkillMaster, SkillLevelMaster
+
+        skill_mappings_data = request.data.get('skill_mappings', [])
+        number_of_questions = request.data.get('number_of_questions', 0)
+
+        if not skill_mappings_data:
+            return success_response(data={
+                "available":  0,
+                "required":   number_of_questions,
+                "sufficient": False,
+                "breakdown":  [],
+                "message":    "No skill mappings provided.",
+            })
+
+        breakdown = []
+        total_available = 0
+
+        for sm_data in skill_mappings_data:
+            skill_id       = sm_data.get('skill')
+            skill_level_id = sm_data.get('skill_level')
+
+            if not skill_id or not skill_level_id:
+                continue
+
+            try:
+                skill       = SkillMaster.objects.get(id=skill_id)
+                skill_level = SkillLevelMaster.objects.get(id=skill_level_id)
+            except (SkillMaster.DoesNotExist, SkillLevelMaster.DoesNotExist):
+                continue
+
+            count = QuestionBank.objects.filter(
+                skill=skill,
+                skill_level__level_rank__gte=skill_level.level_rank,
+                is_active=True,
+                question_type__in=["MCQ", "MSQ", "TRUE_FALSE", "DESCRIPTIVE", "SCENARIO"],
+            ).count()
+
+            breakdown.append({
+                "skill":             skill.skill_name,
+                "target_level_rank": skill_level.level_rank,
+                "target_level_name": skill_level.level_name,
+                "available":         count,
+            })
+            total_available += count
+
+        return success_response(data={
+            "available":  total_available,
+            "required":   number_of_questions,
+            "sufficient": total_available >= number_of_questions,
+            "breakdown":  breakdown,
+        })
+
 
 class QuestionBankViewSet(viewsets.ModelViewSet):
     """
