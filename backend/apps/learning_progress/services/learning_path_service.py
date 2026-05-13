@@ -26,7 +26,6 @@ class UserCourseEnrollmentService(BaseService):
         Creates a new enrollment and initializes the progress hierarchy.
         """
         with transaction.atomic():
-            # 1. Create Enrollment
             enrollment = self.repository.create(**{
                 "employee_id": employee_id,
                 "course_id": course_id,
@@ -35,6 +34,84 @@ class UserCourseEnrollmentService(BaseService):
                 "progress_percentage": 0.00
             })
             return enrollment
+
+    def can_access_course(self, enrollment) -> tuple[bool, str]:
+        """
+        Determines whether a learner can still access a course.
+
+        Rules (soft lock):
+        - Mandatory courses: always accessible, even after deadline.
+        - Optional courses: locked once end_date has passed.
+        - Completed enrollments: always accessible (certificate review etc.).
+
+        Returns (allowed: bool, reason: str).
+        """
+        from django.utils import timezone
+
+        # Completed learners always retain access
+        if enrollment.status == ProgressStatus.COMPLETED:
+            return True, ""
+
+        course = enrollment.course
+        due = enrollment.extended_due_date or course.end_date
+
+        if due and timezone.now().date() > due:
+            if course.is_mandatory:
+                # Soft lock: still accessible but flag as overdue
+                return True, "overdue"
+            else:
+                return False, "expired"
+
+        return True, ""
+
+    def mark_overdue_enrollments(self):
+        """
+        Bulk-marks mandatory enrollments as OVERDUE when their effective
+        deadline has passed and they are not yet completed.
+
+        Intended to be called from a scheduled task / management command.
+        Returns the count of enrollments updated.
+        """
+        from django.utils import timezone
+        from django.db.models import Q, F
+        from ..models import UserCourseEnrollment
+
+        today = timezone.now().date()
+
+        # Enrollments where extended_due_date is set and has passed
+        extended_overdue = UserCourseEnrollment.objects.filter(
+            course__is_mandatory=True,
+            extended_due_date__lt=today,
+            status__in=[ProgressStatus.NOT_STARTED, ProgressStatus.IN_PROGRESS],
+        )
+
+        # Enrollments where course.end_date is set, no extended_due_date, and has passed
+        course_overdue = UserCourseEnrollment.objects.filter(
+            course__is_mandatory=True,
+            course__end_date__lt=today,
+            extended_due_date__isnull=True,
+            status__in=[ProgressStatus.NOT_STARTED, ProgressStatus.IN_PROGRESS],
+        )
+
+        total = extended_overdue.update(status=ProgressStatus.OVERDUE)
+        total += course_overdue.update(status=ProgressStatus.OVERDUE)
+        return total
+
+    def extend_due_date(self, enrollment_id, new_due_date):
+        """
+        Admin action: sets a per-learner extended_due_date.
+        If the enrollment was OVERDUE, resets it to IN_PROGRESS so the
+        learner can continue.
+        """
+        from ..models import UserCourseEnrollment
+        enrollment = UserCourseEnrollment.objects.select_related("course").get(pk=enrollment_id)
+        enrollment.extended_due_date = new_due_date
+        fields = ["extended_due_date"]
+        if enrollment.status == ProgressStatus.OVERDUE:
+            enrollment.status = ProgressStatus.IN_PROGRESS
+            fields.append("status")
+        enrollment.save(update_fields=fields)
+        return enrollment
 
     def update_course_progress(self, enrollment_id):
         """
@@ -74,10 +151,11 @@ class UserCourseEnrollmentService(BaseService):
             enrollment.status = ProgressStatus.COMPLETED
             enrollment.completed_at = timezone.now()
         else:
-            # Cap progress at 99.9% if lessons are done but assessment is missing/failed
             percentage = min(lesson_percentage, 99.9) if not all_assessments_passed and lesson_percentage >= 100 else lesson_percentage
             enrollment.progress_percentage = percentage
-            enrollment.status = ProgressStatus.IN_PROGRESS
+            # Don't downgrade OVERDUE back to IN_PROGRESS here — overdue is set by the scheduler
+            if enrollment.status not in (ProgressStatus.OVERDUE,):
+                enrollment.status = ProgressStatus.IN_PROGRESS
             if not enrollment.started_at:
                 enrollment.started_at = timezone.now()
 

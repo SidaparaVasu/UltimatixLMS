@@ -3,7 +3,6 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
-from datetime import timedelta
 from .models import (
     LearningPathMaster,
     UserCourseEnrollment,
@@ -56,9 +55,19 @@ class UserProgressViewSet(viewsets.ModelViewSet):
     def retrieve(self, request, *args, **kwargs):
         """
         Provides detailed hierarchical progress for the course player.
+        Enforces soft-lock: optional courses past end_date are blocked.
         """
         instance = self.get_object()
-        # Use deep fetch utility from service/repository if possible
+
+        # Soft-lock check
+        service = UserCourseEnrollmentService()
+        allowed, reason = service.can_access_course(instance)
+        if not allowed:
+            return error_response(
+                message="This course is no longer accessible — the course period has ended.",
+                status_code=403,
+            )
+
         detailed_data = self.service_class.repository.get_enrollment_with_detailed_progress(instance.id)
         serializer = DetailedEnrollmentProgressSerializer(detailed_data)
         return success_response(data=serializer.data)
@@ -134,13 +143,8 @@ class UserProgressViewSet(viewsets.ModelViewSet):
         completed = enrollments.filter(status=ProgressStatus.COMPLETED).count()
         not_started = enrollments.filter(status=ProgressStatus.NOT_STARTED).count()
 
-        # Overdue: mandatory/TNI courses not completed within 30 days of enrollment
-        overdue_threshold = timezone.now() - timedelta(days=30)
-        overdue = enrollments.filter(
-            status__in=[ProgressStatus.NOT_STARTED, ProgressStatus.IN_PROGRESS],
-            enrollment_type__in=["MANDATORY", "TNI_ASSIGNED"],
-            enrolled_at__lt=overdue_threshold
-        ).count()
+        # Overdue: enrollments explicitly marked OVERDUE by the scheduler
+        overdue = enrollments.filter(status=ProgressStatus.OVERDUE).count()
 
         certificates_earned = CourseCertificate.objects.filter(
             enrollment__employee=employee
@@ -155,6 +159,39 @@ class UserProgressViewSet(viewsets.ModelViewSet):
                 "overdue": overdue,
                 "certificates_earned": certificates_earned,
             }
+        )
+
+    @action(detail=True, methods=["patch"], url_path="extend-due-date")
+    def extend_due_date(self, request, pk=None):
+        """
+        PATCH /api/v1/learning/my-learning/{id}/extend-due-date/
+        Admin action: set or clear a per-learner deadline override.
+
+        Body: { "extended_due_date": "YYYY-MM-DD" }  or  { "extended_due_date": null }
+        """
+        new_date_raw = request.data.get("extended_due_date")
+
+        if new_date_raw is not None and new_date_raw != "":
+            from datetime import date
+            try:
+                new_date = date.fromisoformat(str(new_date_raw))
+            except ValueError:
+                return error_response(
+                    message="Invalid date format. Use YYYY-MM-DD.",
+                    status_code=400,
+                )
+        else:
+            new_date = None
+
+        enrollment = self.get_object()
+        updated = UserCourseEnrollmentService().extend_due_date(
+            enrollment_id=enrollment.id,
+            new_due_date=new_date,
+        )
+        from .serializers import UserCourseEnrollmentSerializer as _S
+        return success_response(
+            message="Due date updated successfully.",
+            data=_S(updated).data,
         )
 
 

@@ -71,6 +71,14 @@ class CourseMaster(models.Model):
         db_column="show_marks_to_learner",
         help_text="If enabled, learners can see their assessment scores after completion.",
     )
+    is_mandatory = models.BooleanField(
+        default=False,
+        help_text=(
+            "If True, learners must complete this course. "
+            "Mandatory courses remain accessible after end_date (soft lock). "
+            "Optional courses are locked once end_date passes."
+        ),
+    )
     # Legacy columns present in DB — kept for backward compatibility.
     # `status` (DRAFT/PUBLISHED/ARCHIVED) is the canonical visibility control.
     # is_published and is_visible are dead columns — removed from model, pending DB cleanup via migration 0006.

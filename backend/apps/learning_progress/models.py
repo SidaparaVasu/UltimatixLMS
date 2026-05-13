@@ -66,6 +66,14 @@ class UserCourseEnrollment(models.Model):
         null=True, 
         blank=True
     )
+    extended_due_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text=(
+            "Admin-set per-learner deadline override. "
+            "When set, this takes precedence over course.end_date for overdue calculations."
+        ),
+    )
 
     class Meta:
         db_table = "lp_user_course_enrollment"

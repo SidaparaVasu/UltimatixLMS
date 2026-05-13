@@ -98,7 +98,7 @@ class CourseMasterSerializer(serializers.ModelSerializer):
         fields = (
             "id", "course_title", "course_code", "category", "category_name",
             "description", "difficulty_level", "estimated_duration_hours",
-            "start_date", "end_date", "show_marks_to_learners",
+            "start_date", "end_date", "show_marks_to_learners", "is_mandatory",
             "status", "created_by", "author_name", "is_active",
             "participant_count", "total_sections", "total_lessons",
             "created_at", "updated_at",

@@ -6,6 +6,7 @@ class ProgressStatus(models.TextChoices):
     IN_PROGRESS = "IN_PROGRESS", "In Progress"
     COMPLETED = "COMPLETED", "Completed"
     DROPPED = "DROPPED", "Dropped"
+    OVERDUE = "OVERDUE", "Overdue"
 
 
 class EnrollmentType(models.TextChoices):
