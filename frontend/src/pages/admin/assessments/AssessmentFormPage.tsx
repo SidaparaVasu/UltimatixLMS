@@ -1,16 +1,51 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Plus, Loader2 } from 'lucide-react';
+import {
+  Plus, Loader2, Database, Wand2, Shuffle,
+  CheckCircle2, AlertTriangle, AlertCircle, BookOpen,
+} from 'lucide-react';
 import {
   useStandaloneAssessmentDetail,
   useCreateStandaloneAssessment,
   useUpdateStandaloneAssessment,
+  useQuestionMappings,
+  useCheckAvailability,
 } from '@/queries/admin/useStandaloneAssessmentQueries';
 import { useSkills, useSkillLevels } from '@/queries/admin/useAdminMasters';
 import { standaloneAssessmentApi } from '@/api/standalone-assessment-api';
 import { useNotificationStore } from '@/stores/notificationStore';
-import { AssessmentFormValues, SkillMappingRow } from '@/types/standalone-assessment.types';
+import {
+  AssessmentFormValues,
+  SkillMappingRow,
+  QuestionSelectionMode,
+  StagedQuestion,
+  QuestionMappingItem,
+} from '@/types/standalone-assessment.types';
 import { SkillMappingRowItem, SkillMappingFormRow } from '@/components/admin/assessments/SkillMappingRow';
+import { QuestionPickerDrawer } from '@/components/admin/assessments/QuestionPickerDrawer';
+import { AutoSuggestPanel } from '@/components/admin/assessments/AutoSuggestPanel';
+
+// ── Mode selector config ──────────────────────────────────────────────────────
+
+const MODE_OPTIONS: Array<{
+  value: QuestionSelectionMode;
+  label: string;
+  description: string;
+  icon: React.ElementType;
+}> = [
+  {
+    value: 'CURATED',
+    label: 'Curated',
+    description: 'You manually select questions from the bank',
+    icon: BookOpen,
+  },
+  {
+    value: 'DYNAMIC',
+    label: 'System Picked',
+    description: 'Algorithm picks questions per attempt',
+    icon: Shuffle,
+  },
+];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -81,8 +116,27 @@ export default function AssessmentFormPage() {
   // ── Form state ────────────────────────────────────────────────────────────
   const [form, setForm] = useState<AssessmentFormValues>(EMPTY_FORM);
   const [skillRows, setSkillRows] = useState<SkillMappingFormRow[]>([]);
-  const [errors, setErrors] = useState<Partial<Record<keyof AssessmentFormValues | 'skill_mappings', string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<keyof AssessmentFormValues | 'skill_mappings' | 'questions', string>>>({});
   const [isSaving, setIsSaving] = useState(false);
+
+  // ── CURATED: question picker state ────────────────────────────────────────
+  const [pickerOpen, setPickerOpen] = useState(false);
+  // Staged questions are the local pending list (not yet saved to DB)
+  const [stagedQuestions, setStagedQuestions] = useState<StagedQuestion[]>([]);
+
+  // ── CURATED: existing question mappings (saved to DB) ─────────────────────
+  const { data: existingMappingsData } = useQuestionMappings(
+    isEdit && form.question_selection_mode === 'CURATED' ? assessmentId : null
+  );
+  const existingMappings: QuestionMappingItem[] = existingMappingsData ?? [];
+
+  // ── DYNAMIC: availability check ───────────────────────────────────────────
+  const hasSkillMappings = skillRows.some(r => r.skill && r.skill_level);
+  const { data: availability } = useCheckAvailability(
+    isEdit && form.question_selection_mode === 'DYNAMIC' && hasSkillMappings
+      ? assessmentId
+      : null
+  );
 
   // ── Populate on edit ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -156,18 +210,20 @@ export default function AssessmentFormPage() {
       let savedId = assessmentId;
 
       if (!isEdit) {
-        // Create assessment
         const created = await createAssessment.mutateAsync(form);
         if (!created) { setIsSaving(false); return; }
         savedId = created.id;
       } else {
-        // Update assessment
         await updateAssessment.mutateAsync(form);
       }
 
-      // Reconcile skill mappings
       if (savedId) {
         await reconcileSkillMappings(savedId);
+
+        // Reconcile question mappings for CURATED mode
+        if (form.question_selection_mode === 'CURATED') {
+          await reconcileQuestionMappings(savedId);
+        }
       }
 
       showNotification(
@@ -191,14 +247,12 @@ export default function AssessmentFormPage() {
       skillRows.filter(r => r.id).map(r => r.id)
     );
 
-    // Delete removed mappings
     for (const id of originalIds) {
       if (!currentIds.has(id)) {
         await standaloneAssessmentApi.deleteSkillMapping(id!);
       }
     }
 
-    // Add new mappings (rows without an id)
     for (const row of skillRows) {
       if (!row.id && row.skill && row.skill_level) {
         await standaloneAssessmentApi.addSkillMapping({
@@ -207,6 +261,25 @@ export default function AssessmentFormPage() {
           skill_level: parseInt(row.skill_level, 10),
         });
       }
+    }
+  };
+
+  // ── Question mapping reconciliation (CURATED mode) ────────────────────────
+  const reconcileQuestionMappings = async (savedAssessmentId: number) => {
+    if (stagedQuestions.length === 0) return;
+
+    // Delete all existing mappings first (full replace strategy for simplicity)
+    for (const mapping of existingMappings) {
+      await standaloneAssessmentApi.removeQuestionMapping(mapping.id);
+    }
+
+    // Add all staged questions in order
+    for (const staged of stagedQuestions) {
+      await standaloneAssessmentApi.addQuestionMapping({
+        assessment:    savedAssessmentId,
+        question:      staged.questionId,
+        display_order: staged.display_order,
+      });
     }
   };
 
@@ -435,9 +508,210 @@ export default function AssessmentFormPage() {
         </div>
       )}
 
+      {/* ── Section 2b: Question Selection Mode (new assessments only) ── */}
+      {!isEdit && (
+        <>
+          <SectionLabel style={{ marginTop: '24px' }}>Question Selection Mode</SectionLabel>
+          <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: 'var(--space-4)', marginTop: '-8px' }}>
+            Choose how questions are selected for this assessment. This cannot be changed after creation.
+          </p>
+          <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap', marginBottom: 'var(--space-2)' }}>
+            {MODE_OPTIONS.map(opt => {
+              const isSelected = form.question_selection_mode === opt.value;
+              const Icon = opt.icon;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setField('question_selection_mode', opt.value)}
+                  style={{
+                    flex: 1, minWidth: '180px',
+                    display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+                    gap: '6px', padding: '14px 16px',
+                    borderRadius: 'var(--radius-lg)',
+                    border: `2px solid ${isSelected ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                    background: isSelected
+                      ? 'color-mix(in srgb, var(--color-accent) 6%, var(--color-surface))'
+                      : 'var(--color-surface)',
+                    cursor: 'pointer', textAlign: 'left',
+                    transition: 'all 150ms',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Icon size={16} style={{ color: isSelected ? 'var(--color-accent)' : 'var(--color-text-muted)', flexShrink: 0 }} />
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: isSelected ? 'var(--color-accent)' : 'var(--color-text-primary)' }}>
+                      {opt.label}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+                    {opt.description}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* ── Section 2c: Questions (CURATED mode) ── */}
+      {form.question_selection_mode === 'CURATED' && (
+        <>
+          <SectionLabel style={{ marginTop: '24px' }}>Questions</SectionLabel>
+
+          {/* Existing saved mappings summary */}
+          {isEdit && existingMappings.length > 0 && stagedQuestions.length === 0 && (
+            <div style={{
+              padding: 'var(--space-3) var(--space-4)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--color-surface)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              marginBottom: 'var(--space-3)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <CheckCircle2 size={15} style={{ color: '#16a34a', flexShrink: 0 }} />
+                <span style={{ fontSize: '13px', color: 'var(--color-text-primary)' }}>
+                  <strong>{existingMappings.length}</strong> question{existingMappings.length !== 1 ? 's' : ''} currently mapped
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPickerOpen(true)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  padding: '6px 14px', borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--color-border)', background: 'transparent',
+                  color: 'var(--color-text-secondary)', fontSize: '12px', fontWeight: 500, cursor: 'pointer',
+                }}
+              >
+                <Database size={13} />
+                Edit Questions
+              </button>
+            </div>
+          )}
+
+          {/* Staged questions summary (pending save) */}
+          {stagedQuestions.length > 0 && (
+            <div style={{
+              padding: 'var(--space-3) var(--space-4)',
+              border: '1px solid rgba(37,99,235,0.3)',
+              borderRadius: 'var(--radius-md)',
+              background: 'rgba(37,99,235,0.04)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              marginBottom: 'var(--space-3)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Database size={15} style={{ color: '#1d4ed8', flexShrink: 0 }} />
+                <span style={{ fontSize: '13px', color: 'var(--color-text-primary)' }}>
+                  <strong>{stagedQuestions.length}</strong> question{stagedQuestions.length !== 1 ? 's' : ''} staged
+                  <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginLeft: '6px' }}>
+                    (will be saved when you click Save)
+                  </span>
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPickerOpen(true)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  padding: '6px 14px', borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--color-border)', background: 'transparent',
+                  color: 'var(--color-text-secondary)', fontSize: '12px', fontWeight: 500, cursor: 'pointer',
+                }}
+              >
+                Edit
+              </button>
+            </div>
+          )}
+
+          {/* Auto-suggest panel */}
+          {assessmentId && (
+            <div style={{ marginBottom: 'var(--space-3)' }}>
+              <AutoSuggestPanel
+                assessmentId={assessmentId}
+                hasSkillMappings={hasSkillMappings}
+                onAccept={(staged) => {
+                  setStagedQuestions(staged);
+                  showNotification(`${staged.length} question${staged.length !== 1 ? 's' : ''} accepted from suggestions.`, 'success');
+                }}
+              />
+            </div>
+          )}
+
+          {/* Add questions button (shown when nothing staged yet) */}
+          {stagedQuestions.length === 0 && existingMappings.length === 0 && (
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                padding: '8px 16px', borderRadius: 'var(--radius-md)',
+                border: '1px dashed var(--color-border)', background: 'transparent',
+                color: 'var(--color-accent)', fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+                transition: 'all 150ms',
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.borderColor = 'var(--color-accent)';
+                (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--color-accent) 5%, transparent)';
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.borderColor = 'var(--color-border)';
+                (e.currentTarget as HTMLElement).style.background = 'transparent';
+              }}
+            >
+              <Plus size={14} />
+              Add Questions
+            </button>
+          )}
+
+          {errors.questions && (
+            <p style={{ fontSize: '12px', color: 'var(--color-danger)', marginTop: 'var(--space-2)' }}>
+              {errors.questions}
+            </p>
+          )}
+        </>
+      )}
+
+      {/* ── Section 2d: Availability indicator (DYNAMIC mode, edit only) ── */}
+      {form.question_selection_mode === 'DYNAMIC' && isEdit && hasSkillMappings && availability && (
+        <div style={{
+          marginTop: 'var(--space-4)',
+          padding: 'var(--space-3) var(--space-4)',
+          borderRadius: 'var(--radius-md)',
+          border: `1px solid ${availability.sufficient ? 'rgba(22,163,74,0.25)' : 'rgba(220,38,38,0.25)'}`,
+          background: availability.sufficient ? 'rgba(22,163,74,0.04)' : 'rgba(220,38,38,0.04)',
+          display: 'flex', alignItems: 'flex-start', gap: '10px',
+        }}>
+          {availability.sufficient
+            ? <CheckCircle2 size={15} style={{ color: '#16a34a', flexShrink: 0, marginTop: '1px' }} />
+            : <AlertCircle size={15} style={{ color: '#dc2626', flexShrink: 0, marginTop: '1px' }} />
+          }
+          <div>
+            <p style={{ margin: '0 0 2px', fontSize: '13px', fontWeight: 600, color: availability.sufficient ? '#15803d' : '#dc2626' }}>
+              {availability.sufficient
+                ? `${availability.available} questions available (need ${availability.required})`
+                : `Only ${availability.available} questions available — need ${availability.required}`
+              }
+            </p>
+            {!availability.sufficient && availability.breakdown.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
+                {availability.breakdown.map((b, i) => (
+                  <span key={i} style={{
+                    fontSize: '11px', padding: '2px 8px', borderRadius: '999px',
+                    background: b.available === 0 ? 'rgba(220,38,38,0.1)' : 'rgba(217,119,6,0.1)',
+                    color: b.available === 0 ? '#dc2626' : '#b45309',
+                  }}>
+                    {b.skill} · {b.target_level_name}: {b.available} available
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Section 3: Skill Mappings ── */}
       <SectionLabel style={{ marginTop: '24px' }}>Skill Mappings</SectionLabel>
-
       <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: 'var(--space-3)', marginTop: '-8px' }}>
         Map this assessment to one or more skills. Learners who pass will receive a skill upgrade proposal for each mapped skill.
       </p>
@@ -550,6 +824,22 @@ export default function AssessmentFormPage() {
           {isEdit ? 'Save Changes' : 'Create Assessment'}
         </button>
       </div>
+
+      {/* ── Question Picker Drawer (CURATED mode) ── */}
+      {form.question_selection_mode === 'CURATED' && assessmentId && (
+        <QuestionPickerDrawer
+          open={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          assessmentId={assessmentId}
+          isRandomized={form.is_randomized}
+          existingMappings={existingMappings}
+          initialStaged={stagedQuestions}
+          onConfirm={(staged) => {
+            setStagedQuestions(staged);
+            setPickerOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
