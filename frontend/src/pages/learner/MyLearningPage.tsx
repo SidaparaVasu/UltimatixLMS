@@ -2,14 +2,14 @@ import { useState } from "react";
 import { useMyEnrollments } from "@/queries/learner/useLearnerQueries";
 import { CourseProgressCard } from "@/components/learner/CourseProgressCard";
 import { Link } from "react-router-dom";
-import { BookOpen, GraduationCap, Clock, CheckCircle } from "lucide-react";
+import { BookOpen, GraduationCap, Clock, CheckCircle, AlertTriangle } from "lucide-react";
 import { cn } from "@/utils/cn";
-import { EnrollmentStatus } from "@/types/courses.types";
 
 const tabs = [
-  { id: '', label: 'All', icon: BookOpen },
-  { id: 'IN_PROGRESS', label: 'In Progress', icon: Clock },
-  { id: 'COMPLETED', label: 'Completed', icon: CheckCircle },
+  { id: '',          label: 'All',         icon: BookOpen       },
+  { id: 'IN_PROGRESS', label: 'In Progress', icon: Clock          },
+  { id: 'OVERDUE',   label: 'Overdue',     icon: AlertTriangle  },
+  { id: 'COMPLETED', label: 'Completed',   icon: CheckCircle    },
   { id: 'NOT_STARTED', label: 'Not Started', icon: GraduationCap },
 ] as const;
 
@@ -32,15 +32,17 @@ export default function MyLearningPage() {
     in_progress: allResults.filter(e => e.status === 'IN_PROGRESS').length,
     completed: allResults.filter(e => e.status === 'COMPLETED').length,
     not_started: allResults.filter(e => e.status === 'NOT_STARTED').length,
+    overdue: allResults.filter(e => e.is_overdue || e.status === 'OVERDUE').length,
   };
 
   const getTabCount = (tabId: string) => {
     switch (tabId) {
-      case '': return statusCounts.all;
+      case '':           return statusCounts.all;
       case 'IN_PROGRESS': return statusCounts.in_progress;
-      case 'COMPLETED': return statusCounts.completed;
+      case 'COMPLETED':  return statusCounts.completed;
       case 'NOT_STARTED': return statusCounts.not_started;
-      default: return 0;
+      case 'OVERDUE':    return statusCounts.overdue;
+      default:           return 0;
     }
   };
 
@@ -52,6 +54,13 @@ export default function MyLearningPage() {
           title: "No courses in progress",
           description: "Start learning from your enrolled courses or discover new ones.",
           action: { text: "Browse Courses", to: "/courses" }
+        };
+      case 'OVERDUE':
+        return {
+          icon: AlertTriangle,
+          title: "No overdue courses",
+          description: "You're all caught up — no mandatory courses past their deadline.",
+          action: null
         };
       case 'COMPLETED':
         return {
@@ -158,7 +167,9 @@ export default function MyLearningPage() {
                     "ml-2 py-0.5 px-2 rounded-full text-xs font-medium",
                     isActive
                       ? "bg-blue-100 text-blue-600"
-                      : "bg-gray-100 text-gray-900"
+                      : tab.id === 'OVERDUE' && count > 0
+                        ? "bg-amber-100 text-amber-700"
+                        : "bg-gray-100 text-gray-900"
                   )}>
                     {count}
                   </span>

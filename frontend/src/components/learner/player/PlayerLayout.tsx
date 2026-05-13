@@ -5,7 +5,7 @@
 
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, PanelLeftClose, PanelLeftOpen, MessageSquare, BookOpen, StickyNote } from 'lucide-react';
+import { ArrowLeft, PanelLeftClose, PanelLeftOpen, MessageSquare, BookOpen, StickyNote, AlertCircle } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useCoursePlayerStore } from '@/stores/coursePlayerStore';
 import { DetailedEnrollmentProgress } from '@/types/player.types';
@@ -122,6 +122,20 @@ export const PlayerLayout = ({ enrollment }: PlayerLayoutProps) => {
           </div>
         </div>
       </div>
+
+      {/* ── Overdue banner ── */}
+      {enrollment.is_overdue && (
+        <div className="flex items-center justify-center gap-2 px-4 py-2 bg-amber-50 border-b border-amber-200 text-amber-800 text-xs font-semibold shrink-0">
+          <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+          This course is overdue
+          {enrollment.effective_due_date && (
+            <span className="font-normal">
+              — was due {new Date(enrollment.effective_due_date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+            </span>
+          )}
+          <span className="font-normal text-amber-700">· You can still complete it.</span>
+        </div>
+      )}
 
       {/* ── Body: Sidebar + Content ── */}
       <div className="flex flex-1 overflow-hidden">

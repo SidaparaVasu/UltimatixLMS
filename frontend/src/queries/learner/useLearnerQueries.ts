@@ -60,6 +60,18 @@ export const useMyCertificates = () =>
     queryFn: learningApi.getMyCertificates,
   });
 
+// Admin: extend per-learner due date
+export const useExtendDueDate = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ enrollmentId, date }: { enrollmentId: number; date: string | null }) =>
+      learningApi.extendDueDate(enrollmentId, date),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['learner', 'my-enrollments'] });
+    },
+  });
+};
+
 // Categories for filter dropdown
 export const useCourseCategories = () =>
   useQuery({

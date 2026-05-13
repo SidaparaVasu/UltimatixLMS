@@ -25,6 +25,8 @@ export interface CourseMaster {
   end_date: string | null;
   /** If true, learners can see their assessment scores after completion. */
   show_marks_to_learners: boolean;
+  /** If true, learners must complete this course. Mandatory courses stay accessible after end_date. */
+  is_mandatory: boolean;
   status: CourseStatus;
   created_by?: number;
   is_active: boolean;
@@ -182,7 +184,7 @@ export interface CurriculumSyncPayload {
 }
 
 // Enrollment status from backend constants
-export type EnrollmentStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'DROPPED';
+export type EnrollmentStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'DROPPED' | 'OVERDUE';
 
 // Enrollment type from backend constants
 export type EnrollmentType = 'SELF_ENROLL' | 'MANDATORY' | 'RECOMMENDED' | 'TNI_ASSIGNED';
@@ -199,6 +201,14 @@ export interface UserCourseEnrollment {
   enrolled_at: string;
   started_at: string | null;
   completed_at: string | null;
+  /** Admin-set per-learner deadline override (ISO date string). */
+  extended_due_date: string | null;
+  /** True when course.is_mandatory is true. */
+  is_mandatory: boolean;
+  /** Resolved deadline: extended_due_date if set, else course.end_date. Null if neither is set. */
+  effective_due_date: string | null;
+  /** True when mandatory + not completed + effective_due_date has passed. */
+  is_overdue: boolean;
 }
 
 export interface CourseCertificate {

@@ -39,6 +39,10 @@ export interface DetailedEnrollmentProgress {
   enrolled_at: string;
   started_at: string | null;
   completed_at: string | null;
+  extended_due_date: string | null;
+  is_mandatory: boolean;
+  effective_due_date: string | null;
+  is_overdue: boolean;
   lesson_progress: LessonProgress[];
 }
 

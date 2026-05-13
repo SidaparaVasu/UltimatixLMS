@@ -3,7 +3,7 @@ import { useCourseDetail, useMyEnrollments, useEnrollInCourse } from "@/queries/
 import { DifficultyBadge } from "@/components/learner/DifficultyBadge";
 import { EnrollButton } from "@/components/learner/EnrollButton";
 import { CurriculumPreview } from "@/components/learner/CurriculumPreview";
-import { ArrowLeft, Clock, User, Download, ExternalLink, Award, Mail, Phone, Info, Star } from "lucide-react";
+import { ArrowLeft, Clock, User, Download, ExternalLink, Award, Mail, Phone, Info, Star, ShieldAlert, Calendar, AlertCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 import { fileApi } from "@/api/file-api";
 import type { CourseResource, CourseTrainer } from "@/types/courses.types";
@@ -202,7 +202,37 @@ export default function CourseDetailPage() {
                 </span>
               )}
               <DifficultyBadge level={course.difficulty_level} />
+              {course.is_mandatory && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-sm text-xs font-semibold bg-rose-50 border border-rose-200 text-rose-700">
+                  <ShieldAlert className="h-3 w-3" />
+                  Mandatory
+                </span>
+              )}
             </div>
+
+            {/* Due date / overdue warning — only when enrolled */}
+            {enrollment && enrollment.effective_due_date && enrollment.status !== 'COMPLETED' && (
+              <div className={`mt-3 flex items-center gap-2 text-sm px-3 py-2 rounded-md ${
+                enrollment.is_overdue
+                  ? 'bg-amber-50 border border-amber-200 text-amber-800'
+                  : 'bg-gray-50 border border-gray-200 text-gray-600'
+              }`}>
+                {enrollment.is_overdue
+                  ? <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                  : <Calendar className="h-4 w-4 flex-shrink-0" />
+                }
+                <span>
+                  {enrollment.is_overdue ? 'Overdue — ' : 'Due by '}
+                  <strong>{new Date(enrollment.effective_due_date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</strong>
+                  {enrollment.extended_due_date && (
+                    <span className="ml-1 text-blue-600 text-xs">(deadline extended)</span>
+                  )}
+                  {enrollment.is_overdue && enrollment.is_mandatory && (
+                    <span className="ml-1 text-amber-700 text-xs">— course is still accessible</span>
+                  )}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Enrollment Action */}

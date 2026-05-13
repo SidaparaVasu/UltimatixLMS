@@ -28,7 +28,7 @@ export const learningApi = {
   getEnrollmentSummary: async () => {
     try {
       const response = await apiClient.get("/learning/my-learning/summary/");
-      return handleApiResponse<{ in_progress: number; completed: number; not_started: number }>(response.data, false);
+      return handleApiResponse<{ in_progress: number; completed: number; not_started: number; overdue: number; certificates_earned: number }>(response.data, false);
     } catch (error) {
       return handleApiError(error);
     }
@@ -39,6 +39,23 @@ export const learningApi = {
     try {
       const response = await apiClient.get("/learning/certificates/");
       return handleApiResponse<PaginatedResponse<CourseCertificate>>(response.data, false);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  /**
+   * Admin action: set or clear a per-learner deadline override.
+   * PATCH /learning/my-learning/{enrollmentId}/extend-due-date/
+   * Pass null to clear the override.
+   */
+  extendDueDate: async (enrollmentId: number, extendedDueDate: string | null) => {
+    try {
+      const response = await apiClient.patch(
+        `/learning/my-learning/${enrollmentId}/extend-due-date/`,
+        { extended_due_date: extendedDueDate },
+      );
+      return handleApiResponse<UserCourseEnrollment>(response.data);
     } catch (error) {
       return handleApiError(error);
     }
