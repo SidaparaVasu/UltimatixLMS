@@ -1,6 +1,8 @@
 import React from 'react';
-import { Check, Play, Award, HelpCircle, Bell, TriangleAlert, BookOpen, Star, Clock } from 'lucide-react';
+import { Check, Play, Award, HelpCircle, Bell, BellOff, TriangleAlert, BookOpen, Star, Clock, ArrowRight, Loader2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useMyEnrollments } from '@/queries/learner/useLearnerQueries';
+import { useNotificationList, } from '@/queries/notifications/useNotificationQueries';
 import { formatDistanceToNow } from 'date-fns';
 
 // ---------------------------------------------------------------------------
@@ -94,35 +96,58 @@ export const ActivityFeed: React.FC = () => {
 // ---------------------------------------------------------------------------
 
 export const NotificationPanel: React.FC = () => {
-  const notifications = [
-    {
-      title: 'Notifications coming soon',
-      body: 'In-app notifications will be available in a future update.',
-      unread: false,
-      icon: Bell,
-      type: 'assign',
-    },
-  ];
+  const { data, isLoading } = useNotificationList({ page_size: 5 });
+  const notifications = data?.results ?? [];
 
   return (
     <div className="activity-panel anim delay-6">
       <div className="panel-head">
         <span className="panel-title">Notifications</span>
+        <Link
+          to="/notifications"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            fontSize: 'var(--text-xs)',
+            fontWeight: 500,
+            color: 'var(--color-accent)',
+            textDecoration: 'none',
+          }}
+        >
+          View all <ArrowRight size={12} />
+        </Link>
       </div>
-      <div className="activity-list">
-        {notifications.map((notif, i) => (
-          <div key={i} className={`notif-item ${notif.unread ? 'unread' : ''}`}>
-            <div className={`notif-icon ni-${notif.type}`}>
-              <notif.icon size={16} />
+
+      {isLoading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-6)', color: 'var(--color-text-muted)' }}>
+          <Loader2 size={20} className="animate-spin" />
+        </div>
+      ) : notifications.length === 0 ? (
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          justifyContent: 'center', padding: 'var(--space-6)',
+          gap: 8, color: 'var(--color-text-muted)',
+        }}>
+          <BellOff size={24} strokeWidth={1.5} />
+          <p style={{ fontSize: 'var(--text-sm)', margin: 0 }}>You're all caught up!</p>
+        </div>
+      ) : (
+        <div className="activity-list">
+          {notifications.map((notif, i) => (
+            <div key={i} className={`notif-item ${!notif.is_read ? 'unread' : ''}`}>
+              <div className={`notif-icon ni-assign`}>
+                <Bell size={16} />
+              </div>
+              <div className="notif-content">
+                <div className="notif-title">{notif.title}</div>
+                <div className="notif-body">{notif.message}</div>
+              </div>
+              {!notif.is_read && <div className="notif-unread-dot" />}
             </div>
-            <div className="notif-content">
-              <div className="notif-title">{notif.title}</div>
-              <div className="notif-body">{notif.body}</div>
-            </div>
-            {notif.unread && <div className="notif-unread-dot" />}
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
