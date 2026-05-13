@@ -17,6 +17,7 @@ from .models import (
     CourseDiscussionThread,
     CourseDiscussionReply,
     CourseParticipant,
+    CourseNote,
 )
 from .serializers import (
     CourseCategorySerializer,
@@ -34,6 +35,9 @@ from .serializers import (
     CurriculumSyncSerializer,
     CourseParticipantSerializer,
     CourseParticipantBulkInviteSerializer,
+    CourseNoteSerializer,
+    CourseNoteCreateSerializer,
+    CourseNoteUpdateSerializer,
 )
 from .services import (
     CourseCategoryService,
@@ -48,6 +52,7 @@ from .services import (
     CourseDiscussionThreadService,
     CourseDiscussionReplyService,
     CourseParticipantService,
+    CourseNoteService,
 )
 
 
@@ -384,3 +389,163 @@ class CourseParticipantViewSet(BaseCourseViewSet):
     service_class = CourseParticipantService
     model = CourseParticipant
     filterset_fields = ["course", "employee", "notification_sent"]
+
+
+class CourseNoteViewSet(viewsets.ViewSet):
+    """
+    Learner notes for a course.
+
+    All endpoints require the learner to own the enrollment referenced in the
+    request — ownership is enforced in the service layer.
+
+    Routes (registered under /api/v1/courses/notes/):
+        GET    /notes/?enrollment_id=<id>          — list notes for an enrollment
+        POST   /notes/                             — create a note
+        PATCH  /notes/<id>/                        — update note text
+        DELETE /notes/<id>/                        — delete a note
+    """
+
+    permission_classes = [HasScopedPermission]
+    # Notes are a learner action — same permission level as viewing a course
+    VIEW_PERMISSION = P.LEARNER_CORE.COURSE_VIEW
+    EDIT_PERMISSION = P.LEARNER_CORE.COURSE_VIEW
+
+    @property
+    def required_permission(self):
+        return self.VIEW_PERMISSION
+
+    # ── helpers ──────────────────────────────────────────────────────────────
+
+    def _get_employee(self, request):
+        from apps.org_management.models import EmployeeMaster
+        employee = EmployeeMaster.objects.filter(user=request.user).first()
+        if not employee:
+            return None, error_response(message="Employee profile not found.", status_code=404)
+        return employee, None
+
+    def _get_owned_enrollment(self, enrollment_id, employee):
+        """Returns the enrollment only if it belongs to the given employee."""
+        from apps.learning_progress.models import UserCourseEnrollment
+        try:
+            return UserCourseEnrollment.objects.get(pk=enrollment_id, employee=employee), None
+        except UserCourseEnrollment.DoesNotExist:
+            return None, error_response(
+                message="Enrollment not found or does not belong to you.",
+                status_code=404,
+            )
+
+    # ── list ─────────────────────────────────────────────────────────────────
+
+    def list(self, request):
+        """
+        GET /api/v1/courses/notes/?enrollment_id=<id>
+        Returns all notes for the given enrollment, grouped by lesson order.
+        """
+        enrollment_id = request.query_params.get("enrollment_id")
+        if not enrollment_id:
+            return error_response(message="enrollment_id query parameter is required.", status_code=400)
+
+        employee, err = self._get_employee(request)
+        if err:
+            return err
+
+        enrollment, err = self._get_owned_enrollment(enrollment_id, employee)
+        if err:
+            return err
+
+        notes = CourseNoteService().get_notes_for_enrollment(enrollment.id)
+        serializer = CourseNoteSerializer(notes, many=True)
+        return success_response(data=serializer.data)
+
+    # ── create ────────────────────────────────────────────────────────────────
+
+    def create(self, request):
+        """
+        POST /api/v1/courses/notes/
+        Body: { enrollment_id, lesson_id (optional), note_text }
+        """
+        serializer = CourseNoteCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        employee, err = self._get_employee(request)
+        if err:
+            return err
+
+        enrollment, err = self._get_owned_enrollment(data["enrollment_id"], employee)
+        if err:
+            return err
+
+        try:
+            note = CourseNoteService().create_note(
+                enrollment=enrollment,
+                lesson_id=data.get("lesson_id"),
+                note_text=data["note_text"],
+            )
+        except ValueError as exc:
+            return error_response(message=str(exc), status_code=400)
+
+        return created_response(
+            message="Note saved successfully.",
+            data=CourseNoteSerializer(note).data,
+        )
+
+    # ── partial_update (PATCH) ────────────────────────────────────────────────
+
+    def partial_update(self, request, pk=None):
+        """
+        PATCH /api/v1/courses/notes/<id>/
+        Body: { note_text }
+        """
+        serializer = CourseNoteUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        employee, err = self._get_employee(request)
+        if err:
+            return err
+
+        # Resolve enrollment from the note itself (ownership check inside service)
+        try:
+            note = CourseNote.objects.select_related("enrollment__employee").get(
+                pk=pk, enrollment__employee=employee
+            )
+        except CourseNote.DoesNotExist:
+            return error_response(message="Note not found or does not belong to you.", status_code=404)
+
+        try:
+            updated = CourseNoteService().update_note(
+                note_id=pk,
+                owner_enrollment=note.enrollment,
+                note_text=serializer.validated_data["note_text"],
+            )
+        except ValueError as exc:
+            return error_response(message=str(exc), status_code=400)
+
+        return success_response(
+            message="Note updated successfully.",
+            data=CourseNoteSerializer(updated).data,
+        )
+
+    # ── destroy ───────────────────────────────────────────────────────────────
+
+    def destroy(self, request, pk=None):
+        """
+        DELETE /api/v1/courses/notes/<id>/
+        """
+        employee, err = self._get_employee(request)
+        if err:
+            return err
+
+        try:
+            note = CourseNote.objects.select_related("enrollment__employee").get(
+                pk=pk, enrollment__employee=employee
+            )
+        except CourseNote.DoesNotExist:
+            return error_response(message="Note not found or does not belong to you.", status_code=404)
+
+        try:
+            CourseNoteService().delete_note(note_id=pk, owner_enrollment=note.enrollment)
+        except ValueError as exc:
+            return error_response(message=str(exc), status_code=400)
+
+        return success_response(message="Note deleted successfully.")

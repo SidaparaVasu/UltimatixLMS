@@ -15,6 +15,7 @@ from .models import (
     CourseDiscussionThread,
     CourseDiscussionReply,
     CourseParticipant,
+    CourseNote,
 )
 from apps.org_management.models import EmployeeMaster
 
@@ -298,3 +299,35 @@ class CourseParticipantBulkInviteSerializer(serializers.Serializer):
                 f"The following employee IDs do not exist: {sorted(missing)}"
             )
         return ids
+
+
+# ── Course Note Serializers ───────────────────────────────────────────────────
+
+class CourseNoteSerializer(serializers.ModelSerializer):
+    """
+    Read/write serializer for learner notes.
+    enrollment and lesson_title are read-only — the view injects enrollment
+    from the authenticated user's context.
+    """
+    lesson_title = serializers.CharField(source="lesson.lesson_title", read_only=True)
+    section_title = serializers.CharField(source="lesson.section.section_title", read_only=True)
+
+    class Meta:
+        model = CourseNote
+        fields = (
+            "id", "enrollment", "lesson", "lesson_title", "section_title",
+            "note_text", "created_at", "updated_at",
+        )
+        read_only_fields = ("id", "enrollment", "lesson_title", "section_title", "created_at", "updated_at")
+
+
+class CourseNoteCreateSerializer(serializers.Serializer):
+    """Input schema for creating a note — enrollment is resolved server-side."""
+    enrollment_id = serializers.IntegerField()
+    lesson_id = serializers.IntegerField(required=False, allow_null=True, default=None)
+    note_text = serializers.CharField(min_length=1)
+
+
+class CourseNoteUpdateSerializer(serializers.Serializer):
+    """Input schema for updating note text only."""
+    note_text = serializers.CharField(min_length=1)

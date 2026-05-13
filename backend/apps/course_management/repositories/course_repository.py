@@ -12,6 +12,7 @@ from ..models import (
     CourseDiscussionThread,
     CourseDiscussionReply,
     CourseParticipant,
+    CourseNote,
 )
 from django.db.models import Count
 
@@ -103,3 +104,19 @@ class CourseParticipantRepository(BaseRepository[CourseParticipant]):
                 for eid in new_ids
             ])
         return len(new_ids), len(employee_ids) - len(new_ids)
+
+
+class CourseNoteRepository(BaseRepository[CourseNote]):
+    model = CourseNote
+
+    def get_notes_for_enrollment(self, enrollment_id):
+        """
+        Returns all notes for an enrollment, with lesson info prefetched.
+        Ordered by lesson display_order (nulls last) then note created_at.
+        """
+        return (
+            self.model.objects
+            .filter(enrollment_id=enrollment_id)
+            .select_related("lesson__section")
+            .order_by("lesson__display_order", "-created_at")
+        )

@@ -12,6 +12,7 @@ from .models import (
     CourseDiscussionThread,
     CourseDiscussionReply,
     CourseParticipant,
+    CourseNote,
 )
 
 
@@ -95,3 +96,9 @@ class CourseParticipantAdmin(admin.ModelAdmin):
     list_display = ("employee", "course", "invited_by", "invited_at", "notification_sent")
     list_filter = ("course", "notification_sent")
     search_fields = ("employee__employee_code", "course__course_code")
+
+@admin.register(CourseNote)
+class CourseNotesAdmin(admin.ModelAdmin):
+    list_display = ("enrollment", "lesson", "note_text", "created_at", "updated_at")
+    list_filter = ("enrollment", "lesson", "note_text", "created_at", "updated_at")
+    

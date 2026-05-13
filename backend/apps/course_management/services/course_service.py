@@ -12,6 +12,7 @@ from ..repositories import (
     CourseDiscussionThreadRepository,
     CourseDiscussionReplyRepository,
     CourseParticipantRepository,
+    CourseNoteRepository,
 )
 from django.db import transaction
 from ..models import CourseSection, CourseLesson, CourseContent
@@ -188,3 +189,58 @@ class CourseParticipantService(BaseService):
             employee_ids=employee_ids,
             invited_by=invited_by,
         )
+
+
+class CourseNoteService(BaseService):
+    repository_class = CourseNoteRepository
+
+    def get_notes_for_enrollment(self, enrollment_id):
+        """Returns all notes for an enrollment ordered by lesson then recency."""
+        return self.repository.get_notes_for_enrollment(enrollment_id)
+
+    def create_note(self, enrollment, lesson_id, note_text):
+        """
+        Creates a note for the given enrollment.
+        Validates that the lesson (if provided) belongs to the enrollment's course.
+        """
+        if lesson_id is not None:
+            from ..models import CourseLesson
+            try:
+                lesson = CourseLesson.objects.select_related("section__course").get(pk=lesson_id)
+            except CourseLesson.DoesNotExist:
+                raise ValueError("Lesson not found.")
+            if lesson.section.course_id != enrollment.course_id:
+                raise ValueError("Lesson does not belong to this course.")
+        else:
+            lesson = None
+
+        return self.repository.create(
+            enrollment=enrollment,
+            lesson=lesson,
+            note_text=note_text,
+        )
+
+    def update_note(self, note_id, owner_enrollment, note_text):
+        """
+        Updates note_text. Enforces ownership — only the note's enrollment owner
+        can update it.
+        """
+        from ..models import CourseNote
+        try:
+            note = CourseNote.objects.get(pk=note_id, enrollment=owner_enrollment)
+        except CourseNote.DoesNotExist:
+            raise ValueError("Note not found or you do not have permission to edit it.")
+        return self.repository.update(pk=note.pk, note_text=note_text)
+
+    def delete_note(self, note_id, owner_enrollment):
+        """
+        Hard-deletes a note. Enforces ownership.
+        Notes have no is_active field so soft-delete is not applicable.
+        """
+        from ..models import CourseNote
+        try:
+            note = CourseNote.objects.get(pk=note_id, enrollment=owner_enrollment)
+        except CourseNote.DoesNotExist:
+            raise ValueError("Note not found or you do not have permission to delete it.")
+        note.delete()
+        return True

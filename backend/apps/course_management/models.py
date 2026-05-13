@@ -270,6 +270,44 @@ class CourseDiscussionReply(models.Model):
         db_table = "course_discussion_reply"
 
 
+class CourseNote(models.Model):
+    """
+    Private notes written by a learner while consuming a course.
+    Scoped to an enrollment so the same employee enrolled via different
+    paths keeps separate note sets.  lesson is nullable — a null value
+    means the note is a general course-level note.
+    """
+    enrollment = models.ForeignKey(
+        "learning_progress.UserCourseEnrollment",
+        on_delete=models.CASCADE,
+        related_name="notes",
+    )
+    lesson = models.ForeignKey(
+        CourseLesson,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="notes",
+        help_text="Lesson this note belongs to. Null means a course-level note.",
+    )
+    note_text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "course_note"
+        ordering = ["-created_at"]
+        verbose_name = "Course Note"
+        verbose_name_plural = "Course Notes"
+        indexes = [
+            models.Index(fields=["enrollment"], name="idx_course_note_enrollment"),
+        ]
+
+    def __str__(self):
+        lesson_info = f" / {self.lesson.lesson_title}" if self.lesson else ""
+        return f"Note by {self.enrollment.employee.employee_code}{lesson_info}"
+
+
 class CourseParticipant(models.Model):
     """
     Admin-managed invite list for a course.
