@@ -49,7 +49,7 @@ const TrainerCard: React.FC<TrainerCardProps> = ({ trainer, courseId, onEdit }) 
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="font-semibold text-slate-200 truncate">{trainer.display_name}</span>
           {trainer.is_primary && (
-            <span className="px-1 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[9px] font-bold uppercase tracking-wide">
+            <span className="px-1 py-0.5 rounded bg-blue-500/20 text-blue-400 text-[9px] font-bold uppercase tracking-wide">
               Primary
             </span>
           )}
@@ -61,19 +61,19 @@ const TrainerCard: React.FC<TrainerCardProps> = ({ trainer, courseId, onEdit }) 
         </div>
         {trainer.display_email && (
           <div className="flex items-center gap-1 text-slate-500 mt-0.5">
-            <Mail size={9} />
+            <Mail size={9} className='text-blue-400' />
             <span className="truncate">{trainer.display_email}</span>
           </div>
         )}
         {trainer.trainer_contact && (
           <div className="flex items-center gap-1 text-slate-500">
-            <Phone size={9} />
+            <Phone size={9} className='text-blue-400' />
             <span>{trainer.trainer_contact}</span>
           </div>
         )}
         {trainer.trainer_info && (
           <div className="flex items-start gap-1 text-slate-500 mt-0.5">
-            <Info size={9} className="mt-0.5 flex-shrink-0" />
+            <Info size={9} className="mt-0.5 flex-shrink-0 text-blue-400" />
             <span className="line-clamp-2">{trainer.trainer_info}</span>
           </div>
         )}
@@ -85,7 +85,7 @@ const TrainerCard: React.FC<TrainerCardProps> = ({ trainer, courseId, onEdit }) 
           onClick={togglePrimary}
           disabled={update.isPending}
           title={trainer.is_primary ? 'Remove primary' : 'Set as primary'}
-          className="p-1 rounded text-slate-500 hover:text-amber-400 transition-colors"
+          className="p-1 rounded text-slate-500 hover:text-blue-400 transition-colors"
         >
           {update.isPending
             ? <Loader2 size={11} className="animate-spin" />
@@ -343,7 +343,7 @@ const TrainerForm: React.FC<TrainerFormProps> = ({
           type="checkbox"
           checked={form.is_primary}
           onChange={e => set('is_primary', e.target.checked)}
-          className="accent-amber-400 w-3 h-3"
+          className="accent-blue-400 w-3 h-3"
         />
         <span className="text-[11px] text-slate-400">Set as primary trainer</span>
       </label>

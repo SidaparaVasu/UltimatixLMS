@@ -3,10 +3,61 @@ import { useCourseDetail, useMyEnrollments, useEnrollInCourse } from "@/queries/
 import { DifficultyBadge } from "@/components/learner/DifficultyBadge";
 import { EnrollButton } from "@/components/learner/EnrollButton";
 import { CurriculumPreview } from "@/components/learner/CurriculumPreview";
-import { ArrowLeft, Clock, User, Download, ExternalLink, Award } from "lucide-react";
+import { ArrowLeft, Clock, User, Download, ExternalLink, Award, Mail, Phone, Info, Star } from "lucide-react";
 import { useMemo, useState } from "react";
 import { fileApi } from "@/api/file-api";
-import type { CourseResource } from "@/types/courses.types";
+import type { CourseResource, CourseTrainer } from "@/types/courses.types";
+
+
+function TrainerCard({ trainer }: { trainer: CourseTrainer }) {
+  const name = trainer.display_name || trainer.trainer_name || 'Trainer';
+
+  return (
+    <div className="flex items-start gap-3 py-3 border-b border-gray-100 last:border-0">
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-sm font-semibold text-gray-900 truncate">{name}</span>
+          {trainer.is_primary && (
+            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-semibold">
+              <Star className="h-2.5 w-2.5" />
+              Primary
+            </span>
+          )}
+          {trainer.is_external && (
+            <span className="px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 text-[10px] font-medium">
+              External
+            </span>
+          )}
+        </div>
+
+        {trainer.display_email && (
+          <a
+            href={`mailto:${trainer.display_email}`}
+            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 mt-0.5 truncate"
+          >
+            <Mail className="h-3 w-3 flex-shrink-0" />
+            {trainer.display_email}
+          </a>
+        )}
+
+        {trainer.trainer_contact && (
+          <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
+            <Phone className="h-3 w-3 flex-shrink-0" />
+            {trainer.trainer_contact}
+          </div>
+        )}
+
+        {trainer.trainer_info && (
+          <div className="flex items-start gap-1 text-xs text-gray-500 mt-1">
+            <Info className="h-3 w-3 flex-shrink-0 mt-0.5" />
+            <span className="line-clamp-2">{trainer.trainer_info}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function CourseDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -221,6 +272,20 @@ export default function CourseDetailPage() {
                       {skill.target_level_name}
                     </span>
                   </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Trainers Section */}
+          {course.trainers && course.trainers.length > 0 && (
+            <div className="bg-white border border-gray-200 p-6 rounded-md">
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">
+                {course.trainers.length === 1 ? 'Course Trainer' : 'Course Trainers'}
+              </h2>
+              <div>
+                {course.trainers.map(trainer => (
+                  <TrainerCard key={trainer.id} trainer={trainer} />
                 ))}
               </div>
             </div>
