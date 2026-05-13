@@ -12,6 +12,7 @@ from .course_service import (
     CourseDiscussionReplyService,
     CourseParticipantService,
     CourseNoteService,
+    CourseTrainerMapService,
 )
 
 
@@ -29,4 +30,5 @@ __all__ = [
     "CourseDiscussionReplyService",
     "CourseParticipantService",
     "CourseNoteService",
+    "CourseTrainerMapService",
 ]

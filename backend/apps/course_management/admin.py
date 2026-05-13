@@ -13,6 +13,7 @@ from .models import (
     CourseDiscussionReply,
     CourseParticipant,
     CourseNote,
+    CourseTrainerMap,
 )
 
 
@@ -31,6 +32,12 @@ class CourseTagMapInline(admin.TabularInline):
     extra = 1
 
 
+class CourseTrainerMapInline(admin.TabularInline):
+    model = CourseTrainerMap
+    extra = 1
+    fields = ("is_external", "employee", "trainer_name", "trainer_email", "trainer_contact", "is_primary")
+
+
 @admin.register(CourseCategoryMaster)
 class CourseCategoryAdmin(admin.ModelAdmin):
     list_display = ("category_name", "category_code", "is_active", "created_at")
@@ -42,7 +49,7 @@ class CourseMasterAdmin(admin.ModelAdmin):
     list_display = ("course_title", "course_code", "category", "difficulty_level", "is_active")
     list_filter = ("difficulty_level", "category", "is_active")
     search_fields = ("course_title", "course_code", "description")
-    inlines = [CourseTagMapInline, CourseSkillMappingInline, CourseSectionInline]
+    inlines = [CourseTagMapInline, CourseSkillMappingInline, CourseSectionInline, CourseTrainerMapInline]
     autocomplete_fields = ["category", "created_by"]
 
 
@@ -101,4 +108,10 @@ class CourseParticipantAdmin(admin.ModelAdmin):
 class CourseNotesAdmin(admin.ModelAdmin):
     list_display = ("enrollment", "lesson", "note_text", "created_at", "updated_at")
     list_filter = ("enrollment", "lesson", "note_text", "created_at", "updated_at")
-    
+
+
+@admin.register(CourseTrainerMap)
+class CourseTrainerMapAdmin(admin.ModelAdmin):
+    list_display = ("course", "is_external", "employee", "trainer_name", "trainer_email", "is_primary", "created_at")
+    list_filter = ("course", "is_external", "is_primary")
+    search_fields = ("trainer_name", "trainer_email", "employee__employee_code", "course__course_code")

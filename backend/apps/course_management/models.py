@@ -308,6 +308,76 @@ class CourseNote(models.Model):
         return f"Note by {self.enrollment.employee.employee_code}{lesson_info}"
 
 
+class CourseTrainerMap(models.Model):
+    """
+    Associates one or more trainers with a course.
+
+    A trainer can be either an internal employee (is_external=False, employee set)
+    or an external person (is_external=True, trainer_* fields filled in).
+    Exactly one trainer per course should have is_primary=True.
+    """
+    course = models.ForeignKey(
+        CourseMaster,
+        on_delete=models.CASCADE,
+        related_name="trainers",
+    )
+    is_external = models.BooleanField(
+        default=False,
+        help_text="True when the trainer is not a company employee.",
+    )
+    # ── Internal trainer fields ───────────────────────────────────────────────
+    employee = models.ForeignKey(
+        EmployeeMaster,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="trainer_assignments",
+        help_text="Set when is_external=False.",
+    )
+    # ── External trainer fields ───────────────────────────────────────────────
+    trainer_name = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Full name — required when is_external=True.",
+    )
+    trainer_email = models.EmailField(
+        blank=True,
+        default="",
+        help_text="Contact email — required when is_external=True.",
+    )
+    trainer_contact = models.CharField(
+        max_length=30,
+        blank=True,
+        default="",
+        help_text="Phone / contact number.",
+    )
+    trainer_info = models.TextField(
+        blank=True,
+        default="",
+        help_text="Short bio or additional information about the trainer.",
+    )
+    # ── Common ────────────────────────────────────────────────────────────────
+    is_primary = models.BooleanField(
+        default=False,
+        help_text="Marks the lead trainer for the course.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "course_trainer_map"
+        verbose_name = "Course Trainer"
+        verbose_name_plural = "Course Trainers"
+        indexes = [
+            models.Index(fields=["course"], name="idx_crs_trainer_course"),
+        ]
+
+    def __str__(self):
+        if self.is_external:
+            return f"{self.trainer_name} (External) → {self.course.course_code}"
+        return f"{self.employee} → {self.course.course_code}"
+
+
 class CourseParticipant(models.Model):
     """
     Admin-managed invite list for a course.

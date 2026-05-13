@@ -18,6 +18,7 @@ from .models import (
     CourseDiscussionReply,
     CourseParticipant,
     CourseNote,
+    CourseTrainerMap,
 )
 from .serializers import (
     CourseCategorySerializer,
@@ -38,6 +39,8 @@ from .serializers import (
     CourseNoteSerializer,
     CourseNoteCreateSerializer,
     CourseNoteUpdateSerializer,
+    CourseTrainerMapSerializer,
+    CourseTrainerWriteSerializer,
 )
 from .services import (
     CourseCategoryService,
@@ -53,6 +56,7 @@ from .services import (
     CourseDiscussionReplyService,
     CourseParticipantService,
     CourseNoteService,
+    CourseTrainerMapService,
 )
 
 
@@ -155,7 +159,8 @@ class CourseMasterViewSet(BaseCourseViewSet):
         """
         # For any mutating action, skip the visibility filter entirely
         if self.action in ("update", "partial_update", "destroy",
-                           "sync_curriculum", "participants", "remove_participant"):
+                           "sync_curriculum", "participants", "remove_participant",
+                           "trainers", "manage_trainer"):
             return CourseMaster.objects.all()
 
         # For list/retrieve, apply the is_active filter
@@ -241,6 +246,70 @@ class CourseMasterViewSet(BaseCourseViewSet):
             return success_response(message="Participant removed successfully.")
         except CourseParticipant.DoesNotExist:
             return error_response(message="Participant not found.")
+
+    # ── Trainer nested actions ────────────────────────────────────────────────
+
+    @action(detail=True, methods=["get", "post"], url_path="trainers")
+    def trainers(self, request, pk=None):
+        """
+        GET  /courses/{id}/trainers/  — list all trainers for the course.
+        POST /courses/{id}/trainers/  — add a trainer to the course.
+        """
+        course = self.get_object()
+
+        if request.method == "GET":
+            trainers = CourseTrainerMapService().get_trainers_for_course(course.id)
+            serializer = CourseTrainerMapSerializer(trainers, many=True)
+            return success_response(data=serializer.data)
+
+        # POST — add trainer
+        serializer = CourseTrainerWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            trainer = CourseTrainerMapService().add_trainer(
+                course_id=course.id,
+                validated_data=serializer.validated_data,
+            )
+        except ValueError as exc:
+            return error_response(message=str(exc), status_code=400)
+
+        return created_response(
+            message="Trainer added successfully.",
+            data=CourseTrainerMapSerializer(trainer).data,
+        )
+
+    @action(detail=True, methods=["patch", "delete"], url_path=r"trainers/(?P<trainer_id>\d+)")
+    def manage_trainer(self, request, pk=None, trainer_id=None):
+        """
+        PATCH  /courses/{id}/trainers/{trainer_id}/  — update a trainer.
+        DELETE /courses/{id}/trainers/{trainer_id}/  — remove a trainer.
+        """
+        course = self.get_object()
+
+        if request.method == "DELETE":
+            try:
+                trainer = CourseTrainerMap.objects.get(pk=trainer_id, course=course)
+                trainer.delete()
+                return success_response(message="Trainer removed successfully.")
+            except CourseTrainerMap.DoesNotExist:
+                return error_response(message="Trainer not found.", status_code=404)
+
+        # PATCH — update trainer
+        serializer = CourseTrainerWriteSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        try:
+            updated = CourseTrainerMapService().update_trainer(
+                trainer_id=int(trainer_id),
+                course_id=course.id,
+                validated_data=serializer.validated_data,
+            )
+        except ValueError as exc:
+            return error_response(message=str(exc), status_code=400)
+
+        return success_response(
+            message="Trainer updated successfully.",
+            data=CourseTrainerMapSerializer(updated).data,
+        )
 
 
 class CourseSectionViewSet(BaseCourseViewSet):

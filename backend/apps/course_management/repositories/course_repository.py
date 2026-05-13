@@ -13,6 +13,7 @@ from ..models import (
     CourseDiscussionReply,
     CourseParticipant,
     CourseNote,
+    CourseTrainerMap,
 )
 from django.db.models import Count
 
@@ -119,4 +120,17 @@ class CourseNoteRepository(BaseRepository[CourseNote]):
             .filter(enrollment_id=enrollment_id)
             .select_related("lesson__section")
             .order_by("lesson__display_order", "-created_at")
+        )
+
+
+class CourseTrainerMapRepository(BaseRepository[CourseTrainerMap]):
+    model = CourseTrainerMap
+
+    def get_trainers_for_course(self, course_id):
+        """Returns all trainers for a course, primary trainer first."""
+        return (
+            self.model.objects
+            .filter(course_id=course_id)
+            .select_related("employee__user__profile")
+            .order_by("-is_primary", "created_at")
         )

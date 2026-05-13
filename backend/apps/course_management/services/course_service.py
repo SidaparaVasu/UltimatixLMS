@@ -13,6 +13,7 @@ from ..repositories import (
     CourseDiscussionReplyRepository,
     CourseParticipantRepository,
     CourseNoteRepository,
+    CourseTrainerMapRepository,
 )
 from django.db import transaction
 from ..models import CourseSection, CourseLesson, CourseContent
@@ -244,3 +245,84 @@ class CourseNoteService(BaseService):
             raise ValueError("Note not found or you do not have permission to delete it.")
         note.delete()
         return True
+
+
+class CourseTrainerMapService(BaseService):
+    repository_class = CourseTrainerMapRepository
+
+    def get_trainers_for_course(self, course_id):
+        """Returns all trainers for a course, primary first."""
+        return self.repository.get_trainers_for_course(course_id)
+
+    @transaction.atomic
+    def add_trainer(self, course_id, validated_data: dict):
+        """
+        Adds a trainer to a course.
+
+        Business rules:
+        - is_external=False  → employee is required; trainer_name/email ignored.
+        - is_external=True   → trainer_name and trainer_email are required;
+                               employee must be None.
+        - If is_primary=True, demotes any existing primary trainer for the course
+          before saving the new one (only one primary allowed per course).
+        """
+        from ..models import CourseMaster, CourseTrainerMap
+
+        is_external = validated_data.get("is_external", False)
+        is_primary = validated_data.get("is_primary", False)
+
+        # Validate internal trainer has an employee
+        if not is_external and not validated_data.get("employee"):
+            raise ValueError("employee is required for an internal trainer.")
+
+        # Validate external trainer has name + email
+        if is_external:
+            if not validated_data.get("trainer_name", "").strip():
+                raise ValueError("trainer_name is required for an external trainer.")
+            if not validated_data.get("trainer_email", "").strip():
+                raise ValueError("trainer_email is required for an external trainer.")
+            # Clear employee FK for external trainers
+            validated_data["employee"] = None
+
+        # Enforce single primary: demote existing primary if needed
+        if is_primary:
+            CourseTrainerMap.objects.filter(
+                course_id=course_id, is_primary=True
+            ).update(is_primary=False)
+
+        return self.repository.create(course_id=course_id, **validated_data)
+
+    @transaction.atomic
+    def update_trainer(self, trainer_id, course_id, validated_data: dict):
+        """
+        Updates a trainer record. Applies the same business rules as add_trainer.
+        Raises ValueError if the trainer does not belong to the given course.
+        """
+        from ..models import CourseTrainerMap
+
+        try:
+            trainer = CourseTrainerMap.objects.get(pk=trainer_id, course_id=course_id)
+        except CourseTrainerMap.DoesNotExist:
+            raise ValueError("Trainer not found for this course.")
+
+        is_external = validated_data.get("is_external", trainer.is_external)
+        is_primary = validated_data.get("is_primary", trainer.is_primary)
+
+        if not is_external and not validated_data.get("employee", trainer.employee):
+            raise ValueError("employee is required for an internal trainer.")
+
+        if is_external:
+            name = validated_data.get("trainer_name", trainer.trainer_name)
+            email = validated_data.get("trainer_email", trainer.trainer_email)
+            if not name.strip():
+                raise ValueError("trainer_name is required for an external trainer.")
+            if not email.strip():
+                raise ValueError("trainer_email is required for an external trainer.")
+            validated_data["employee"] = None
+
+        if is_primary and not trainer.is_primary:
+            CourseTrainerMap.objects.filter(
+                course_id=course_id, is_primary=True
+            ).exclude(pk=trainer_id).update(is_primary=False)
+
+        return self.repository.update(pk=trainer_id, **validated_data)

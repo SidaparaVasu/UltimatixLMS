@@ -16,6 +16,7 @@ from .models import (
     CourseDiscussionReply,
     CourseParticipant,
     CourseNote,
+    CourseTrainerMap,
 )
 from apps.org_management.models import EmployeeMaster
 
@@ -172,13 +173,20 @@ class CourseDetailSerializer(CourseMasterSerializer):
     tags = CourseTagMapSerializer(many=True, read_only=True)
     skills = CourseSkillMappingSerializer(source="skilled_outcomes", many=True, read_only=True)
     resources = serializers.SerializerMethodField()
+    trainers = serializers.SerializerMethodField()
 
     class Meta(CourseMasterSerializer.Meta):
-        fields = CourseMasterSerializer.Meta.fields + ("sections", "tags", "skills", "resources")
+        fields = CourseMasterSerializer.Meta.fields + ("sections", "tags", "skills", "resources", "trainers")
 
     def get_resources(self, obj):
         active_resources = obj.resources.filter(is_active=True)
         return CourseResourceSerializer(active_resources, many=True).data
+
+    def get_trainers(self, obj):
+        return CourseTrainerMapSerializer(
+            obj.trainers.select_related("employee__user__profile").order_by("-is_primary", "created_at"),
+            many=True,
+        ).data
 
 
 
@@ -331,3 +339,67 @@ class CourseNoteCreateSerializer(serializers.Serializer):
 class CourseNoteUpdateSerializer(serializers.Serializer):
     """Input schema for updating note text only."""
     note_text = serializers.CharField(min_length=1)
+
+
+# ── Course Trainer Serializers ────────────────────────────────────────────────
+
+class CourseTrainerMapSerializer(serializers.ModelSerializer):
+    """
+    Read serializer — returns full trainer details.
+    For internal trainers, populates display fields from the employee record.
+    For external trainers, returns the trainer_* fields directly.
+    """
+    display_name = serializers.SerializerMethodField()
+    display_email = serializers.SerializerMethodField()
+    employee_code = serializers.CharField(source="employee.employee_code", read_only=True)
+
+    class Meta:
+        model = CourseTrainerMap
+        fields = (
+            "id", "course", "is_external",
+            "employee", "employee_code",
+            "trainer_name", "trainer_email", "trainer_contact", "trainer_info",
+            "is_primary", "display_name", "display_email",
+            "created_at",
+        )
+        read_only_fields = ("id", "course", "created_at", "display_name", "display_email", "employee_code")
+
+    def get_display_name(self, obj) -> str:
+        if obj.is_external:
+            return obj.trainer_name
+        try:
+            p = obj.employee.user.profile
+            return f"{p.first_name} {p.last_name}".strip() or obj.employee.employee_code
+        except Exception:
+            return obj.employee.employee_code if obj.employee else ""
+
+    def get_display_email(self, obj) -> str:
+        if obj.is_external:
+            return obj.trainer_email
+        try:
+            return obj.employee.user.email
+        except Exception:
+            return ""
+
+
+class CourseTrainerWriteSerializer(serializers.Serializer):
+    """
+    Write serializer for adding / updating a trainer.
+    Validation of the is_external / employee / trainer_name rules is handled
+    in the service layer so the serializer stays thin.
+    """
+    is_external = serializers.BooleanField(default=False)
+    # Internal trainer
+    employee = serializers.PrimaryKeyRelatedField(
+        queryset=EmployeeMaster.objects.all(),
+        required=False,
+        allow_null=True,
+        default=None,
+    )
+    # External trainer
+    trainer_name = serializers.CharField(max_length=200, required=False, allow_blank=True, default="")
+    trainer_email = serializers.EmailField(required=False, allow_blank=True, default="")
+    trainer_contact = serializers.CharField(max_length=30, required=False, allow_blank=True, default="")
+    trainer_info = serializers.CharField(required=False, allow_blank=True, default="")
+    # Common
+    is_primary = serializers.BooleanField(default=False)

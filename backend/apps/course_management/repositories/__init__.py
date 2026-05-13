@@ -12,6 +12,7 @@ from .course_repository import (
     CourseDiscussionReplyRepository,
     CourseParticipantRepository,
     CourseNoteRepository,
+    CourseTrainerMapRepository,
 )
 
 
@@ -29,4 +30,5 @@ __all__ = [
     "CourseDiscussionReplyRepository",
     "CourseParticipantRepository",
     "CourseNoteRepository",
+    "CourseTrainerMapRepository",
 ]
