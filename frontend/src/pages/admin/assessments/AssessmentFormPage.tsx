@@ -295,20 +295,41 @@ export default function AssessmentFormPage() {
 
   // ── Question mapping reconciliation (CURATED mode) ────────────────────────
   const reconcileQuestionMappings = async (savedAssessmentId: number) => {
+    // Nothing staged — no changes to make
     if (stagedQuestions.length === 0) return;
 
-    // Delete all existing mappings first (full replace strategy for simplicity)
+    const existingById = new Map(existingMappings.map(m => [m.question, m]));
+    const stagedIds    = new Set(stagedQuestions.map(s => s.questionId));
+
+    // 1. Delete mappings that were removed from the staged list
     for (const mapping of existingMappings) {
-      await standaloneAssessmentApi.removeQuestionMapping(mapping.id);
+      if (!stagedIds.has(mapping.question)) {
+        await standaloneAssessmentApi.removeQuestionMapping(mapping.id);
+      }
     }
 
-    // Add all staged questions in order
+    // 2. Add new mappings (questions in staged that don't exist yet)
+    //    and collect IDs of existing ones that need reordering
+    const toReorder: Array<{ id: number; display_order: number }> = [];
+
     for (const staged of stagedQuestions) {
-      await standaloneAssessmentApi.addQuestionMapping({
-        assessment:    savedAssessmentId,
-        question:      staged.questionId,
-        display_order: staged.display_order,
-      });
+      const existing = existingById.get(staged.questionId);
+      if (!existing) {
+        // New question — add it
+        await standaloneAssessmentApi.addQuestionMapping({
+          assessment:    savedAssessmentId,
+          question:      staged.questionId,
+          display_order: staged.display_order,
+        });
+      } else if (existing.display_order !== staged.display_order) {
+        // Existing question with changed order
+        toReorder.push({ id: existing.id, display_order: staged.display_order });
+      }
+    }
+
+    // 3. Bulk-update display_order for reordered questions
+    if (toReorder.length > 0) {
+      await standaloneAssessmentApi.reorderQuestionMappings({ mappings: toReorder });
     }
   };
 
@@ -865,7 +886,7 @@ export default function AssessmentFormPage() {
       </div>
 
       {/* ── Question Picker Drawer (CURATED mode) ── */}
-      {form.question_selection_mode === 'CURATED' && assessmentId && (
+      {form.question_selection_mode === 'CURATED' && (
         <QuestionPickerDrawer
           open={pickerOpen}
           onClose={() => setPickerOpen(false)}

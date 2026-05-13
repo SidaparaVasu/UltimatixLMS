@@ -33,6 +33,7 @@ import {
   FilePenLine,
   BadgeCheck,
   History,
+  CircleQuestionMark,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { getFullName, getInitials, getPrimaryRoleName } from "@/utils/user.utils";
@@ -107,6 +108,7 @@ const NAV_CONFIG: NavSection[] = [
       { label: "Training Plans",      icon: GraduationCap, path: "/admin/training-plans",    requiredPermission: PERMISSIONS.TRAINING_PLAN_VIEW },
       { label: "Training Plan Approval",           icon: CheckCircle,   path: "/admin/approvals",         requiredPermission: PERMISSIONS.TRAINING_PLAN_APPROVE },
       { label: "Training Calendar",   icon: CalendarDays,  path: "/admin/training-calendar", requiredPermission: PERMISSIONS.TRAINING_CALENDAR_APPROVE },
+      { label: "Question Bank",       icon: CircleQuestionMark, path: "/admin/assessments/questions", requiredPermission: PERMISSIONS.ASSESSMENT_MANAGE },
       { label: "Manage Assessments",          icon: FilePenLine, path: "/admin/assessments", requiredPermission: PERMISSIONS.ASSESSMENT_MANAGE},
       { label: "Assessment Review",      icon: ClipboardCheck, path: "/admin/assessments/review",     requiredPermission: PERMISSIONS.ASSESSMENT_REVIEW_MANAGE },
       { label: "Skill Upgrade Approval",      icon: BadgeCheck, path: "/admin/assessments/skill-upgrades", requiredPermission: PERMISSIONS.SKILL_UPGRADE_APPROVE },

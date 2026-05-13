@@ -29,8 +29,11 @@ export type { StagedQuestion };
 interface QuestionPickerDrawerProps {
   open: boolean;
   onClose: () => void;
-  /** Assessment ID — used to exclude already-mapped questions from the browser */
-  assessmentId: number;
+  /**
+   * Assessment ID — used to exclude already-mapped questions from the browser.
+   * Pass null for new (unsaved) assessments — the exclude filter is simply skipped.
+   */
+  assessmentId: number | null;
   /** Whether the assessment has is_randomized=true (hides drag handles) */
   isRandomized: boolean;
   /** Questions already confirmed/saved on the assessment */
@@ -287,7 +290,6 @@ interface StagedQuestionRowProps {
 const StagedQuestionRow: React.FC<StagedQuestionRowProps> = ({
   item, index, showDragHandle, onRemove, onDragStart, onDragOver, onDrop,
 }) => {
-  const typeColor = QUESTION_TYPE_COLORS[item.question_type] ?? 'var(--color-accent)';
 
   return (
     <div
@@ -662,7 +664,8 @@ export const QuestionPickerDrawer: React.FC<QuestionPickerDrawerProps> = ({
     search:             search || undefined,
     question_type:      (typeFilter as StandaloneQuestionType) || undefined,
     is_active:          true,
-    exclude_assessment: assessmentId,
+    // Only exclude already-mapped questions when we have a saved assessment ID
+    exclude_assessment: assessmentId ?? undefined,
     page,
     page_size:          BANK_PAGE_SIZE,
   });
@@ -748,7 +751,7 @@ export const QuestionPickerDrawer: React.FC<QuestionPickerDrawerProps> = ({
       open={open}
       onOpenChange={onClose}
       position="right"
-      size="90vw"
+      size="100vw"
       title="Select Questions"
       description="Browse the question bank and build your assessment question list."
       footer={
@@ -785,17 +788,17 @@ export const QuestionPickerDrawer: React.FC<QuestionPickerDrawerProps> = ({
         </div>
       }
     >
-      {/* ── Two-column layout ── */}
+      {/* ── Two-column layout — fills the drawer body height ── */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '1fr 340px',
+        gridTemplateColumns: '1fr 1fr',
         gap: 'var(--space-4)',
-        height: '100%',
-        minHeight: 0,
+        // Explicit height so grid children can scroll independently
+        height: 'auto',
       }}>
 
         {/* ── LEFT: Question bank browser ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', minHeight: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', overflow: 'hidden' }}>
 
           {/* Search + type filter */}
           <div style={{ display: 'flex', gap: 'var(--space-2)', flexShrink: 0 }}>
@@ -810,7 +813,7 @@ export const QuestionPickerDrawer: React.FC<QuestionPickerDrawerProps> = ({
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search questions..."
-                style={{ paddingLeft: '32px', fontSize: '13px' }}
+                style={{ paddingLeft: '32px', fontSize: '13px', width: '100%' }}
               />
             </div>
             <select
@@ -825,8 +828,8 @@ export const QuestionPickerDrawer: React.FC<QuestionPickerDrawerProps> = ({
             </select>
           </div>
 
-          {/* Question list */}
-          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+          {/* Question list — scrollable */}
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', minHeight: 0 }}>
             {bankLoading && (
               Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} style={{
@@ -932,7 +935,7 @@ export const QuestionPickerDrawer: React.FC<QuestionPickerDrawerProps> = ({
           display: 'flex', flexDirection: 'column', gap: 'var(--space-3)',
           borderLeft: '1px solid var(--color-border)',
           paddingLeft: 'var(--space-4)',
-          minHeight: 0,
+          overflow: 'hidden',
         }}>
           {/* Header */}
           <div style={{ flexShrink: 0 }}>
@@ -945,8 +948,8 @@ export const QuestionPickerDrawer: React.FC<QuestionPickerDrawerProps> = ({
             </p>
           </div>
 
-          {/* Staged list */}
-          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+          {/* Staged list — scrollable */}
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', minHeight: 0 }}>
             {staged.length === 0 ? (
               <div style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
