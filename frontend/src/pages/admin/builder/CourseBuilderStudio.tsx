@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, PlayCircle, Settings, LayoutTemplate, AlertCircle, Archive, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Save, PlayCircle, Settings, LayoutTemplate, AlertCircle, Archive, CheckCircle2, UserCheck } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { courseApi } from '@/api/course-api';
 import { CourseMaster, CourseStatus } from '@/types/courses.types';
@@ -10,8 +10,11 @@ import { SectionEditor } from '@/components/admin/builder/SectionEditor';
 import { LessonEditor } from '@/components/admin/builder/LessonEditor';
 import { ElementProperties } from '@/components/admin/builder/ElementProperties';
 import { CourseMapSettings } from '@/components/admin/builder/CourseMapSettings';
+import { TrainersSection } from '@/components/admin/builder/TrainersSection';
 import { LearnerPreviewPane } from '@/components/admin/builder/preview/LearnerPreviewPane';
 import { cn } from '@/utils/cn';
+
+type RightPane = 'settings' | 'editor' | 'trainers';
 
 const CourseBuilderStudio: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -28,7 +31,7 @@ const CourseBuilderStudio: React.FC = () => {
   const draft = useCurriculumDraft(course);
 
   // Layout state
-  const [activePane, setActivePane] = useState<'editor' | 'settings'>('settings');
+  const [activePane, setActivePane] = useState<RightPane>('settings');
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -529,29 +532,58 @@ const CourseBuilderStudio: React.FC = () => {
           )}
         </section>
 
-        {/* Right Pane: Properties / Settings */}
+        {/* Right Pane: Properties / Settings / Trainers */}
         <aside className="w-[320px] flex flex-col border-l border-slate-800/50 bg-[#161925] shrink-0 z-10">
-          <div className="flex items-center gap-4 pt-3 border-b border-slate-800/50">
-            <button 
-              className={`flex-1 pb-2 text-xs font-medium border-b-2 transition-colors flex items-center justify-center gap-1.5 ${activePane === 'settings' ? 'border-blue-500 text-white' : 'border-transparent text-slate-500 hover:text-slate-300'}`}
+          {/* Tab bar — three tabs */}
+          <div className="flex items-center pt-3 border-b border-slate-800/50 shrink-0">
+            <button
+              className={cn(
+                'flex-1 pb-2 text-xs font-medium border-b-2 transition-colors flex items-center justify-center gap-1.5',
+                activePane === 'settings'
+                  ? 'border-blue-500 text-white'
+                  : 'border-transparent text-slate-500 hover:text-slate-300',
+              )}
               onClick={() => setActivePane('settings')}
             >
               <Settings size={12} />
               Course Settings
             </button>
-            <button 
-              className={`flex-1 pb-2 text-xs font-medium border-b-2 transition-colors ${activePane === 'editor' ? 'border-blue-500 text-white' : 'border-transparent text-slate-500 hover:text-slate-300'}`}
+            <button
+              className={cn(
+                'flex-1 pb-2 text-xs font-medium border-b-2 transition-colors flex items-center justify-center gap-1.5',
+                activePane === 'trainers'
+                  ? 'border-blue-500 text-white'
+                  : 'border-transparent text-slate-500 hover:text-slate-300',
+              )}
+              onClick={() => setActivePane('trainers')}
+            >
+              <UserCheck size={12} />
+              Trainers
+            </button>
+            {/* <button
+              className={cn(
+                'flex-1 pb-2 text-xs font-medium border-b-2 transition-colors',
+                activePane === 'editor'
+                  ? 'border-blue-500 text-white'
+                  : 'border-transparent text-slate-500 hover:text-slate-300',
+              )}
               onClick={() => setActivePane('editor')}
             >
-              Element Properties
-            </button>
+              Properties
+            </button> */}
           </div>
-          <div className="flex-1 overflow-hidden">
-            {activePane === 'editor' ? (
-              <ElementProperties selectedNode={selectedNode} />
-            ) : (
+
+          {/* Pane content — all three mounted, only active one visible */}
+          <div className="flex-1 overflow-hidden relative">
+            <div className={cn('absolute inset-0 overflow-y-auto', activePane === 'settings' ? 'block' : 'hidden')}>
               <CourseMapSettings course={course} onCourseUpdated={handleCourseUpdated} />
-            )}
+            </div>
+            <div className={cn('absolute inset-0 overflow-y-auto p-4', activePane === 'trainers' ? 'block' : 'hidden')}>
+              <TrainersSection courseId={course.id} />
+            </div>
+            <div className={cn('absolute inset-0 overflow-y-auto', activePane === 'editor' ? 'block' : 'hidden')}>
+              <ElementProperties selectedNode={selectedNode} />
+            </div>
           </div>
         </aside>
 
