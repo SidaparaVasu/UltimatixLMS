@@ -73,4 +73,6 @@ export interface QuestionBankFilters {
   search?: string;
   page?: number;
   page_size?: number;
+  /** Exclude questions already mapped to this assessment (CURATED picker) */
+  exclude_assessment?: number;
 }

@@ -128,3 +128,16 @@ export interface QuestionAvailability {
   /** Only present when no skill mappings exist */
   message?: string;
 }
+
+// ── Staged question (local state in QuestionPickerDrawer) ─────────────────────
+export interface StagedQuestion {
+  /** UUID of the QuestionBank row */
+  questionId: string;
+  question_text: string;
+  question_type: import('@/types/question-bank.types').StandaloneQuestionType;
+  skill_name: string | null;
+  skill_level_name: string | null;
+  difficulty_complexity: number;
+  /** 1-based position in the final list */
+  display_order: number;
+}
