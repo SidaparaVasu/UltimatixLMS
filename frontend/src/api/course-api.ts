@@ -16,6 +16,8 @@ import {
   CourseNote,
   CourseNoteCreatePayload,
   CourseNoteUpdatePayload,
+  CourseTrainer,
+  CourseTrainerWritePayload,
 } from "@/types/courses.types";
 
 /**
@@ -419,6 +421,53 @@ export const courseApi = {
   deleteNote: async (id: number) => {
     try {
       const response = await apiClient.delete(`/courses/notes/${id}/`);
+      return handleApiResponse(response.data);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  // ── Trainers ───────────────────────────────────────────────────────────────
+
+  /** GET /courses/{courseId}/trainers/ */
+  getTrainers: async (courseId: number) => {
+    try {
+      const response = await apiClient.get(`/courses/courses/${courseId}/trainers/`);
+      return handleApiResponse<CourseTrainer[]>(response.data, false);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  /** POST /courses/{courseId}/trainers/ */
+  addTrainer: async (courseId: number, data: CourseTrainerWritePayload) => {
+    try {
+      const response = await apiClient.post(`/courses/courses/${courseId}/trainers/`, data);
+      return handleApiResponse<CourseTrainer>(response.data);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  /** PATCH /courses/{courseId}/trainers/{trainerId}/ */
+  updateTrainer: async (courseId: number, trainerId: number, data: Partial<CourseTrainerWritePayload>) => {
+    try {
+      const response = await apiClient.patch(
+        `/courses/courses/${courseId}/trainers/${trainerId}/`,
+        data,
+      );
+      return handleApiResponse<CourseTrainer>(response.data);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  /** DELETE /courses/{courseId}/trainers/{trainerId}/ */
+  removeTrainer: async (courseId: number, trainerId: number) => {
+    try {
+      const response = await apiClient.delete(
+        `/courses/courses/${courseId}/trainers/${trainerId}/`,
+      );
       return handleApiResponse(response.data);
     } catch (error) {
       return handleApiError(error);

@@ -11,6 +11,7 @@ import { courseApi } from "@/api/course-api";
 import { fileApi } from "@/api/file-api";
 import { skillApi } from "@/api/skill-api";
 import { SearchableDropdown } from "./SearchableDropdown";
+import { TrainersSection } from "./TrainersSection";
 import { cn } from "@/utils/cn";
 
 const DIFFICULTY_OPTIONS = [
@@ -654,6 +655,9 @@ export const CourseMapSettings: React.FC<CourseMapSettingsProps> = ({ course, on
             )}
           </div>
         </div>
+
+        {/* ── Trainers ── */}
+        <TrainersSection courseId={course.id} />
 
       </div>
     </div>

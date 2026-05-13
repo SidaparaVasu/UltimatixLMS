@@ -149,6 +149,7 @@ export interface CourseDetail extends CourseMaster {
   sections: CourseSection[];
   tags: CourseTagMap[];
   skills: CourseSkillMapping[];
+  trainers?: CourseTrainer[];
 }
 
 export interface CurriculumSyncContentPayload {
@@ -213,8 +214,38 @@ export interface EnrollRequest {
   course_id: number;
 }
 
-// ── Notes ─────────────────────────────────────────────────────────────────────
+// ── Trainers ──────────────────────────────────────────────────────────────────
 
+export interface CourseTrainer {
+  id: number;
+  course: number;
+  is_external: boolean;
+  /** Set when is_external=false */
+  employee: number | null;
+  employee_code: string | null;
+  /** External trainer fields */
+  trainer_name: string;
+  trainer_email: string;
+  trainer_contact: string;
+  trainer_info: string;
+  /** Computed by serializer — resolves to employee name or trainer_name */
+  display_name: string;
+  display_email: string;
+  is_primary: boolean;
+  created_at: string;
+}
+
+export interface CourseTrainerWritePayload {
+  is_external: boolean;
+  employee?: number | null;
+  trainer_name?: string;
+  trainer_email?: string;
+  trainer_contact?: string;
+  trainer_info?: string;
+  is_primary?: boolean;
+}
+
+// ── Notes ─────────────────────────────────────────────────────────────────────
 export interface CourseNote {
   id: number;
   enrollment: number;
