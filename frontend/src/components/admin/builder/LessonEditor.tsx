@@ -6,7 +6,7 @@ import {
 import { CurriculumNode, ContentType } from './CurriculumTree';
 import { cn } from '@/utils/cn';
 import { QuizBuilder, QuizQuestion, DEFAULT_ASSESSMENT_CONFIG } from './QuizBuilder';
-import { getVideoInfo, fetchVideoTitle } from '@/utils/video-utils';
+import { getVideoInfo, fetchVideoMetadata } from '@/utils/video-utils';
 import { fileApi } from '@/api/file-api';
 import {
   assessmentApi,
@@ -143,17 +143,36 @@ export const LessonEditor: React.FC<LessonEditorProps> = ({ node, courseId, onSa
     }).finally(() => setIsLoadingQuiz(false));
   }, [node.id, node.dbId, contentType, assessmentId]);
 
-  const fetchVideoMetadata = async (url: string) => {
-    if (!url || !videoInfo) return;
+  const fetchVideoMetadataFromUrl = async (url: string) => {
+    if (!url || !getVideoInfo(url)) return;
     setIsFetchingMetadata(true);
-    const fetchedTitle = await fetchVideoTitle(url);
-    // Only auto-fill if the title is still a default/empty value — never overwrite user input
+    const { title: fetchedTitle, durationMinutes } = await fetchVideoMetadata(url);
+    // Only auto-fill title if it's still a default/empty value — never overwrite user input
     const isDefaultTitle = !title || title === 'New Lesson' || title === 'Untitled Lesson' || title === node.title;
     if (fetchedTitle && isDefaultTitle) {
       setTitle(fetchedTitle);
     }
+    // Auto-fill duration only when the provider returns it (Vimeo) and the
+    // user hasn't manually changed it from the default 15-minute placeholder.
+    if (durationMinutes !== null && estimatedDuration === 15) {
+      setEstimatedDuration(durationMinutes);
+    }
     setIsFetchingMetadata(false);
   };
+
+  // ── Auto-fetch metadata when a valid video URL is pasted ────────────────────
+  // Debounced so it doesn't fire on every keystroke while typing.
+  useEffect(() => {
+    if (!videoUrlDirty) return;           // skip on initial node load
+    const info = getVideoInfo(videoUrl);
+    if (!info) return;                    // not a valid video URL yet
+
+    const timer = setTimeout(() => {
+      fetchVideoMetadataFromUrl(videoUrl);
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [videoUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const resetContentState = (nextType: ContentType) => {
     setContentType(nextType);
@@ -445,7 +464,7 @@ export const LessonEditor: React.FC<LessonEditorProps> = ({ node, courseId, onSa
                 <label className="text-xs font-semibold text-slate-400 uppercase tracking-widest block">Video Source URL</label>
                 {videoUrl && videoInfo && (
                   <button
-                    onClick={() => fetchVideoMetadata(videoUrl)}
+                    onClick={() => fetchVideoMetadataFromUrl(videoUrl)}
                     disabled={isFetchingMetadata}
                     className="text-[10px] font-bold text-blue-400 hover:text-blue-300 transition-colors uppercase"
                   >
