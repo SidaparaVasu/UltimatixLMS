@@ -539,6 +539,7 @@ export const AssessmentPlayer = ({
     const isPending = result.status === 'PENDING';
     const scorePercent = Math.round(parseFloat(result.score_percentage));
     const passingPct   = parseFloat(assessment.passing_percentage);
+    const showMarks    = enrollment.show_marks_to_learners;
 
     // Circumference for the score ring
     const radius = 40;
@@ -552,25 +553,40 @@ export const AssessmentPlayer = ({
 
             {/* ── Score banner ── */}
             <div className="flex flex-col items-center mb-8">
-              <div className="relative w-28 h-28 mb-4">
-                <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r={radius} fill="none" stroke="currentColor" strokeWidth="8" className="text-gray-100" />
-                  <circle
-                    cx="50" cy="50" r={radius} fill="none" stroke="currentColor" strokeWidth="8"
-                    strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset}
-                    className={cn('transition-all duration-700',
-                      isPassed ? 'text-emerald-500' : isPending ? 'text-amber-400' : 'text-red-500'
-                    )}
-                  />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className={cn('text-2xl font-bold tabular-nums',
-                    isPassed ? 'text-emerald-600' : isPending ? 'text-amber-500' : 'text-red-500'
-                  )} style={{ fontFamily: 'var(--font-mono)' }}>
-                    {scorePercent}%
-                  </span>
+              {showMarks ? (
+                /* Full score ring — only when show_marks_to_learners is true */
+                <div className="relative w-28 h-28 mb-4">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r={radius} fill="none" stroke="currentColor" strokeWidth="8" className="text-gray-100" />
+                    <circle
+                      cx="50" cy="50" r={radius} fill="none" stroke="currentColor" strokeWidth="8"
+                      strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset}
+                      className={cn('transition-all duration-700',
+                        isPassed ? 'text-emerald-500' : isPending ? 'text-amber-400' : 'text-red-500'
+                      )}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className={cn('text-2xl font-bold tabular-nums',
+                      isPassed ? 'text-emerald-600' : isPending ? 'text-amber-500' : 'text-red-500'
+                    )} style={{ fontFamily: 'var(--font-mono)' }}>
+                      {scorePercent}%
+                    </span>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                /* Pass/fail icon only — marks hidden */
+                <div className={cn(
+                  'w-20 h-20 mb-4 rounded-full flex items-center justify-center',
+                  isPassed  ? 'bg-emerald-50 border-2 border-emerald-200' :
+                  isPending ? 'bg-amber-50 border-2 border-amber-200' :
+                              'bg-red-50 border-2 border-red-200'
+                )}>
+                  {isPassed  ? <CheckCircle className="h-9 w-9 text-emerald-500" /> :
+                   isPending ? <Clock className="h-9 w-9 text-amber-400" /> :
+                               <XCircle className="h-9 w-9 text-red-500" />}
+                </div>
+              )}
 
               <div className={cn('inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold',
                 isPassed  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
@@ -588,31 +604,35 @@ export const AssessmentPlayer = ({
                   ? 'Well done. You have successfully completed this quiz.'
                   : isPending
                   ? 'Some answers require manual review by your instructor. You will be notified once grading is complete.'
-                  : `You needed ${passingPct}% to pass. You can continue the course and request a retake from your instructor.`}
+                  : `You did not meet the passing requirement. You can continue the course and request a retake from your instructor.`}
               </p>
             </div>
 
-            {/* ── Stats row ── */}
-            <div className="grid grid-cols-3 gap-3 mb-6">
-              {[
-                { label: 'Total',     value: String(result.total_questions) },
-                { label: 'Attempted', value: String(result.attempted_count) },
-                { label: 'Correct',   value: String(result.correct_count), green: result.correct_count > 0 },
-              ].map(({ label, value, green }) => (
-                <div key={label} className="bg-gray-50 border border-gray-200 rounded-md p-3 text-center">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">{label}</p>
-                  <p className={cn('text-xl font-bold', green ? 'text-emerald-600' : 'text-gray-800')}
-                     style={{ fontFamily: 'var(--font-mono)' }}>{value}</p>
+            {/* ── Stats row — only when marks are visible ── */}
+            {showMarks && (
+              <>
+                <div className="grid grid-cols-3 gap-3 mb-6">
+                  {[
+                    { label: 'Total',     value: String(result.total_questions) },
+                    { label: 'Attempted', value: String(result.attempted_count) },
+                    { label: 'Correct',   value: String(result.correct_count), green: result.correct_count > 0 },
+                  ].map(({ label, value, green }) => (
+                    <div key={label} className="bg-gray-50 border border-gray-200 rounded-md p-3 text-center">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">{label}</p>
+                      <p className={cn('text-xl font-bold', green ? 'text-emerald-600' : 'text-gray-800')}
+                         style={{ fontFamily: 'var(--font-mono)' }}>{value}</p>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
 
-            <div className="flex items-center justify-between text-xs text-gray-400 mb-6 px-1">
-              <span>Your score: <span className="font-semibold text-gray-600">{scorePercent}%</span></span>
-              <span>Passing score: <span className="font-semibold text-gray-600">{passingPct}%</span></span>
-            </div>
+                <div className="flex items-center justify-between text-xs text-gray-400 mb-6 px-1">
+                  <span>Your score: <span className="font-semibold text-gray-600">{scorePercent}%</span></span>
+                  <span>Passing score: <span className="font-semibold text-gray-600">{passingPct}%</span></span>
+                </div>
+              </>
+            )}
 
-            {/* ── Instructor feedback ── */}
+            {/* ── Instructor feedback — always shown when present ── */}
             {result.instructor_feedback && (
               <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-400 mb-1">Instructor Feedback</p>
@@ -620,8 +640,8 @@ export const AssessmentPlayer = ({
               </div>
             )}
 
-            {/* ── Per-question review ── */}
-            {result.answers && result.answers.length > 0 && (
+            {/* ── Per-question review — only when marks are visible ── */}
+            {showMarks && result.answers && result.answers.length > 0 && (
               <div className="mb-6">
                 <h3 className="text-sm font-semibold text-gray-700 mb-3">Question Review</h3>
                 <div className="flex flex-col gap-2">

@@ -41,6 +41,8 @@ export interface DetailedEnrollmentProgress {
   completed_at: string | null;
   extended_due_date: string | null;
   is_mandatory: boolean;
+  /** If true, learners can see full scores/marks after assessments. If false, only pass/fail is shown. */
+  show_marks_to_learners: boolean;
   effective_due_date: string | null;
   is_overdue: boolean;
   lesson_progress: LessonProgress[];

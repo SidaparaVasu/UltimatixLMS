@@ -45,6 +45,7 @@ class UserCourseEnrollmentSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source="course.category.category_name", read_only=True)
     # Mandatory / overdue computed fields
     is_mandatory = serializers.BooleanField(source="course.is_mandatory", read_only=True)
+    show_marks_to_learners = serializers.BooleanField(source="course.show_marks_to_learners", read_only=True)
     effective_due_date = serializers.SerializerMethodField()
     is_overdue = serializers.SerializerMethodField()
 
@@ -54,7 +55,8 @@ class UserCourseEnrollmentSerializer(serializers.ModelSerializer):
             "id", "course", "course_title", "course_code", "category_name",
             "enrollment_type", "status", "progress_percentage", "enrolled_at",
             "started_at", "completed_at",
-            "extended_due_date", "is_mandatory", "effective_due_date", "is_overdue",
+            "extended_due_date", "is_mandatory", "show_marks_to_learners",
+            "effective_due_date", "is_overdue",
         ]
 
     def get_effective_due_date(self, obj) -> str | None:
