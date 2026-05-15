@@ -56,6 +56,8 @@ export const CourseMapSettings: React.FC<CourseMapSettingsProps> = ({ course, on
   const [editCategoryId, setEditCategoryId] = useState<number>(course.category);
   const [editDifficulty, setEditDifficulty] = useState(course.difficulty_level ?? 'BEGINNER');
   const [editDuration, setEditDuration] = useState(course.estimated_duration_hours);
+  const [editShowMarks, setEditShowMarks] = useState(course.show_marks_to_learners ?? false);
+  const [editIsMandatory, setEditIsMandatory] = useState(course.is_mandatory ?? false);
   const [isSavingMeta, setIsSavingMeta] = useState(false);
   const [metaError, setMetaError] = useState<string | null>(null);
 
@@ -67,6 +69,8 @@ export const CourseMapSettings: React.FC<CourseMapSettingsProps> = ({ course, on
       setEditCategoryId(course.category);
       setEditDifficulty(course.difficulty_level ?? 'BEGINNER');
       setEditDuration(course.estimated_duration_hours);
+      setEditShowMarks(course.show_marks_to_learners ?? false);
+      setEditIsMandatory(course.is_mandatory ?? false);
     }
   }, [course, isEditing]);
 
@@ -76,6 +80,8 @@ export const CourseMapSettings: React.FC<CourseMapSettingsProps> = ({ course, on
     setEditCategoryId(course.category);
     setEditDifficulty(course.difficulty_level ?? 'BEGINNER');
     setEditDuration(course.estimated_duration_hours);
+    setEditShowMarks(course.show_marks_to_learners ?? false);
+    setEditIsMandatory(course.is_mandatory ?? false);
     setMetaError(null);
     setIsEditing(false);
   };
@@ -89,6 +95,8 @@ export const CourseMapSettings: React.FC<CourseMapSettingsProps> = ({ course, on
       category: editCategoryId,
       difficulty_level: editDifficulty as CourseMaster['difficulty_level'],
       estimated_duration_hours: editDuration,
+      show_marks_to_learners: editShowMarks,
+      is_mandatory: editIsMandatory,
     });
     setIsSavingMeta(false);
     if (result === null) {
@@ -336,9 +344,31 @@ export const CourseMapSettings: React.FC<CourseMapSettingsProps> = ({ course, on
                 <span className="text-slate-500">Difficulty</span>
                 <span className="font-medium text-slate-200">{course.difficulty_level || "-"}</span>
               </div>
-              <div className="flex justify-between items-center bg-slate-800/30 p-2 rounded-b">
+              <div className="flex justify-between items-center bg-slate-800/30 p-2">
                 <span className="text-slate-500">Duration</span>
                 <span className="font-medium text-slate-200">{course.estimated_duration_hours}h</span>
+              </div>
+              <div className="flex justify-between items-center bg-slate-800/30 p-2">
+                <span className="text-slate-500">Mandatory</span>
+                <span className={cn(
+                  "text-[10px] font-bold px-1.5 py-0.5 rounded",
+                  course.is_mandatory
+                    ? "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                    : "bg-slate-700/50 text-slate-500"
+                )}>
+                  {course.is_mandatory ? "Yes" : "No"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center bg-slate-800/30 p-2 rounded-b">
+                <span className="text-slate-500">Show Marks</span>
+                <span className={cn(
+                  "text-[10px] font-bold px-1.5 py-0.5 rounded",
+                  course.show_marks_to_learners
+                    ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                    : "bg-slate-700/50 text-slate-500"
+                )}>
+                  {course.show_marks_to_learners ? "Visible" : "Hidden"}
+                </span>
               </div>
             </div>
           ) : (
@@ -412,6 +442,46 @@ export const CourseMapSettings: React.FC<CourseMapSettingsProps> = ({ course, on
                   className="px-3 py-2 bg-slate-800/50 border border-slate-700 rounded text-xs text-white focus:outline-none focus:border-blue-500 transition"
                 />
               </div>
+
+              {/* Mandatory */}
+              <label className="flex items-center justify-between gap-3 px-3 py-2 bg-slate-800/50 border border-slate-700 rounded cursor-pointer hover:border-slate-600 transition">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-xs font-semibold text-slate-300">Mandatory Course</span>
+                  <span className="text-[10px] text-slate-500">Learners must complete this course. Stays accessible after end date.</span>
+                </div>
+                <div
+                  onClick={() => setEditIsMandatory(v => !v)}
+                  className={cn(
+                    "relative shrink-0 w-8 h-4 rounded-full transition-colors cursor-pointer",
+                    editIsMandatory ? "bg-amber-500" : "bg-slate-600"
+                  )}
+                >
+                  <span className={cn(
+                    "absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform",
+                    editIsMandatory ? "translate-x-4" : "translate-x-0.5"
+                  )} />
+                </div>
+              </label>
+
+              {/* Show Marks to Learners */}
+              <label className="flex items-center justify-between gap-3 px-3 py-2 bg-slate-800/50 border border-slate-700 rounded cursor-pointer hover:border-slate-600 transition">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-xs font-semibold text-slate-300">Show Marks to Learners</span>
+                  <span className="text-[10px] text-slate-500">Learners see full scores after assessments. Off = pass/fail only.</span>
+                </div>
+                <div
+                  onClick={() => setEditShowMarks(v => !v)}
+                  className={cn(
+                    "relative shrink-0 w-8 h-4 rounded-full transition-colors cursor-pointer",
+                    editShowMarks ? "bg-emerald-500" : "bg-slate-600"
+                  )}
+                >
+                  <span className={cn(
+                    "absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform",
+                    editShowMarks ? "translate-x-4" : "translate-x-0.5"
+                  )} />
+                </div>
+              </label>
             </div>
           )}
         </div>
