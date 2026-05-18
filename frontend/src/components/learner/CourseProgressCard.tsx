@@ -164,10 +164,13 @@ function ActionButton({
           <BookOpen className="h-3.5 w-3.5" />
           Review Course
         </Link>
-        <button className={cn(base, "bg-emerald-50 text-emerald-700 hover:bg-emerald-100")}>
+        <Link
+          to="/my-certificates"
+          className={cn(base, "bg-emerald-50 text-emerald-700 hover:bg-emerald-100")}
+        >
           <Award className="h-3.5 w-3.5" />
           Certificate
-        </button>
+        </Link>
       </div>
     );
   }

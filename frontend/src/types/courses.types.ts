@@ -27,6 +27,8 @@ export interface CourseMaster {
   show_marks_to_learners: boolean;
   /** If true, learners must complete this course. Mandatory courses stay accessible after end_date. */
   is_mandatory: boolean;
+  /** Days after completion before the certificate expires. Null = lifetime validity. */
+  certificate_validity_days: number | null;
   status: CourseStatus;
   created_by?: number;
   is_active: boolean;

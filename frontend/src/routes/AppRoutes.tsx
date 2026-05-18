@@ -53,6 +53,11 @@ const AssessmentPlayerPage       = lazy(() => import('@/pages/learner/Assessment
 const SkillHistoryPage           = lazy(() => import('@/pages/admin/skills/SkillHistoryPage'));
 const NotificationsPage    = lazy(() => import('@/pages/NotificationsPage'));
 const RolesPage            = lazy(() => import('@/pages/admin/rbac/RolesPage'));
+
+// Certificate Management pages
+const CertificateManagementPage = lazy(() => import('@/pages/admin/certificates/CertificateManagementPage'));
+const MyCertificatesPage        = lazy(() => import('@/pages/learner/MyCertificatesPage'));
+const CertificateVerificationPage = lazy(() => import('@/pages/public/CertificateVerificationPage'));
 // RoleDetailPage is preserved for future use — unlinked from routing intentionally
 // const RoleDetailPage    = lazy(() => import('@/pages/admin/rbac/RoleDetailPage'));
 
@@ -157,6 +162,11 @@ export const AppRoutes = () => {
                   <Route path="/admin/roles/:id" element={<RoleDetailPage />} />
                   */}
                 </Route>
+
+                {/* Certificate Management — requires CERTIFICATE_MANAGE */}
+                <Route element={<RoleGuard requiredPermissions={[PERMISSIONS.CERTIFICATE_MANAGE]} />}>
+                  <Route path="/admin/certificates" element={<CertificateManagementPage />} />
+                </Route>
               </Route>
 
               {/* Studio runs outside of standard AdminLayout for full screen */}
@@ -185,6 +195,9 @@ export const AppRoutes = () => {
               {/* Training Calendar */}
               <Route path="/training-calendar" element={<TrainingCalendarPage />} />
 
+              {/* My Certificates — all authenticated learners */}
+              <Route path="/my-certificates" element={<MyCertificatesPage />} />
+
               {/* Coming Soon Routes */}
               <Route path="/skills" element={<ComingSoon />} />
               <Route path="/assessments" element={<AssessmentCatalogPage />} />
@@ -195,6 +208,9 @@ export const AppRoutes = () => {
               <Route path="/notifications" element={<NotificationsPage />} />
             </Route>
           </Route>
+
+          {/* Public certificate verification — no auth required */}
+          <Route path="/verify/certificate/:certificateId" element={<CertificateVerificationPage />} />
 
           {/* 404 fallback */}
           <Route path="*" element={<Navigate to="/login" replace />} />

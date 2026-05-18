@@ -58,6 +58,7 @@ export const CourseMapSettings: React.FC<CourseMapSettingsProps> = ({ course, on
   const [editDuration, setEditDuration] = useState(course.estimated_duration_hours);
   const [editShowMarks, setEditShowMarks] = useState(course.show_marks_to_learners ?? false);
   const [editIsMandatory, setEditIsMandatory] = useState(course.is_mandatory ?? false);
+  const [editValidityDays, setEditValidityDays] = useState<number | ''>(course.certificate_validity_days ?? '');
   const [isSavingMeta, setIsSavingMeta] = useState(false);
   const [metaError, setMetaError] = useState<string | null>(null);
 
@@ -71,6 +72,7 @@ export const CourseMapSettings: React.FC<CourseMapSettingsProps> = ({ course, on
       setEditDuration(course.estimated_duration_hours);
       setEditShowMarks(course.show_marks_to_learners ?? false);
       setEditIsMandatory(course.is_mandatory ?? false);
+      setEditValidityDays(course.certificate_validity_days ?? '');
     }
   }, [course, isEditing]);
 
@@ -82,6 +84,7 @@ export const CourseMapSettings: React.FC<CourseMapSettingsProps> = ({ course, on
     setEditDuration(course.estimated_duration_hours);
     setEditShowMarks(course.show_marks_to_learners ?? false);
     setEditIsMandatory(course.is_mandatory ?? false);
+    setEditValidityDays(course.certificate_validity_days ?? '');
     setMetaError(null);
     setIsEditing(false);
   };
@@ -97,6 +100,7 @@ export const CourseMapSettings: React.FC<CourseMapSettingsProps> = ({ course, on
       estimated_duration_hours: editDuration,
       show_marks_to_learners: editShowMarks,
       is_mandatory: editIsMandatory,
+      certificate_validity_days: editValidityDays === '' ? null : Number(editValidityDays),
     });
     setIsSavingMeta(false);
     if (result === null) {
@@ -370,6 +374,14 @@ export const CourseMapSettings: React.FC<CourseMapSettingsProps> = ({ course, on
                   {course.show_marks_to_learners ? "Visible" : "Hidden"}
                 </span>
               </div>
+              <div className="flex justify-between items-center bg-slate-800/30 p-2 rounded-b border-t border-slate-700/50">
+                <span className="text-slate-500">Cert. Validity</span>
+                <span className="text-[10px] font-bold text-slate-300">
+                  {course.certificate_validity_days
+                    ? `${course.certificate_validity_days} days`
+                    : 'Lifetime'}
+                </span>
+              </div>
             </div>
           ) : (
             /* Edit form */
@@ -482,6 +494,28 @@ export const CourseMapSettings: React.FC<CourseMapSettingsProps> = ({ course, on
                   )} />
                 </div>
               </label>
+
+              {/* Certificate Validity */}
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+                  Certificate Validity (days)
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={3650}
+                  value={editValidityDays}
+                  onChange={e => {
+                    const v = e.target.value;
+                    setEditValidityDays(v === '' ? '' : Math.min(3650, Math.max(1, parseInt(v) || 1)));
+                  }}
+                  placeholder="Leave blank for lifetime validity"
+                  className="px-3 py-2 bg-slate-800/50 border border-slate-700 rounded text-xs text-white focus:outline-none focus:border-blue-500 transition placeholder:text-slate-600"
+                />
+                <span className="text-[10px] text-slate-500">
+                  Leave blank for lifetime validity (no expiry on the certificate).
+                </span>
+              </div>
             </div>
           )}
         </div>

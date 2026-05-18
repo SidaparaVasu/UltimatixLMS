@@ -25,6 +25,8 @@ export interface StandaloneAssessment {
   is_randomized: boolean;
   negative_marking_enabled: boolean;
   negative_marking_percentage: string;
+  /** Days after passing before the certificate expires. Null = lifetime validity. */
+  certificate_validity_days: number | null;
   status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
   skill_mappings: SkillMappingRow[];
   /** Number of questions currently mapped (CURATED/FIXED only; 0 for DYNAMIC). */
@@ -61,6 +63,8 @@ export interface AssessmentFormValues {
   is_randomized: boolean;
   negative_marking_enabled: boolean;
   negative_marking_percentage: number;
+  /** Days after passing before the certificate expires. Null = lifetime validity. */
+  certificate_validity_days: number | null;
   status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
 }
 

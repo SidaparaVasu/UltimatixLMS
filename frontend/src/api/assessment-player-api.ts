@@ -75,4 +75,26 @@ export const assessmentPlayerApi = {
       return handleApiError(error);
     }
   },
+
+  /**
+   * GET /assessment/attempts/:id/result/
+   * Returns the graded result for a completed attempt.
+   * Only accessible after the attempt status is COMPLETED.
+   */
+  getResult: async (attemptId: string) => {
+    try {
+      const response = await apiClient.get(`${BASE}/${attemptId}/result/`);
+      return handleApiResponse<{
+        id: number;
+        attempt: string;
+        total_score: number;
+        score_percentage: number;
+        status: 'PASS' | 'FAIL' | 'PENDING';
+        grading_type: string;
+        instructor_feedback: string;
+      }>(response.data, false);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
 };

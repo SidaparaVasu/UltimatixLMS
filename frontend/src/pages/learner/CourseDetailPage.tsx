@@ -249,10 +249,13 @@ export default function CourseDetailPage() {
               />
               
               {isCompleted && (
-                <button className="w-full mt-4 bg-accent text-white py-2 flex items-center justify-center gap-2">
+                <Link
+                  to="/my-certificates"
+                  className="w-full mt-4 bg-accent text-white py-2 flex items-center justify-center gap-2"
+                >
                   <Award className="h-4 w-4" />
-                  Download Certificate
-                </button>
+                  View Certificate
+                </Link>
               )}
             </div>
 

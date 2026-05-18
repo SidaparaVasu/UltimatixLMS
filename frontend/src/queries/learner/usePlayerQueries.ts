@@ -6,6 +6,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { playerApi } from '@/api/player-api';
 import { HeartbeatPayload } from '@/types/player.types';
+import { CERTIFICATE_QUERY_KEYS } from '@/queries/admin/useCertificateQueries';
 
 export const PLAYER_QUERY_KEYS = {
   enrollmentProgress: (id: number) => ['player', 'enrollment-progress', id],
@@ -43,6 +44,11 @@ export const useHeartbeat = () => {
         });
         // Also invalidate the learner enrollments list (for My Learning page)
         queryClient.invalidateQueries({ queryKey: ['learner', 'my-enrollments'] });
+        // Invalidate My Certificates so a newly issued certificate appears
+        // without requiring a manual page refresh
+        queryClient.invalidateQueries({
+          queryKey: CERTIFICATE_QUERY_KEYS.myCertificates.list(),
+        });
       }
     },
   });
@@ -68,6 +74,11 @@ export const useMarkLessonComplete = () => {
         queryKey: PLAYER_QUERY_KEYS.enrollmentProgress(variables.enrollmentId),
       });
       queryClient.invalidateQueries({ queryKey: ['learner', 'my-enrollments'] });
+      // Invalidate My Certificates — course completion may trigger certificate
+      // issuance on the backend
+      queryClient.invalidateQueries({
+        queryKey: CERTIFICATE_QUERY_KEYS.myCertificates.list(),
+      });
     },
   });
 };
