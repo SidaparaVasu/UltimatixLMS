@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { certificateApi } from '@/api/certificate-api';
-import { RevokeCertificatePayload } from '@/types/certificate.types';
+import { RenewCertificatePayload, RevokeCertificatePayload } from '@/types/certificate.types';
 
 // ── Query keys ────────────────────────────────────────────────────────────────
 
@@ -39,6 +39,18 @@ export const useRevokeCertificate = () => {
   return useMutation({
     mutationFn: ({ id, payload }: { id: number; payload: RevokeCertificatePayload }) =>
       certificateApi.revokeCertificate(id, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: CERTIFICATE_QUERY_KEYS.certificates.all() });
+    },
+  });
+};
+
+/** Admin: renew an expired certificate. Invalidates all certificate list variants. */
+export const useRenewCertificate = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: RenewCertificatePayload }) =>
+      certificateApi.renewCertificate(id, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: CERTIFICATE_QUERY_KEYS.certificates.all() });
     },

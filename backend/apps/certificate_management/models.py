@@ -155,3 +155,46 @@ class CertificateRevocationLog(models.Model):
 
     def __str__(self):
         return f"RevocationLog<cert={self.certificate_id} at {self.revoked_at}>"
+
+
+class CertificateRenewalLog(models.Model):
+    """
+    Immutable audit trail entry created whenever an expired certificate is renewed.
+
+    The IssuedCertificate row stores the current live expiry date. This log keeps
+    the prior expiry date and previous PDF reference so renewal history is never
+    lost when the live certificate is updated.
+    """
+    certificate = models.ForeignKey(
+        IssuedCertificate,
+        on_delete=models.CASCADE,
+        related_name="renewal_logs",
+    )
+    previous_expiry_date = models.DateField(null=True, blank=True)
+    new_expiry_date = models.DateField()
+    previous_pdf_file = models.ForeignKey(
+        "file_management.FileRegistry",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="certificate_renewal_previous_pdfs",
+        help_text="PDF attached to the certificate before this renewal, if any.",
+    )
+    renewed_by = models.ForeignKey(
+        "org_management.EmployeeMaster",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="certificate_renewal_entries",
+    )
+    reason = models.TextField(blank=True, default="")
+    renewed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "cert_renewal_log"
+        ordering = ["-renewed_at"]
+        verbose_name = "Certificate Renewal Log"
+        verbose_name_plural = "Certificate Renewal Logs"
+
+    def __str__(self):
+        return f"RenewalLog<cert={self.certificate_id} at {self.renewed_at}>"
