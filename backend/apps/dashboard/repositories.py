@@ -8,7 +8,8 @@ from django.db.models import Count, Q, Avg, Sum, F
 from django.utils import timezone
 from datetime import timedelta
 from common.repositories.base import BaseRepository
-from apps.learning_progress.models import UserCourseEnrollment, CourseCertificate
+from apps.learning_progress.models import UserCourseEnrollment
+from apps.certificate_management.models import IssuedCertificate
 from apps.learning_progress.constants import ProgressStatus, EnrollmentType
 from apps.course_management.models import CourseMaster, CourseStatus
 from apps.org_management.models import EmployeeMaster, EmployeeReportingManager
@@ -48,8 +49,8 @@ class DashboardRepository(BaseRepository):
         ).count()
         
         # Certificates earned
-        certificates_earned = CourseCertificate.objects.filter(
-            enrollment__employee_id=employee_id
+        certificates_earned = IssuedCertificate.objects.filter(
+            employee_id=employee_id
         ).count()
         
         return {
@@ -188,9 +189,9 @@ class DashboardRepository(BaseRepository):
         )
         
         # Certificates issued
-        certificates_query = CourseCertificate.objects.all()
+        certificates_query = IssuedCertificate.objects.all()
         if company_id:
-            certificates_query = certificates_query.filter(enrollment__employee__company_id=company_id)
+            certificates_query = certificates_query.filter(employee__company_id=company_id)
         certificates_issued = certificates_query.count()
         
         # Pending approvals (TNI + Training Plans)
@@ -273,10 +274,10 @@ class DashboardRepository(BaseRepository):
 
         # ── Base querysets ────────────────────────────────────────────────
         enrollment_base = UserCourseEnrollment.objects.all()
-        certificate_base = CourseCertificate.objects.all()
+        certificate_base = IssuedCertificate.objects.all()
         if company_id:
             enrollment_base  = enrollment_base.filter(employee__company_id=company_id)
-            certificate_base = certificate_base.filter(enrollment__employee__company_id=company_id)
+            certificate_base = certificate_base.filter(employee__company_id=company_id)
 
         # ── Completions ───────────────────────────────────────────────────
         completion_data = (

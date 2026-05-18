@@ -17,10 +17,14 @@ Rules:
 
 class PermissionCodes:
     """
-    All 43 permission codes organised by permission group.
+    All 45 permission codes organised by permission group.
 
     Aliased as P at the bottom of this file for brevity:
         from apps.rbac.permission_codes import P
+
+    Certificate permissions:
+        LEARNER_CORE.CERTIFICATE_VIEW   — pk 4  — auto-assigned to every user via LMS_USER
+        SYSTEM_ADMINISTRATION.CERTIFICATE_MANAGE — pk 43 — assigned to LMS_ADMIN
     """
 
     class LEARNER_CORE:

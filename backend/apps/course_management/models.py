@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.validators import MinValueValidator, MaxValueValidator
 from apps.org_management.models import EmployeeMaster
 from apps.skill_management.models import SkillMaster, SkillLevelMaster
 from .constants import DifficultyLevel, CourseContentType
@@ -77,6 +78,15 @@ class CourseMaster(models.Model):
             "If True, learners must complete this course. "
             "Mandatory courses remain accessible after end_date (soft lock). "
             "Optional courses are locked once end_date passes."
+        ),
+    )
+    certificate_validity_days = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(3650)],
+        help_text=(
+            "Days after completion before the certificate expires. "
+            "Null = lifetime validity (no expiry date on the certificate)."
         ),
     )
     # Legacy columns present in DB — kept for backward compatibility.

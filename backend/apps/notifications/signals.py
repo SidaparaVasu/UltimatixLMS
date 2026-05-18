@@ -153,39 +153,6 @@ def on_enrollment_saved(sender, instance, created, **kwargs):
 
 
 # ===========================================================================
-# 2. CourseCertificate
-#    Trigger: CERTIFICATE (on create)
-# ===========================================================================
-
-from apps.learning_progress.models import CourseCertificate  # noqa: E402
-
-
-@receiver(post_save, sender=CourseCertificate)
-def on_certificate_created(sender, instance, created, **kwargs):
-    """
-    CERTIFICATE — fires once when a certificate record is first created.
-    """
-    if not created:
-        return
-    try:
-        enrollment = instance.enrollment
-        uid = _user_id(enrollment.employee)
-        if not uid:
-            return
-
-        _svc().notify_certificate_issued(
-            user_id=uid,
-            course_title=enrollment.course.course_title,
-            certificate_id=instance.pk,
-        )
-    except Exception as exc:
-        logger.error(
-            "notifications.signals.on_certificate_created failed: cert_id=%s error=%s",
-            instance.pk, exc,
-        )
-
-
-# ===========================================================================
 # 3. AssessmentResult
 #    Trigger: ASSESSMENT_RESULT (on create — result is written once after grading)
 # ===========================================================================
