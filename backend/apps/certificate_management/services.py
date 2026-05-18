@@ -87,12 +87,16 @@ class CertificateIssuanceService:
 
         course_name = enrollment.course.course_title
 
-        # 4. Generate PDF
+        # 4. Generate PDF — pre-generate the UUID so it can be embedded in the QR code
+        import uuid as _uuid
+        certificate_uuid = _uuid.uuid4()
+
         pdf_file = None
         try:
             renderer = CertificatePDFRenderer()
             pdf_bytes = renderer.render_for_course(
-                enrollment, completion_date, expiry_date
+                enrollment, completion_date, expiry_date,
+                certificate_uuid=str(certificate_uuid),
             )
             pdf_file = self._save_pdf(
                 pdf_bytes,
@@ -105,8 +109,9 @@ class CertificateIssuanceService:
             )
             # Certificate is still issued — PDF can be regenerated on download
 
-        # 5. Save certificate
+        # 5. Save certificate — use the pre-generated UUID so it matches the QR
         cert = IssuedCertificate.objects.create(
+            certificate_id=certificate_uuid,
             employee=enrollment.employee,
             certificate_type="course",
             entity_id=str(enrollment_id),
@@ -169,12 +174,16 @@ class CertificateIssuanceService:
 
         assessment_name = attempt.assessment.title
 
-        # 4. Generate PDF
+        # 4. Generate PDF — pre-generate the UUID so it can be embedded in the QR code
+        import uuid as _uuid
+        certificate_uuid = _uuid.uuid4()
+
         pdf_file = None
         try:
             renderer = CertificatePDFRenderer()
             pdf_bytes = renderer.render_for_assessment(
-                attempt, completion_date, expiry_date
+                attempt, completion_date, expiry_date,
+                certificate_uuid=str(certificate_uuid),
             )
             pdf_file = self._save_pdf(
                 pdf_bytes,
@@ -186,8 +195,9 @@ class CertificateIssuanceService:
                 "PDF generation failed for attempt %s: %s", attempt_id, exc
             )
 
-        # 5. Save certificate
+        # 5. Save certificate — use the pre-generated UUID so it matches the QR
         cert = IssuedCertificate.objects.create(
+            certificate_id=certificate_uuid,
             employee=attempt.employee,
             certificate_type="assessment",
             entity_id=str(attempt_id),

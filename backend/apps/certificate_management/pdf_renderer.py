@@ -55,8 +55,11 @@ class CertificatePDFRenderer:
         enrollment,
         completion_date: date,
         expiry_date: date | None,
+        certificate_uuid: str = "",
     ) -> bytes:
-        context = self._build_course_context(enrollment, completion_date, expiry_date)
+        context = self._build_course_context(
+            enrollment, completion_date, expiry_date, certificate_uuid
+        )
         return self._render_default(context)
 
     def render_for_assessment(
@@ -64,13 +67,16 @@ class CertificatePDFRenderer:
         attempt,
         completion_date: date,
         expiry_date: date | None,
+        certificate_uuid: str = "",
     ) -> bytes:
-        context = self._build_assessment_context(attempt, completion_date, expiry_date)
+        context = self._build_assessment_context(
+            attempt, completion_date, expiry_date, certificate_uuid
+        )
         return self._render_default(context)
 
     # ── Context builders ──────────────────────────────────────────────────────
 
-    def _build_course_context(self, enrollment, completion_date: date, expiry_date) -> dict:
+    def _build_course_context(self, enrollment, completion_date: date, expiry_date, certificate_uuid: str = "") -> dict:
         employee = enrollment.employee
         profile = getattr(getattr(employee, "user", None), "profile", None)
         full_name = (
@@ -86,10 +92,10 @@ class CertificatePDFRenderer:
             "expiry_date":         expiry_date.strftime("%d %B %Y") if expiry_date else None,
             "issued_by":           "Ultimatix LMS",
             "employee_id":         employee.employee_code,
-            "certificate_uuid":    "",   # populated after cert record is saved
+            "certificate_uuid":    certificate_uuid,
         }
 
-    def _build_assessment_context(self, attempt, completion_date: date, expiry_date) -> dict:
+    def _build_assessment_context(self, attempt, completion_date: date, expiry_date, certificate_uuid: str = "") -> dict:
         employee = attempt.employee
         profile = getattr(getattr(employee, "user", None), "profile", None)
         full_name = (
@@ -105,7 +111,7 @@ class CertificatePDFRenderer:
             "expiry_date":         expiry_date.strftime("%d %B %Y") if expiry_date else None,
             "issued_by":           "Ultimatix LMS",
             "employee_id":         employee.employee_code,
-            "certificate_uuid":    "",
+            "certificate_uuid":    certificate_uuid,
         }
 
     # ── Default layout ────────────────────────────────────────────────────────
@@ -163,7 +169,7 @@ class CertificatePDFRenderer:
                 qr_image = self._generate_qr_image(verification_url)
                 if qr_image:
                     qr_size = 2.8 * cm
-                    qr_x = page_width - qr_size - 1.8 * cm
+                    qr_x = page_width - qr_size - 3.5 * cm
                     qr_y = 1.8 * cm
                     canvas_obj.drawImage(
                         qr_image, qr_x, qr_y,
@@ -189,7 +195,7 @@ class CertificatePDFRenderer:
             parent=styles["Title"],
             fontSize=30,
             textColor=colors.HexColor("#1e3a5f"),
-            spaceAfter=4,
+            spaceAfter=12,
             alignment=TA_CENTER,
             fontName="Helvetica-Bold",
         )

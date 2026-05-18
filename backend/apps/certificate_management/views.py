@@ -213,7 +213,7 @@ class IssuedCertificateViewSet(viewsets.ReadOnlyModelViewSet):
                     cert.pdf_file.file.open("rb"),
                     content_type="application/pdf",
                 )
-                filename = f"certificate-{cert.certificate_id}.pdf"
+                filename = f"{cert.course_or_assessment_name.replace(' ', '_')}.pdf"
                 response["Content-Disposition"] = f'attachment; filename="{filename}"'
                 return response
             except Exception as exc:
@@ -232,7 +232,8 @@ class IssuedCertificateViewSet(viewsets.ReadOnlyModelViewSet):
                     "employee__user__profile", "course"
                 ).get(id=cert.entity_id)
                 pdf_bytes = renderer.render_for_course(
-                    enrollment, cert.completion_date, cert.expiry_date
+                    enrollment, cert.completion_date, cert.expiry_date,
+                    certificate_uuid=str(cert.certificate_id),
                 )
             else:
                 from apps.assessment_engine.models import AssessmentAttempt
@@ -240,7 +241,8 @@ class IssuedCertificateViewSet(viewsets.ReadOnlyModelViewSet):
                     "employee__user__profile", "assessment"
                 ).get(id=cert.entity_id)
                 pdf_bytes = renderer.render_for_assessment(
-                    attempt, cert.completion_date, cert.expiry_date
+                    attempt, cert.completion_date, cert.expiry_date,
+                    certificate_uuid=str(cert.certificate_id),
                 )
 
             # Save for future requests
