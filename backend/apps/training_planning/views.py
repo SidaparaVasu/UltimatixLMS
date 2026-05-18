@@ -221,7 +221,12 @@ class TrainingCalendarViewSet(BaseTPViewSet):
     serializer_class = TrainingCalendarSerializer
     service_class = TrainingCalendarService
     model = TrainingCalendar
-    required_permission = P.LND_APPROVAL.TRAINING_CALENDAR_APPROVE
+
+    @property
+    def required_permission(self):
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            return P.LND_APPROVAL.TRAINING_CALENDAR_APPROVE
+        return P.LND_APPROVAL.TRAINING_CALENDAR_VIEW
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -257,7 +262,12 @@ class TrainingSessionViewSet(BaseTPViewSet):
     serializer_class = TrainingSessionSerializer
     service_class = TrainingSessionService
     model = TrainingSession
-    required_permission = P.HR_MANAGEMENT.TRAINING_PLAN_VIEW
+
+    @property
+    def required_permission(self):
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            return P.LND_APPROVAL.TRAINING_CALENDAR_APPROVE
+        return P.HR_MANAGEMENT.TRAINING_PLAN_VIEW
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -290,7 +300,12 @@ class TrainingSessionTrainerViewSet(BaseTPViewSet):
     serializer_class = TrainingSessionTrainerSerializer
     service_class = TrainingSessionTrainerService
     model = TrainingSessionTrainer
-    required_permission = P.LND_APPROVAL.TRAINING_CALENDAR_APPROVE
+
+    @property
+    def required_permission(self):
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            return P.LND_APPROVAL.TRAINING_CALENDAR_APPROVE
+        return P.LND_APPROVAL.TRAINING_CALENDAR_VIEW
 
 
 class TrainingSessionEnrollmentViewSet(BaseTPViewSet):
@@ -298,7 +313,12 @@ class TrainingSessionEnrollmentViewSet(BaseTPViewSet):
     serializer_class = TrainingSessionEnrollmentSerializer
     service_class = TrainingSessionEnrollmentService
     model = TrainingSessionEnrollment
-    required_permission = P.HR_MANAGEMENT.ENROLLMENT_MANAGE
+
+    @property
+    def required_permission(self):
+        if self.action == "sign_up":
+            return P.LEARNER_CORE.ENROLLMENT_SELF
+        return P.HR_MANAGEMENT.ENROLLMENT_MANAGE
 
     def get_queryset(self):
         qs = super().get_queryset()

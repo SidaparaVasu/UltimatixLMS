@@ -77,7 +77,7 @@ class BaseCourseViewSet(viewsets.ModelViewSet):
     @property
     def required_permission(self):
         """Map DRF actions to permission codes for RBAC evaluation."""
-        if self.action in ["create", "update", "partial_update", "destroy"]:
+        if self.request.method in ["POST", "PUT", "PATCH", "DELETE"]:
              return self.EDIT_PERMISSION
         return self.VIEW_PERMISSION
 

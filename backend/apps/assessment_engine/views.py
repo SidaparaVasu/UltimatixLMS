@@ -34,7 +34,8 @@ class AssessmentStudioViewSet(viewsets.ModelViewSet):
     """
     queryset = AssessmentMaster.objects.all()
     serializer_class = AssessmentMasterStudioSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [HasScopedPermission]
+    required_permission = P.CONTENT_MANAGEMENT.ASSESSMENT_MANAGE
 
     def get_queryset(self):
         qs = super().get_queryset()
