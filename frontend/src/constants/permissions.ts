@@ -23,6 +23,14 @@ export const PERMISSIONS = {
   NOTIFICATION_VIEW:       'NOTIFICATION_VIEW',
   PROFILE_MANAGE:          'PROFILE_MANAGE',
 
+  // COMMON_READ
+  // Safe lookup, self, and common read permissions for authenticated users.
+  ORG_LOOKUP_VIEW:          'ORG_LOOKUP_VIEW',
+  SKILL_LOOKUP_VIEW:        'SKILL_LOOKUP_VIEW',
+  SKILL_HISTORY_SELF_VIEW:  'SKILL_HISTORY_SELF_VIEW',
+  SESSION_VIEW:             'SESSION_VIEW',
+  ASSESSMENT_CATALOG_VIEW:  'ASSESSMENT_CATALOG_VIEW',
+
   // ── HR_MANAGEMENT (10) ───────────────────────────────────────────────────
   // Employee management, org structure, TNI, and training planning.
   EMPLOYEE_VIEW:           'EMPLOYEE_VIEW',

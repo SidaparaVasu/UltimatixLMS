@@ -1,4 +1,4 @@
-from rest_framework import viewsets, status, filters
+from rest_framework import permissions, viewsets, status, filters
 from rest_framework.decorators import action
 from django_filters.rest_framework import DjangoFilterBackend
 from common.response import success_response, created_response, error_response
@@ -129,9 +129,20 @@ class CourseCategoryViewSet(BaseCourseViewSet):
     serializer_class = CourseCategorySerializer
     service_class = CourseCategoryService
     model = CourseCategoryMaster
+    required_permission = P.CONTENT_MANAGEMENT.COURSE_CATEGORY_MANAGE
+    permission_classes = [HasScopedPermission]
 
     def get_queryset(self):
         return self.service_class().get_all_with_counts()
+    
+    def get_permissions(self):
+        """
+        Allow any authenticated user to list or retrieve categories,
+        but restrict CUD actions to users with the required management permission.
+        """
+        if self.action in ['list', 'retrieve']:
+            return [permissions.IsAuthenticated()]
+        return super().get_permissions()
 
 
 class TagViewSet(BaseCourseViewSet):

@@ -583,5 +583,70 @@
       "created_at": "2026-01-01T00:00:00Z",
       "updated_at": "2026-01-01T00:00:00Z"
     }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 46,
+    "fields": {
+      "permission_group": 7,
+      "permission_name": "View Organization Lookups",
+      "permission_code": "ORG_LOOKUP_VIEW",
+      "description": "Allows reading safe organization dropdown/lookup data.",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 47,
+    "fields": {
+      "permission_group": 7,
+      "permission_name": "View Skill Lookups",
+      "permission_code": "SKILL_LOOKUP_VIEW",
+      "description": "Allows reading skill and skill-level lookup data.",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 48,
+    "fields": {
+      "permission_group": 7,
+      "permission_name": "View Own Skill History",
+      "permission_code": "SKILL_HISTORY_SELF_VIEW",
+      "description": "Allows reading only the authenticated user's own skill history.",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 49,
+    "fields": {
+      "permission_group": 7,
+      "permission_name": "View Training Sessions",
+      "permission_code": "SESSION_VIEW",
+      "description": "Allows reading training sessions for dashboards and calendars.",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 50,
+    "fields": {
+      "permission_group": 7,
+      "permission_name": "View Assessment Catalog",
+      "permission_code": "ASSESSMENT_CATALOG_VIEW",
+      "description": "Allows reading the learner assessment catalog.",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
   }
 ]

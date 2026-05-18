@@ -53,6 +53,8 @@ class BaseOrgViewSet(viewsets.ModelViewSet):
 
     @property
     def required_permission(self):
+        if self.action == "options":
+            return P.COMMON_READ.ORG_LOOKUP_VIEW
         if self.action in ["create", "update", "partial_update", "destroy"]:
             return self.EDIT_PERMISSION
         return self.VIEW_PERMISSION

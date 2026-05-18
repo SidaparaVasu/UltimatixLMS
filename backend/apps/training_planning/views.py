@@ -267,7 +267,7 @@ class TrainingSessionViewSet(BaseTPViewSet):
     def required_permission(self):
         if self.action in ["create", "update", "partial_update", "destroy"]:
             return P.LND_APPROVAL.TRAINING_CALENDAR_APPROVE
-        return P.HR_MANAGEMENT.TRAINING_PLAN_VIEW
+        return P.COMMON_READ.SESSION_VIEW
 
     def get_queryset(self):
         qs = super().get_queryset()

@@ -143,10 +143,11 @@ export const useFinalizeApprovalByPlan = () => {
 
 // ── Calendars ─────────────────────────────────────────────────────────────
 
-export const useTrainingCalendars = (params?: TrainingCalendarListParams) =>
+export const useTrainingCalendars = (params?: TrainingCalendarListParams, enabled = true) =>
   useQuery({
     queryKey: TRAINING_QUERY_KEYS.calendars(params),
     queryFn:  () => trainingApi.getCalendars(params),
+    enabled,
     staleTime: 60_000,
   });
 
