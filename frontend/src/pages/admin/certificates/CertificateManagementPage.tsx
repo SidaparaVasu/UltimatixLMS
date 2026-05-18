@@ -6,8 +6,10 @@ import { TableCell, TableActionCell } from '@/components/ui/table';
 import { CertificateTypeBadge } from '@/components/certificates/CertificateTypeBadge';
 import { CertificateStatusBadge } from '@/components/certificates/CertificateStatusBadge';
 import { RevokeDialog } from '@/components/certificates/RevokeDialog';
+import { RenewDialog } from '@/components/certificates/RenewDialog';
 import {
   useAdminCertificates,
+  useRenewCertificate,
   useRevokeCertificate,
 } from '@/queries/admin/useCertificateQueries';
 import { useNotificationStore } from '@/stores/notificationStore';
@@ -40,6 +42,8 @@ export default function CertificateManagementPage() {
   // ── Dialog state ──
   const [revokeTarget, setRevokeTarget] = useState<CertificateAdminRecord | null>(null);
   const [revokeError, setRevokeError] = useState<string | null>(null);
+  const [renewTarget, setRenewTarget] = useState<CertificateAdminRecord | null>(null);
+  const [renewError, setRenewError] = useState<string | null>(null);
 
   // ── Debounce search ──
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -63,6 +67,7 @@ export default function CertificateManagementPage() {
   });
 
   const revokeMutation = useRevokeCertificate();
+  const renewMutation = useRenewCertificate();
 
   const items: CertificateAdminRecord[] = (data as any)?.results ?? [];
   const total: number = (data as any)?.count ?? 0;
@@ -82,6 +87,26 @@ export default function CertificateManagementPage() {
         err?.message ??
         'Failed to revoke certificate.';
       setRevokeError(msg);
+    }
+  };
+
+  const handleRenewConfirm = async (expiryDate: string, reason: string) => {
+    if (!renewTarget) return;
+    setRenewError(null);
+    try {
+      await renewMutation.mutateAsync({
+        id: renewTarget.id,
+        payload: { expiry_date: expiryDate, reason },
+      });
+      setRenewTarget(null);
+      showNotification('Certificate renewed successfully.', 'success');
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ??
+        err?.response?.data?.detail ??
+        err?.message ??
+        'Failed to renew certificate.';
+      setRenewError(msg);
     }
   };
 
@@ -184,9 +209,57 @@ export default function CertificateManagementPage() {
     },
     {
       type: 'custom',
+      header: 'Renewals',
+      render: (row) => (
+        <TableCell>
+          {row.renewal_count > 0 ? (
+            <span
+              style={{
+                fontSize: '12px',
+                color: 'var(--color-text-secondary)',
+                whiteSpace: 'nowrap',
+              }}
+              title={
+                row.latest_renewal
+                  ? `Latest: ${formatDate(row.latest_renewal.previous_expiry_date)} to ${formatDate(row.latest_renewal.new_expiry_date)}`
+                  : undefined
+              }
+            >
+              Renewed {row.renewal_count}
+            </span>
+          ) : (
+            <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>None</span>
+          )}
+        </TableCell>
+      ),
+    },
+    {
+      type: 'custom',
       header: 'Actions',
       render: (row) => (
         <TableActionCell>
+          {!row.is_revoked && row.status === 'expired' && (
+            <button
+              onClick={() => {
+                setRenewError(null);
+                setRenewTarget(row);
+              }}
+              style={{
+                padding: '4px 12px',
+                fontSize: '12px',
+                fontWeight: 500,
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--color-accent)',
+                background: 'white',
+                color: 'var(--color-accent)',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                marginRight: '8px',
+              }}
+            >
+              Renew
+            </button>
+          )}
           {!row.is_revoked && (
             <button
               onClick={() => {
@@ -247,6 +320,7 @@ export default function CertificateManagementPage() {
             <option value="">Status: All</option>
             <option value="active">Active</option>
             <option value="expired">Expired</option>
+            <option value="renewed">Renewed</option>
             <option value="revoked">Revoked</option>
           </select>
         </>
@@ -310,6 +384,18 @@ export default function CertificateManagementPage() {
         onConfirm={handleRevokeConfirm}
         isLoading={revokeMutation.isPending}
         error={revokeError}
+      />
+
+      <RenewDialog
+        open={!!renewTarget}
+        certificate={renewTarget}
+        onClose={() => {
+          setRenewTarget(null);
+          setRenewError(null);
+        }}
+        onConfirm={handleRenewConfirm}
+        isLoading={renewMutation.isPending}
+        error={renewError}
       />
     </AdminMasterLayout>
   );

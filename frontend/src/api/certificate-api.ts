@@ -5,6 +5,7 @@ import {
   CertificateRecord,
   CertificateAdminRecord,
   RevokeCertificatePayload,
+  RenewCertificatePayload,
   CertificateVerificationResult,
 } from "@/types/certificate.types";
 
@@ -57,6 +58,16 @@ export const certificateApi = {
     try {
       const response = await apiClient.post(`/certificates/${id}/revoke/`, payload);
       return handleApiResponse(response.data);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  // Admin: renew an expired certificate
+  renewCertificate: async (id: number, payload: RenewCertificatePayload) => {
+    try {
+      const response = await apiClient.post(`/certificates/${id}/renew/`, payload);
+      return handleApiResponse<CertificateAdminRecord>(response.data);
     } catch (error) {
       return handleApiError(error);
     }

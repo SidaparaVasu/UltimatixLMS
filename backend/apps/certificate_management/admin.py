@@ -10,7 +10,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.utils import timezone
 
-from .models import IssuedCertificate, CertificateRevocationLog
+from .models import IssuedCertificate, CertificateRevocationLog, CertificateRenewalLog
 
 
 # ---------------------------------------------------------------------------
@@ -25,6 +25,31 @@ class CertificateRevocationLogInline(admin.TabularInline):
     fields = ("revoked_by", "reason", "revoked_at")
     verbose_name = "Revocation Log Entry"
     verbose_name_plural = "Revocation Log"
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+class CertificateRenewalLogInline(admin.TabularInline):
+    model = CertificateRenewalLog
+    extra = 0
+    can_delete = False
+    readonly_fields = (
+        "previous_expiry_date",
+        "new_expiry_date",
+        "renewed_by",
+        "reason",
+        "renewed_at",
+    )
+    fields = (
+        "previous_expiry_date",
+        "new_expiry_date",
+        "renewed_by",
+        "reason",
+        "renewed_at",
+    )
+    verbose_name = "Renewal Log Entry"
+    verbose_name_plural = "Renewal Log"
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -56,7 +81,7 @@ class IssuedCertificateAdmin(admin.ModelAdmin):
         "course_or_assessment_name",
     ]
     ordering = ["-issued_at"]
-    inlines = [CertificateRevocationLogInline]
+    inlines = [CertificateRenewalLogInline, CertificateRevocationLogInline]
     actions = ["revoke_certificates"]
 
     # Certificates are auto-issued only — no manual creation
@@ -109,6 +134,45 @@ class IssuedCertificateAdmin(admin.ModelAdmin):
 # ---------------------------------------------------------------------------
 # CertificateRevocationLog
 # ---------------------------------------------------------------------------
+
+@admin.register(CertificateRenewalLog)
+class CertificateRenewalLogAdmin(admin.ModelAdmin):
+    list_display = [
+        "certificate",
+        "previous_expiry_date",
+        "new_expiry_date",
+        "renewed_by",
+        "reason_short",
+        "renewed_at",
+    ]
+    search_fields = [
+        "certificate__certificate_id",
+        "renewed_by__employee_code",
+    ]
+    readonly_fields = [
+        "certificate",
+        "previous_expiry_date",
+        "new_expiry_date",
+        "previous_pdf_file",
+        "renewed_by",
+        "reason",
+        "renewed_at",
+    ]
+    ordering = ["-renewed_at"]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    @admin.display(description="Reason")
+    def reason_short(self, obj):
+        return obj.reason[:80] + "..." if len(obj.reason) > 80 else obj.reason
+
 
 @admin.register(CertificateRevocationLog)
 class CertificateRevocationLogAdmin(admin.ModelAdmin):

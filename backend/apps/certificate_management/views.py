@@ -12,7 +12,10 @@ Endpoints (all under /api/v1/certificates/):
 """
 
 import logging
+from datetime import date
 
+from django.db import transaction
+from django.db.models import Count
 from django.http import FileResponse
 from django.utils import timezone
 from rest_framework import viewsets, permissions
@@ -32,6 +35,7 @@ from .serializers import (
     IssuedCertificateLearnerSerializer,
     CertificateVerificationSerializer,
     RevokeCertificateSerializer,
+    RenewCertificateSerializer,
 )
 from .services import CertificateVerificationService
 
@@ -74,6 +78,10 @@ class IssuedCertificateViewSet(viewsets.ReadOnlyModelViewSet):
 
     queryset = IssuedCertificate.objects.select_related(
         "employee__user__profile",
+    ).prefetch_related(
+        "renewal_logs__renewed_by__user__profile",
+    ).annotate(
+        renewal_count=Count("renewal_logs"),
     ).order_by("-issued_at")
     serializer_class = IssuedCertificateAdminSerializer
     permission_classes = [HasScopedPermission]
@@ -111,6 +119,8 @@ class IssuedCertificateViewSet(viewsets.ReadOnlyModelViewSet):
             qs = qs.filter(is_revoked=False, expiry_date__lt=date.today())
         elif status_filter == "revoked":
             qs = qs.filter(is_revoked=True)
+        elif status_filter == "renewed":
+            qs = qs.filter(renewal_logs__isnull=False).distinct()
 
         return qs
 
@@ -336,6 +346,84 @@ class IssuedCertificateViewSet(viewsets.ReadOnlyModelViewSet):
         )
 
     # ── GET /verify/:certificate_id/ ─────────────────────────────────────────
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="renew",
+        permission_classes=[HasScopedPermission],
+        required_permission=P.SYSTEM_ADMINISTRATION.CERTIFICATE_MANAGE,
+    )
+    def renew(self, request, pk=None):
+        """
+        Renews an expired, non-revoked certificate by setting a new expiry date.
+
+        Payload: { "expiry_date": "YYYY-MM-DD", "reason": "<optional>" }
+
+        A CertificateRenewalLog is created before the live expiry date changes.
+        The previous PDF reference is also stored in the log, then the live PDF
+        pointer is cleared so future downloads regenerate with the new expiry.
+        """
+        serializer = RenewCertificateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return error_response(
+                message="Invalid renewal payload.",
+                errors=serializer.errors,
+            )
+
+        employee = _get_employee(request)
+        new_expiry_date = serializer.validated_data["expiry_date"]
+        reason = serializer.validated_data.get("reason", "").strip()
+
+        try:
+            with transaction.atomic():
+                cert = IssuedCertificate.objects.select_for_update().get(pk=pk)
+
+                if cert.is_revoked:
+                    return error_response(
+                        message="Revoked certificates cannot be renewed.",
+                        status_code=400,
+                    )
+
+                if not cert.expiry_date or cert.expiry_date >= date.today():
+                    return error_response(
+                        message="Only expired certificates can be renewed.",
+                        status_code=400,
+                    )
+
+                previous_expiry_date = cert.expiry_date
+                previous_pdf_file = cert.pdf_file
+
+                from .models import CertificateRenewalLog
+                CertificateRenewalLog.objects.create(
+                    certificate=cert,
+                    previous_expiry_date=previous_expiry_date,
+                    new_expiry_date=new_expiry_date,
+                    previous_pdf_file=previous_pdf_file,
+                    renewed_by=employee,
+                    reason=reason,
+                )
+
+                cert.expiry_date = new_expiry_date
+                cert.pdf_file = None
+                cert.save(update_fields=["expiry_date", "pdf_file"])
+
+        except IssuedCertificate.DoesNotExist:
+            return not_found_response("Certificate not found.")
+
+        logger.info(
+            "Certificate %s renewed by %s from %s to %s.",
+            cert.certificate_id,
+            getattr(employee, "employee_code", "unknown"),
+            previous_expiry_date,
+            new_expiry_date,
+        )
+
+        refreshed = self.get_queryset().get(pk=cert.pk)
+        return success_response(
+            message="Certificate renewed successfully.",
+            data=IssuedCertificateAdminSerializer(refreshed).data,
+        )
 
     @action(
         detail=False,
