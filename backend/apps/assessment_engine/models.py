@@ -87,7 +87,15 @@ class AssessmentMaster(models.Model):
         choices=AssessmentStatus.choices,
         default=AssessmentStatus.DRAFT
     )
-    
+    certificate_validity_days = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(3650)],
+        help_text=(
+            "Days after passing before the certificate expires. "
+            "Null = lifetime validity (no expiry date on the certificate)."
+        ),
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

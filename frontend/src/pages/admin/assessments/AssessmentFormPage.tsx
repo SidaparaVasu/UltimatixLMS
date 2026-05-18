@@ -86,6 +86,7 @@ const EMPTY_FORM: AssessmentFormValues = {
   is_randomized: true,
   negative_marking_enabled: false,
   negative_marking_percentage: 0,
+  certificate_validity_days: null,
   status: 'DRAFT',
 };
 
@@ -158,6 +159,7 @@ export default function AssessmentFormPage() {
         is_randomized:              assessment.is_randomized,
         negative_marking_enabled:   assessment.negative_marking_enabled,
         negative_marking_percentage: parseFloat(assessment.negative_marking_percentage),
+        certificate_validity_days:  assessment.certificate_validity_days ?? null,
         status:                     assessment.status,
       });
       setSkillRows(
@@ -556,6 +558,28 @@ export default function AssessmentFormPage() {
             onChange={e => setField('retake_cooldown_hours', parseInt(e.target.value, 10) || 0)}
             min={0}
           />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">
+            Certificate Validity (days)
+            <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--color-text-muted)', marginLeft: '6px' }}>blank = lifetime</span>
+          </label>
+          <input
+            type="number"
+            className="form-input"
+            value={form.certificate_validity_days ?? ''}
+            onChange={e => {
+              const v = e.target.value;
+              setField('certificate_validity_days', v === '' ? null : Math.min(3650, Math.max(1, parseInt(v, 10) || 1)));
+            }}
+            min={1}
+            max={3650}
+            placeholder="No expiry"
+          />
+          <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '3px', display: 'block' }}>
+            Leave blank for lifetime validity — no expiry date on the certificate.
+          </span>
         </div>
       </div>
 

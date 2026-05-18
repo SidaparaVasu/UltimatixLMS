@@ -8,7 +8,6 @@ import {
   BookOpen,
   Calendar,
   CheckSquare,   // Assessments — not yet developed
-  // Award,         // Certifications — not yet developed
   // Trophy,        // Leaderboard — not yet developed
   Star,
   User,
@@ -34,6 +33,7 @@ import {
   BadgeCheck,
   History,
   CircleQuestionMark,
+  Award,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { getFullName, getInitials, getPrimaryRoleName } from "@/utils/user.utils";
@@ -84,7 +84,7 @@ const NAV_CONFIG: NavSection[] = [
     items: [
       { label: "Training Calendar", icon: Calendar,    path: "/training-calendar" },
       { label: "Assessments",       icon: CheckSquare, path: "/assessments",             requiredPermission: PERMISSIONS.ASSESSMENT_ATTEMPT },
-      // { label: "Certifications",    icon: Award,       path: "/certifications",          requiredPermission: PERMISSIONS.CERTIFICATE_VIEW },   // TODO: not yet developed
+      { label: "My Certificates",   icon: Award,       path: "/my-certificates",         requiredPermission: PERMISSIONS.CERTIFICATE_VIEW },
     ],
   },
 
@@ -113,6 +113,15 @@ const NAV_CONFIG: NavSection[] = [
       { label: "Assessment Review",      icon: ClipboardCheck, path: "/admin/assessments/review",     requiredPermission: PERMISSIONS.ASSESSMENT_REVIEW_MANAGE },
       { label: "Skill Upgrade Approval",      icon: BadgeCheck, path: "/admin/assessments/skill-upgrades", requiredPermission: PERMISSIONS.SKILL_UPGRADE_APPROVE },
       { label: "Skill History",          icon: History,     path: "/admin/skill-history",              requiredPermission: PERMISSIONS.EMPLOYEE_VIEW },
+    ],
+  },
+
+  // ── Certificates ─────────────────────────────────────────────────────────
+  {
+    title: "Certificates",
+    requiresAnyPermission: [PERMISSIONS.CERTIFICATE_MANAGE],
+    items: [
+      { label: "All Certificates", icon: Award, path: "/admin/certificates", requiredPermission: PERMISSIONS.CERTIFICATE_MANAGE },
     ],
   },
 
@@ -200,6 +209,7 @@ export const Sidebar = () => {
     [PERMISSIONS.COURSE_VIEW]:               usePermission(PERMISSIONS.COURSE_VIEW),
     [PERMISSIONS.ASSESSMENT_ATTEMPT]:        usePermission(PERMISSIONS.ASSESSMENT_ATTEMPT),
     [PERMISSIONS.CERTIFICATE_VIEW]:          usePermission(PERMISSIONS.CERTIFICATE_VIEW),
+    [PERMISSIONS.CERTIFICATE_MANAGE]:        usePermission(PERMISSIONS.CERTIFICATE_MANAGE),
     [PERMISSIONS.EMPLOYEE_VIEW]:             usePermission(PERMISSIONS.EMPLOYEE_VIEW),
     [PERMISSIONS.EMPLOYEE_MANAGE]:           usePermission(PERMISSIONS.EMPLOYEE_MANAGE),
     [PERMISSIONS.ORG_STRUCTURE_MANAGE]:      usePermission(PERMISSIONS.ORG_STRUCTURE_MANAGE),
@@ -254,20 +264,27 @@ export const Sidebar = () => {
           return (
             <div key={section.title}>
               <div className="nav-section-label">{section.title}</div>
-              {visibleItems.map((item) => (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={cn(
-                    "nav-item",
-                    location.pathname === item.path && "active"
-                  )}
-                >
-                  <item.icon size={18} />
-                  <span className="nav-item-label">{item.label}</span>
-                  {item.badge && <span className="nav-badge">{item.badge}</span>}
-                </Link>
-              ))}
+              {visibleItems.map((item) => {
+                // Use prefix match for paths that have nested routes (anything under /admin/*)
+                // and exact match for leaf learner routes to avoid false positives.
+                const isActive =
+                  location.pathname === item.path ||
+                  (item.path !== '/dashboard' &&
+                   item.path !== '/' &&
+                   location.pathname.startsWith(item.path + '/'));
+
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={cn("nav-item", isActive && "active")}
+                  >
+                    <item.icon size={18} />
+                    <span className="nav-item-label">{item.label}</span>
+                    {item.badge && <span className="nav-badge">{item.badge}</span>}
+                  </Link>
+                );
+              })}
             </div>
           );
         })}

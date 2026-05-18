@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { useAuthStore } from '@/stores/authStore';
 import { assessmentCatalogApi } from '@/api/assessment-catalog-api';
 import { assessmentPlayerApi } from '@/api/assessment-player-api';
+import { CERTIFICATE_QUERY_KEYS } from '@/queries/admin/useCertificateQueries';
 
 import AssessmentPlayerInstructions from '@/components/learner/assessment/AssessmentPlayerInstructions';
 import AssessmentPlayerActive from '@/components/learner/assessment/AssessmentPlayerActive';
@@ -252,10 +254,17 @@ export default function AssessmentPlayerPage() {
   }, [assessmentId, meta]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Active → Result transition ────────────────────────────────────────────
+  // Invalidate My Certificates when the attempt is finalized — the backend
+  // issues a certificate on PASS, so we ensure the list refreshes without
+  // requiring a manual page reload (Requirement 12.2)
+  const queryClient = useQueryClient();
   const handleFinalize = useCallback((reason: SubmissionReason) => {
     setSubmissionReason(reason);
     setPhase('result');
-  }, []);
+    queryClient.invalidateQueries({
+      queryKey: CERTIFICATE_QUERY_KEYS.myCertificates.list(),
+    });
+  }, [queryClient]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -305,6 +314,7 @@ export default function AssessmentPlayerPage() {
     return (
       <AssessmentPlayerResult
         assessmentTitle={meta.title}
+        attemptId={attemptId}
         submissionReason={submissionReason}
         onBack={handleBack}
       />
