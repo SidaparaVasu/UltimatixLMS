@@ -2,7 +2,9 @@ from django.contrib import admin
 
 from apps.gamification.models import (
     AwardRule,
+    BadgeDefinition,
     CompanyGamificationConfig,
+    EmployeeBadge,
     EmployeeStreak,
     PointBalance,
     PointTransaction,
@@ -35,6 +37,20 @@ class PointBalanceAdmin(admin.ModelAdmin):
     list_display = ("employee", "company", "lifetime_xp", "updated_at")
     list_filter = ("company",)
     search_fields = ("employee__employee_code", "employee__email")
+
+
+@admin.register(BadgeDefinition)
+class BadgeDefinitionAdmin(admin.ModelAdmin):
+    list_display = ("code", "name", "category", "criteria_type", "sort_order", "is_active")
+    list_filter = ("category", "is_active")
+    search_fields = ("code", "name")
+
+
+@admin.register(EmployeeBadge)
+class EmployeeBadgeAdmin(admin.ModelAdmin):
+    list_display = ("employee", "badge", "company", "earned_at")
+    list_filter = ("company", "badge__category")
+    search_fields = ("employee__employee_code", "badge__code")
 
 
 @admin.register(EmployeeStreak)

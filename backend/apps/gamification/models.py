@@ -2,12 +2,12 @@
 Gamification models.
 
 company-level configuration only.
-Ledger, badges, and streaks are added in later.
+Ledger, badges, and streaks.
 """
 
 from django.db import models
 
-from apps.gamification.constants import GamificationDefaults
+from apps.gamification.constants import BadgeCategory, GamificationDefaults
 
 
 class CompanyGamificationConfig(models.Model):
@@ -207,3 +207,59 @@ class StreakActivityLog(models.Model):
 
     def __str__(self):
         return f"StreakActivityLog({self.employee_id}, {self.streak_type}, {self.activity_date})"
+
+
+class BadgeDefinition(models.Model):
+    code = models.CharField(max_length=64, unique=True, db_index=True)
+    name = models.CharField(max_length=128)
+    description = models.TextField(blank=True, default="")
+    category = models.CharField(max_length=32, choices=BadgeCategory.CHOICES, db_index=True)
+    criteria_type = models.CharField(max_length=64, db_index=True)
+    criteria_value = models.JSONField(default=dict, blank=True)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+    icon_key = models.CharField(max_length=64, blank=True, default="")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "gamification_badge_definition"
+        ordering = ["sort_order", "code"]
+
+    def __str__(self):
+        return self.code
+
+
+class EmployeeBadge(models.Model):
+    employee = models.ForeignKey(
+        "org_management.EmployeeMaster",
+        on_delete=models.CASCADE,
+        related_name="earned_badges",
+    )
+    company = models.ForeignKey(
+        "org_management.CompanyMaster",
+        on_delete=models.CASCADE,
+        related_name="employee_badges",
+    )
+    badge = models.ForeignKey(
+        BadgeDefinition,
+        on_delete=models.CASCADE,
+        related_name="employee_awards",
+    )
+    earned_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "gamification_employee_badge"
+        ordering = ["-earned_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["employee", "badge"],
+                name="uniq_gamification_employee_badge",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["employee", "-earned_at"], name="idx_gami_badge_emp_earned"),
+        ]
+
+    def __str__(self):
+        return f"EmployeeBadge({self.employee_id}, {self.badge_id})"

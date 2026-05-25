@@ -26,6 +26,11 @@ def _streaks():
     return StreakService()
 
 
+def _badges():
+    from apps.gamification.services.badge_evaluator import BadgeEvaluator
+    return BadgeEvaluator()
+
+
 # ---------------------------------------------------------------------------
 # UserCourseEnrollment — XP when status transitions to COMPLETED
 # ---------------------------------------------------------------------------
@@ -55,7 +60,13 @@ def on_enrollment_saved_award_points(sender, instance, created, **kwargs):
     try:
         old_status = getattr(instance, "_gamification_old_status", None)
         if old_status != "COMPLETED" and instance.status == "COMPLETED":
-            _engine().award_course_completed(instance)
+            from apps.learning_progress.constants import ProgressStatus
+
+            badge_context = {}
+            if old_status == ProgressStatus.OVERDUE:
+                badge_context["overdue_recovery"] = True
+            _engine().award_course_completed(instance, badge_context=badge_context)
+            _badges().evaluate_for_employee(instance.employee)
     except Exception as exc:
         logger.error(
             "gamification.signals.on_enrollment_saved_award_points failed: "
@@ -106,9 +117,16 @@ def on_assessment_result_saved_award_points(sender, instance, created, **kwargs)
             return
 
         if created or old_status != "PASS":
-            _engine().award_assessment_passed(instance)
+            prior_submitted = AssessmentAttempt.objects.filter(
+                employee_id=employee.id,
+                assessment_id=instance.attempt.assessment_id,
+                submitted_at__isnull=False,
+            ).exclude(pk=instance.attempt_id).count()
+            badge_context = {"first_try_pass": prior_submitted == 0}
+            _engine().award_assessment_passed(instance, badge_context=badge_context)
             streak_svc.record_calendar_streak(employee, StreakType.PASS_DAILY, activity_date)
             streak_svc.increment_pass_consecutive(employee)
+            _badges().evaluate_for_employee(employee)
     except Exception as exc:
         logger.error(
             "gamification.signals.on_assessment_result_saved_award_points failed: "
@@ -156,6 +174,7 @@ def on_attempt_submitted_streak(sender, instance, created, **kwargs):
             StreakType.ATTEMPT_DAILY,
             timezone.localdate(),
         )
+        _badges().evaluate_for_employee(instance.employee)
     except Exception as exc:
         logger.error(
             "gamification.signals.on_attempt_submitted_streak failed: attempt_id=%s error=%s",
@@ -175,7 +194,8 @@ from apps.learning_progress.models import UserContentProgress  # noqa: E402
 def on_content_progress_learning_streak(sender, instance, **kwargs):
     try:
         employee = instance.lesson_progress.enrollment.employee
-        _streaks().try_record_learning_day(employee)
+        if _streaks().try_record_learning_day(employee):
+            _badges().evaluate_for_employee(employee)
     except Exception as exc:
         logger.error(
             "gamification.signals.on_content_progress_learning_streak failed: "
@@ -213,6 +233,7 @@ def on_skill_upgrade_saved_award_points(sender, instance, created, **kwargs):
         old_status = getattr(instance, "_gamification_old_status", None)
         if instance.status == "APPROVED" and old_status != "APPROVED":
             _engine().award_skill_upgrade_approved(instance)
+            _badges().evaluate_for_employee(instance.employee)
     except Exception as exc:
         logger.error(
             "gamification.signals.on_skill_upgrade_saved_award_points failed: "
@@ -235,6 +256,7 @@ def on_certificate_issued_award_points(sender, instance, created, **kwargs):
         return
     try:
         _engine().award_certificate_issued(instance)
+        _badges().evaluate_for_employee(instance.employee)
     except Exception as exc:
         logger.error(
             "gamification.signals.on_certificate_issued_award_points failed: "

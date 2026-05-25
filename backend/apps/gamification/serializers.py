@@ -92,6 +92,26 @@ class LeaderboardMyRankSerializer(serializers.Serializer):
     pool_size = serializers.IntegerField()
 
 
+class BadgeCatalogItemSerializer(serializers.Serializer):
+    code = serializers.CharField()
+    name = serializers.CharField()
+    description = serializers.CharField()
+    category = serializers.CharField()
+    criteria_type = serializers.CharField()
+    icon_key = serializers.CharField()
+    sort_order = serializers.IntegerField()
+    is_earned = serializers.BooleanField()
+
+
+class EarnedBadgeSerializer(BadgeCatalogItemSerializer):
+    earned_at = serializers.DateTimeField()
+
+
+class BadgeCatalogResponseSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    results = BadgeCatalogItemSerializer(many=True)
+
+
 class LeaderboardResponseSerializer(serializers.Serializer):
     period = serializers.CharField()
     department_id = serializers.IntegerField(allow_null=True)

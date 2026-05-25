@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from django.db.models import IntegerField, Q, Sum, Value
+from django.db.models import Count, IntegerField, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
@@ -110,6 +110,7 @@ class LeaderboardService:
         )
         qs = self._apply_inactive_exclusion(qs, company_id)
         qs = self._annotate_period_xp(qs, company_id, period)
+        qs = qs.annotate(badges_count=Count("earned_badges"))
         return qs.filter(period_xp__gt=0).order_by("-period_xp", "id")
 
     def resolve_rank(
@@ -166,7 +167,7 @@ class LeaderboardService:
                     ),
                     "designation_name": employee.job_role.job_role_name if employee.job_role_id else "",
                     "period_xp": int(getattr(employee, "period_xp", 0) or 0),
-                    "badges_count": 0,
+                    "badges_count": getattr(employee, "badges_count", 0) or 0,
                 }
             )
         return rows

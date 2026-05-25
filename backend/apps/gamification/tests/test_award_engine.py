@@ -37,6 +37,7 @@ class GamificationAwardTestBase(TestCase):
     @classmethod
     def setUpTestData(cls):
         call_command("loaddata", "initial_award_rules", verbosity=0)
+        call_command("loaddata", "initial_badge_definitions", verbosity=0)
         FeatureFlag.objects.update_or_create(
             feature_key=FeatureKeys.GAMIFICATION_ENABLED,
             defaults={"description": "Gamification", "is_enabled": True},
@@ -112,9 +113,9 @@ class AwardEngineDirectTest(GamificationAwardTestBase):
             course=self.course,
             status=ProgressStatus.IN_PROGRESS,
         )
-        txn = self.engine.award_course_completed(enrollment)
-        self.assertIsNotNone(txn)
-        self.assertEqual(txn.amount, 100)
+        outcome = self.engine.award_course_completed(enrollment)
+        self.assertIsNotNone(outcome.transaction)
+        self.assertEqual(outcome.transaction.amount, 100)
         self.assertEqual(PointLedgerService().get_balance(self.employee.id), 100)
 
     def test_mandatory_course_applies_multiplier(self):
@@ -125,8 +126,8 @@ class AwardEngineDirectTest(GamificationAwardTestBase):
             course=self.course,
             status=ProgressStatus.COMPLETED,
         )
-        txn = self.engine.award_course_completed(enrollment)
-        self.assertEqual(txn.amount, 150)
+        outcome = self.engine.award_course_completed(enrollment)
+        self.assertEqual(outcome.transaction.amount, 150)
 
     def test_assessment_first_pass_full_points(self):
         assessment = AssessmentMaster.objects.create(
@@ -140,8 +141,8 @@ class AwardEngineDirectTest(GamificationAwardTestBase):
             score_percentage=Decimal("80"),
             status="PASS",
         )
-        txn = self.engine.award_assessment_passed(result)
-        self.assertEqual(txn.amount, 50)
+        outcome = self.engine.award_assessment_passed(result)
+        self.assertEqual(outcome.transaction.amount, 50)
 
     def test_assessment_second_pass_reduced_points(self):
         assessment = AssessmentMaster.objects.create(
@@ -161,8 +162,8 @@ class AwardEngineDirectTest(GamificationAwardTestBase):
             score_percentage=Decimal("85"),
             status="PASS",
         )
-        txn = self.engine.award_assessment_passed(result2)
-        self.assertEqual(txn.amount, 20)
+        outcome = self.engine.award_assessment_passed(result2)
+        self.assertEqual(outcome.transaction.amount, 20)
 
     def test_inactive_company_skips_award(self):
         config = CompanyGamificationConfig.objects.get(company=self.company)
@@ -173,8 +174,9 @@ class AwardEngineDirectTest(GamificationAwardTestBase):
             course=self.course,
             status=ProgressStatus.COMPLETED,
         )
-        txn = self.engine.award_course_completed(enrollment)
-        self.assertIsNone(txn)
+        outcome = self.engine.award_course_completed(enrollment)
+        self.assertIsNone(outcome.transaction)
+        self.assertEqual(outcome.new_badges, [])
         self.assertEqual(PointLedgerService().get_balance(self.employee.id), 0)
 
 

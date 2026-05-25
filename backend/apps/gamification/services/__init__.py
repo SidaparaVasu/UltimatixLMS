@@ -4,6 +4,9 @@ from .award_engine import AwardEngine
 from .learner_gamification_service import LearnerGamificationService
 from .leaderboard_service import LeaderboardService
 from .streak_service import StreakService
+from .badge_evaluator import BadgeEvaluator, NewBadgeAward
+from .badge_catalog_service import BadgeCatalogService
+from .award_engine import AwardOutcome
 
 __all__ = [
     "GamificationStatusService",
@@ -13,4 +16,8 @@ __all__ = [
     "LearnerGamificationService",
     "LeaderboardService",
     "StreakService",
+    "BadgeEvaluator",
+    "NewBadgeAward",
+    "BadgeCatalogService",
+    "AwardOutcome",
 ]

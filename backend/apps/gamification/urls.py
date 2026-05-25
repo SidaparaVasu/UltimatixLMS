@@ -2,6 +2,7 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from apps.gamification.views import (
+    BadgeGamificationViewSet,
     GamificationHealthAPIView,
     LeaderboardViewSet,
     MeGamificationViewSet,
@@ -9,6 +10,7 @@ from apps.gamification.views import (
 
 router = DefaultRouter()
 router.register(r"me", MeGamificationViewSet, basename="gamification-me")
+router.register(r"badges", BadgeGamificationViewSet, basename="gamification-badges")
 router.register(r"leaderboard", LeaderboardViewSet, basename="gamification-leaderboard")
 
 urlpatterns = [

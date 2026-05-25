@@ -12,12 +12,16 @@ from rest_framework.views import APIView
 
 from apps.gamification.constants import LeaderboardPeriod
 from apps.gamification.serializers import (
+    BadgeCatalogItemSerializer,
+    BadgeCatalogResponseSerializer,
+    EarnedBadgeSerializer,
     GamificationHealthSerializer,
     GamificationSummarySerializer,
     LeaderboardResponseSerializer,
     PointTransactionSerializer,
 )
 from apps.gamification.services import (
+    BadgeCatalogService,
     GamificationStatusService,
     LeaderboardService,
     LearnerGamificationService,
@@ -111,6 +115,48 @@ class MeGamificationViewSet(viewsets.GenericViewSet):
         return success_response(
             message="Transactions retrieved",
             data=serializer.data,
+        )
+
+    @extend_schema(
+        summary="Earned badges for current learner",
+        responses={200: EarnedBadgeSerializer(many=True)},
+    )
+    @action(detail=False, methods=["get"], url_path="badges")
+    def badges(self, request):
+        employee, error = require_active_gamification(request)
+        if error:
+            return error
+
+        rows = BadgeCatalogService().list_earned_badges(employee.id)
+        serializer = EarnedBadgeSerializer(rows, many=True)
+        return success_response(
+            message="Earned badges retrieved",
+            data=serializer.data,
+        )
+
+
+class BadgeGamificationViewSet(viewsets.GenericViewSet):
+    permission_classes = [HasScopedPermission]
+    required_permission = P.GAMIFICATION.VIEW_OWN
+
+    @extend_schema(
+        summary="Badge catalog with earned state for current learner",
+        responses={200: BadgeCatalogResponseSerializer},
+    )
+    @action(detail=False, methods=["get"], url_path="catalog")
+    def catalog(self, request):
+        employee, error = require_active_gamification(request)
+        if error:
+            return error
+
+        results = BadgeCatalogService().build_catalog(employee.id)
+        serializer = BadgeCatalogItemSerializer(results, many=True)
+        return success_response(
+            message="Badge catalog retrieved",
+            data={
+                "count": len(results),
+                "results": serializer.data,
+            },
         )
 
 
