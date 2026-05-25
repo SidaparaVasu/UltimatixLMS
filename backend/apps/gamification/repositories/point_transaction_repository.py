@@ -32,3 +32,9 @@ class PointTransactionRepository(BaseRepository):
             source_type=source_type,
             source_id=source_id,
         )
+
+    def list_for_employee(self, employee_id: int):
+        return self.filter(employee_id=employee_id).order_by("-created_at")
+
+    def recent_for_employee(self, employee_id: int, limit: int = 5):
+        return self.list_for_employee(employee_id)[:limit]

@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
-from apps.gamification.models import CompanyGamificationConfig
+from apps.gamification.constants import AWARD_RULE_LABELS
+from apps.gamification.models import CompanyGamificationConfig, PointTransaction
 
 
 class GamificationHealthSerializer(serializers.Serializer):
@@ -29,3 +30,44 @@ class CompanyGamificationConfigSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "company", "created_at", "updated_at"]
+
+
+class StreakSnapshotSerializer(serializers.Serializer):
+    current = serializers.IntegerField()
+    longest = serializers.IntegerField()
+
+
+class StreaksSerializer(serializers.Serializer):
+    learning = StreakSnapshotSerializer()
+    pass_daily = StreakSnapshotSerializer()
+    attempt_daily = StreakSnapshotSerializer()
+
+
+class PointTransactionSerializer(serializers.ModelSerializer):
+    rule_label = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PointTransaction
+        fields = [
+            "id",
+            "amount",
+            "rule_code",
+            "rule_label",
+            "source_type",
+            "source_id",
+            "metadata",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+    def get_rule_label(self, obj) -> str:
+        return AWARD_RULE_LABELS.get(obj.rule_code, obj.rule_code.replace("_", " ").title())
+
+
+class GamificationSummarySerializer(serializers.Serializer):
+    lifetime_xp = serializers.IntegerField()
+    rank = serializers.IntegerField()
+    pool_size = serializers.IntegerField()
+    badges_count = serializers.IntegerField()
+    streaks = StreaksSerializer()
+    recent_transactions = PointTransactionSerializer(many=True)

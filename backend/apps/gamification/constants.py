@@ -40,3 +40,12 @@ class PointSourceType:
     SKILL_UPGRADE_PROPOSAL = "SKILL_UPGRADE_PROPOSAL"
     ISSUED_CERTIFICATE = "ISSUED_CERTIFICATE"
     STREAK = "STREAK"
+
+
+AWARD_RULE_LABELS = {
+    AwardRuleCode.COURSE_COMPLETED: "Course completed",
+    AwardRuleCode.ASSESSMENT_PASSED: "Assessment passed",
+    AwardRuleCode.SKILL_UPGRADE_APPROVED: "Skill upgrade approved",
+    AwardRuleCode.CERTIFICATE_ISSUED: "Certificate issued",
+    AwardRuleCode.STREAK_DAY_BONUS: "Streak day bonus",
+}
