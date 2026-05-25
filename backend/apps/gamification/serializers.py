@@ -71,3 +71,33 @@ class GamificationSummarySerializer(serializers.Serializer):
     badges_count = serializers.IntegerField()
     streaks = StreaksSerializer()
     recent_transactions = PointTransactionSerializer(many=True)
+
+
+class LeaderboardEntrySerializer(serializers.Serializer):
+    rank = serializers.IntegerField()
+    employee_id = serializers.IntegerField()
+    employee_code = serializers.CharField()
+    display_name = serializers.CharField()
+    department_name = serializers.CharField()
+    business_unit_name = serializers.CharField()
+    designation_name = serializers.CharField()
+    period_xp = serializers.IntegerField()
+    badges_count = serializers.IntegerField()
+
+
+class LeaderboardMyRankSerializer(serializers.Serializer):
+    rank = serializers.IntegerField(allow_null=True)
+    period_xp = serializers.IntegerField()
+    pool_size = serializers.IntegerField()
+
+
+class LeaderboardResponseSerializer(serializers.Serializer):
+    period = serializers.CharField()
+    department_id = serializers.IntegerField(allow_null=True)
+    business_unit_id = serializers.IntegerField(allow_null=True)
+    designation_id = serializers.IntegerField(allow_null=True)
+    my_rank = LeaderboardMyRankSerializer()
+    count = serializers.IntegerField()
+    next = serializers.CharField(allow_null=True)
+    previous = serializers.CharField(allow_null=True)
+    results = LeaderboardEntrySerializer(many=True)

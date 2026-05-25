@@ -2,18 +2,26 @@
 Gamification API views.
 """
 
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema
+from drf_spectacular.types import OpenApiTypes
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.gamification.constants import LeaderboardPeriod
 from apps.gamification.serializers import (
     GamificationHealthSerializer,
     GamificationSummarySerializer,
+    LeaderboardResponseSerializer,
     PointTransactionSerializer,
 )
-from apps.gamification.services import GamificationStatusService, LearnerGamificationService
+from apps.gamification.services import (
+    GamificationStatusService,
+    LeaderboardService,
+    LearnerGamificationService,
+)
 from apps.gamification.view_helpers import get_request_employee, require_active_gamification
 from apps.rbac.permission_codes import P
 from apps.rbac.permissions import HasScopedPermission
@@ -103,4 +111,111 @@ class MeGamificationViewSet(viewsets.GenericViewSet):
         return success_response(
             message="Transactions retrieved",
             data=serializer.data,
+        )
+
+
+def _parse_optional_int(value) -> int | None:
+    if value in (None, ""):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+class LeaderboardViewSet(viewsets.GenericViewSet):
+    permission_classes = [HasScopedPermission]
+    required_permission = P.GAMIFICATION.VIEW_LEADERBOARD
+    pagination_class = StandardResultsPagination
+
+    def _get_service(self) -> LeaderboardService:
+        return LeaderboardService()
+
+    def _filter_params(self, request) -> dict:
+        return {
+            "period": request.query_params.get("period"),
+            "department_id": _parse_optional_int(request.query_params.get("department_id")),
+            "business_unit_id": _parse_optional_int(request.query_params.get("business_unit_id")),
+            "designation_id": _parse_optional_int(request.query_params.get("designation_id")),
+        }
+
+    @extend_schema(
+        summary="Company leaderboard",
+        parameters=[
+            OpenApiParameter("period", OpenApiTypes.STR, enum=list(LeaderboardPeriod.CHOICES)),
+            OpenApiParameter("department_id", OpenApiTypes.INT, required=False),
+            OpenApiParameter("business_unit_id", OpenApiTypes.INT, required=False),
+            OpenApiParameter("designation_id", OpenApiTypes.INT, required=False),
+        ],
+        responses={200: LeaderboardResponseSerializer},
+    )
+    def list(self, request):
+        employee, error = require_active_gamification(request)
+        if error:
+            return error
+
+        filters = self._filter_params(request)
+        service = self._get_service()
+        period = service._normalize_period(filters["period"])
+
+        qs = service.build_leaderboard_queryset(
+            employee.company_id,
+            period=period,
+            department_id=filters["department_id"],
+            business_unit_id=filters["business_unit_id"],
+            designation_id=filters["designation_id"],
+        )
+
+        rank_info = service.resolve_rank(
+            employee.company_id,
+            employee.id,
+            period=period,
+            department_id=filters["department_id"],
+            business_unit_id=filters["business_unit_id"],
+            designation_id=filters["designation_id"],
+        )
+
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(qs, request)
+        rank_offset = 0
+        if page is not None and paginator.page.number > 1:
+            rank_offset = (paginator.page.number - 1) * paginator.get_page_size(request)
+
+        if page is not None:
+            results = service.serialize_entries(page, rank_offset=rank_offset)
+            payload = {
+                "period": period,
+                "department_id": filters["department_id"],
+                "business_unit_id": filters["business_unit_id"],
+                "designation_id": filters["designation_id"],
+                "my_rank": {
+                    "rank": rank_info["rank"] if rank_info else None,
+                    "period_xp": rank_info["period_xp"] if rank_info else 0,
+                    "pool_size": rank_info["pool_size"] if rank_info else 0,
+                },
+                "count": paginator.page.paginator.count,
+                "next": paginator.get_next_link(),
+                "previous": paginator.get_previous_link(),
+                "results": results,
+            }
+            return Response({"success": True, "data": payload})
+
+        results = service.serialize_entries(qs)
+        return success_response(
+            message="Leaderboard retrieved",
+            data={
+                "period": period,
+                "department_id": filters["department_id"],
+                "business_unit_id": filters["business_unit_id"],
+                "designation_id": filters["designation_id"],
+                "my_rank": {
+                    "rank": rank_info["rank"] if rank_info else None,
+                    "period_xp": rank_info["period_xp"] if rank_info else 0,
+                    "pool_size": rank_info["pool_size"] if rank_info else 0,
+                },
+                "count": len(results),
+                "next": None,
+                "previous": None,
+                "results": results,
+            },
         )

@@ -42,6 +42,14 @@ class PointSourceType:
     STREAK = "STREAK"
 
 
+class LeaderboardPeriod:
+    WEEKLY = "weekly"
+    MONTHLY = "monthly"
+    ALL_TIME = "all_time"
+    CHOICES = (WEEKLY, MONTHLY, ALL_TIME)
+    DEFAULT = ALL_TIME
+
+
 AWARD_RULE_LABELS = {
     AwardRuleCode.COURSE_COMPLETED: "Course completed",
     AwardRuleCode.ASSESSMENT_PASSED: "Assessment passed",
