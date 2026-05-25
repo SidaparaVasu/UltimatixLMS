@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '@/api/auth-api';
+import { resetAuthLogoutRedirectGuard } from '@/api/auth-session';
 import { useAuthStore } from '@/stores/authStore';
 import type { LoginRequest } from '@/types/auth.types';
 
@@ -16,6 +17,7 @@ export const useLogin = () => {
   return useMutation({
     mutationFn: (payload: LoginRequest) => authApi.login(payload),
     onSuccess: (result) => {
+      resetAuthLogoutRedirectGuard();
       setAuth(result.user, result.access, result.refresh);
       navigate('/dashboard', { replace: true });
     },

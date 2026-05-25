@@ -10,8 +10,19 @@
  */
 
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { forceAuthLogout } from '@/api/auth-session';
+import {
+  clearTokens,
+  getAccessToken,
+  getRefreshToken,
+  setTokens,
+  TOKEN_KEYS,
+} from '@/api/token-storage';
 
 const BASE_URL = `${import.meta.env.VITE_API_URL}${import.meta.env.VITE_API_VERSION}`;
+
+// Re-export for callers that still import from axios-client.
+export { TOKEN_KEYS, getAccessToken, getRefreshToken, setTokens, clearTokens };
 
 // ---------------------------------------------------------------------------
 // Axios Instance
@@ -24,31 +35,6 @@ export const apiClient = axios.create({
   },
   withCredentials: true,
 });
-
-// ---------------------------------------------------------------------------
-// Token Storage Keys
-// ---------------------------------------------------------------------------
-
-export const TOKEN_KEYS = {
-  ACCESS: 'lms_access_token',
-  REFRESH: 'lms_refresh_token',
-} as const;
-
-export const getAccessToken = (): string | null =>
-  localStorage.getItem(TOKEN_KEYS.ACCESS);
-
-export const getRefreshToken = (): string | null =>
-  localStorage.getItem(TOKEN_KEYS.REFRESH);
-
-export const setTokens = (access: string, refresh: string): void => {
-  localStorage.setItem(TOKEN_KEYS.ACCESS, access);
-  localStorage.setItem(TOKEN_KEYS.REFRESH, refresh);
-};
-
-export const clearTokens = (): void => {
-  localStorage.removeItem(TOKEN_KEYS.ACCESS);
-  localStorage.removeItem(TOKEN_KEYS.REFRESH);
-};
 
 // ---------------------------------------------------------------------------
 // Request Interceptor — Inject Access Token
@@ -100,8 +86,7 @@ apiClient.interceptors.response.use(
 
     // No refresh token available — hard logout
     if (!refreshToken) {
-      clearTokens();
-      window.location.href = '/login';
+      forceAuthLogout();
       return Promise.reject(error);
     }
 
@@ -142,8 +127,7 @@ apiClient.interceptors.response.use(
       return apiClient(originalRequest);
     } catch (refreshError) {
       processQueue(refreshError, null);
-      clearTokens();
-      window.location.href = '/login';
+      forceAuthLogout();
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;

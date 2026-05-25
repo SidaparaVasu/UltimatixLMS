@@ -10,7 +10,7 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { setTokens, clearTokens } from '@/api/axios-client';
+import { setTokens, clearTokens } from '@/api/token-storage';
 import type { AuthState, User } from '@/types/auth.types';
 
 export const useAuthStore = create<AuthState>()(
@@ -62,6 +62,11 @@ export const useAuthStore = create<AuthState>()(
        */
       clearAuth: () => {
         clearTokens();
+        try {
+          sessionStorage.removeItem('lms_gamification_snapshot');
+        } catch {
+          /* ignore */
+        }
         set({
           user: null,
           accessToken: null,

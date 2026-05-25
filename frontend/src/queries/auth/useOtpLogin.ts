@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '@/api/auth-api';
+import { resetAuthLogoutRedirectGuard } from '@/api/auth-session';
 import { useAuthStore } from '@/stores/authStore';
 
 // Step 1 — request OTP to be sent to user's email/phone
@@ -25,6 +26,7 @@ export const useConfirmOtpLogin = () => {
     mutationFn: (payload: { identifier: string; otp_code: string }) =>
       authApi.confirmOtpLogin(payload),
     onSuccess: (result) => {
+      resetAuthLogoutRedirectGuard();
       setAuth(result.user, result.access, result.refresh);
       navigate('/dashboard', { replace: true });
     },
