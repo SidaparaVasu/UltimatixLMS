@@ -61,6 +61,9 @@ const CertificateVerificationPage = lazy(() => import('@/pages/public/Certificat
 const LeaderboardPage = lazy(() =>
   import('@/modules/gamification').then((m) => ({ default: m.LeaderboardPage }))
 );
+const GamificationProfilePage = lazy(() =>
+  import('@/modules/gamification').then((m) => ({ default: m.GamificationProfilePage }))
+);
 // RoleDetailPage is preserved for future use — unlinked from routing intentionally
 // const RoleDetailPage    = lazy(() => import('@/pages/admin/rbac/RoleDetailPage'));
 
@@ -187,6 +190,7 @@ export const AppRoutes = () => {
               <Route path="/dashboard" element={<DashboardPage />} />
               {/* Settings Routes */}
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/profile/gamification" element={<GamificationProfilePage />} />
               <Route path="/security" element={<SecuritySettingsPage />} />
 
               {/* Learner Routes */}

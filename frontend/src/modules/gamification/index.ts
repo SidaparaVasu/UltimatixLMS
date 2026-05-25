@@ -1,4 +1,5 @@
 export { LeaderboardPage } from './pages/LeaderboardPage';
+export { GamificationProfilePage } from './pages/GamificationProfilePage';
 export { useGamificationEnabled } from './hooks/useGamificationEnabled';
 export {
   useGamificationSummary,
