@@ -1,3 +1,11 @@
 from .config_repository import CompanyGamificationConfigRepository
+from .award_rule_repository import AwardRuleRepository
+from .point_balance_repository import PointBalanceRepository
+from .point_transaction_repository import PointTransactionRepository
 
-__all__ = ["CompanyGamificationConfigRepository"]
+__all__ = [
+    "CompanyGamificationConfigRepository",
+    "AwardRuleRepository",
+    "PointBalanceRepository",
+    "PointTransactionRepository",
+]

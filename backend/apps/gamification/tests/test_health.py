@@ -24,7 +24,7 @@ class GamificationHealthAPITest(APITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_health_returns_phase_zero_payload(self):
+    def test_health_returns_status_payload(self):
         self.client.force_authenticate(user=self.user)
         url = reverse("gamification-health")
         response = self.client.get(url)
@@ -33,6 +33,6 @@ class GamificationHealthAPITest(APITestCase):
         data = response.data["data"]
         self.assertEqual(data["status"], "ok")
         self.assertEqual(data["module"], "gamification")
-        self.assertEqual(data["phase"], 0)
+        self.assertEqual(data["phase"], 1)
         self.assertIn("global_feature_enabled", data)
         self.assertIn("active", data)
