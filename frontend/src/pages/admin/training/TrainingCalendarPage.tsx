@@ -13,6 +13,8 @@ import {
 } from '@/queries/training/useTrainingQueries';
 import { useDepartmentOptions } from '@/queries/admin/useAdminMasters';
 import { TrainingSession, TrainingSessionType, TrainingSessionListParams } from '@/types/training.types';
+import { usePermission } from '@/hooks/usePermission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 // ── date-fns localizer ────────────────────────────────────────────────────
 
@@ -71,6 +73,7 @@ const EventComponent: React.FC<{ event: CalEvent }> = ({ event }) => {
 
 export default function TrainingCalendarPage() {
   const currentYear = new Date().getFullYear();
+  const canManageCalendar = usePermission(PERMISSIONS.TRAINING_CALENDAR_APPROVE);
 
   const [selectedYear, setSelectedYear]   = useState(currentYear);
   const [selectedDept, setSelectedDept]   = useState('');
@@ -103,7 +106,8 @@ export default function TrainingCalendarPage() {
   // We still need a specific dept+year calendar to attach new sessions to.
   // Department is optional for viewing — but required when creating a session.
   const { data: calendarsData } = useTrainingCalendars(
-    selectedDept ? { year: selectedYear, department: Number(selectedDept) } : undefined
+    selectedDept ? { year: selectedYear, department: Number(selectedDept) } : undefined,
+    canManageCalendar && !!selectedDept
   );
   const createCalendar = useCreateCalendar();
   const calendarRecord = calendarsData?.results?.[0] ?? null;
@@ -124,11 +128,12 @@ export default function TrainingCalendarPage() {
 
   // ── Handlers ──────────────────────────────────────────────────────────
   const handleSelectSlot = useCallback(async (slot: SlotInfo) => {
+    if (!canManageCalendar) return;
     if (!selectedDept) return;
     setEditTarget(null);
     setDefaultDate(slot.start);
     setFormOpen(true);
-  }, [selectedDept]);
+  }, [canManageCalendar, selectedDept]);
 
   const handleSelectEvent = useCallback((event: CalEvent) => {
     setSelectedSession(event.resource);
@@ -136,6 +141,7 @@ export default function TrainingCalendarPage() {
   }, []);
 
   const handleNewSession = () => {
+    if (!canManageCalendar) return;
     setEditTarget(null);
     setDefaultDate(null);
     setFormOpen(true);
@@ -180,16 +186,18 @@ export default function TrainingCalendarPage() {
           <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: 'var(--color-text-primary)', letterSpacing: '-0.01em' }}>
             Training Calendar
           </h1>
-          <button
-            onClick={handleNewSession}
-            style={{
-              padding: '8px 18px', borderRadius: 'var(--radius-md)',
-              border: 'none', background: 'var(--color-accent)', color: '#fff',
-              fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-            }}
-          >
-            + New Session
-          </button>
+          {canManageCalendar && (
+            <button
+              onClick={handleNewSession}
+              style={{
+                padding: '8px 18px', borderRadius: 'var(--radius-md)',
+                border: 'none', background: 'var(--color-accent)', color: '#fff',
+                fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              + New Session
+            </button>
+          )}
         </div>
         <hr style={{ marginTop: '16px', border: 'none', borderTop: '1px solid var(--color-border)' }} />
       </div>
@@ -291,7 +299,7 @@ export default function TrainingCalendarPage() {
           onView={setView}
           onSelectSlot={handleSelectSlot}
           onSelectEvent={handleSelectEvent}
-          selectable={!!selectedDept}
+          selectable={canManageCalendar && !!selectedDept}
           eventPropGetter={eventPropGetter}
           components={{ event: EventComponent as any }}
           views={['month', 'week', 'agenda']}
@@ -300,17 +308,19 @@ export default function TrainingCalendarPage() {
       </div>
 
       {/* Session Form Drawer — always available; resolves calendar on save */}
-      <SessionFormDrawer
-        open={formOpen}
-        onClose={() => { setFormOpen(false); setEditTarget(null); }}
-        calendarId={calendarId}
-        selectedYear={selectedYear}
-        selectedDept={selectedDept}
-        allDepts={allDepts}
-        ensureCalendar={ensureCalendar}
-        editTarget={editTarget}
-        defaultDate={defaultDate}
-      />
+      {canManageCalendar && (
+        <SessionFormDrawer
+          open={formOpen}
+          onClose={() => { setFormOpen(false); setEditTarget(null); }}
+          calendarId={calendarId}
+          selectedYear={selectedYear}
+          selectedDept={selectedDept}
+          allDepts={allDepts}
+          ensureCalendar={ensureCalendar}
+          editTarget={editTarget}
+          defaultDate={defaultDate}
+        />
+      )}
 
       {/* Session Detail Panel */}
       <SessionDetailPanel
@@ -318,6 +328,7 @@ export default function TrainingCalendarPage() {
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
         onEdit={handleEditFromDetail}
+        canManage={canManageCalendar}
       />
     </div>
   );

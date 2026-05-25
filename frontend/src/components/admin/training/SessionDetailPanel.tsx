@@ -19,6 +19,7 @@ interface SessionDetailPanelProps {
   open: boolean;
   onClose: () => void;
   onEdit: () => void;
+  canManage?: boolean;
 }
 
 const fmt = (iso: string) =>
@@ -37,7 +38,7 @@ const DetailRow: React.FC<{ label: string; children: React.ReactNode }> = ({ lab
 );
 
 export const SessionDetailPanel: React.FC<SessionDetailPanelProps> = ({
-  session, open, onClose, onEdit,
+  session, open, onClose, onEdit, canManage = false,
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>('details');
 
@@ -80,25 +81,31 @@ export const SessionDetailPanel: React.FC<SessionDetailPanelProps> = ({
             {session.current_enrollments} / {session.capacity} enrolled
           </span>
         </div>
-        <button
-          onClick={onEdit}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: '5px',
-            padding: '5px 12px', borderRadius: 'var(--radius-md)',
-            border: '1px solid var(--color-border)', background: 'transparent',
-            fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)',
-            cursor: 'pointer',
-          }}
-        >
-          <Pencil size={12} /> Edit
-        </button>
+        {canManage && (
+          <button
+            onClick={onEdit}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '5px',
+              padding: '5px 12px', borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--color-border)', background: 'transparent',
+              fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)',
+              cursor: 'pointer',
+            }}
+          >
+            <Pencil size={12} /> Edit
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
       <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', marginBottom: '16px' }}>
         <button style={tabStyle('details')}    onClick={() => setActiveTab('details')}>Details</button>
-        <button style={tabStyle('enrollment')} onClick={() => setActiveTab('enrollment')}>Enrollment</button>
-        <button style={tabStyle('attendance')} onClick={() => setActiveTab('attendance')}>Attendance</button>
+        {canManage && (
+          <>
+            <button style={tabStyle('enrollment')} onClick={() => setActiveTab('enrollment')}>Enrollment</button>
+            <button style={tabStyle('attendance')} onClick={() => setActiveTab('attendance')}>Attendance</button>
+          </>
+        )}
       </div>
 
       {/* Tab content */}

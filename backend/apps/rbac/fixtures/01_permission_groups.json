@@ -76,5 +76,18 @@
       "created_at": "2026-01-01T00:00:00Z",
       "updated_at": "2026-01-01T00:00:00Z"
     }
+  },
+  {
+    "model": "rbac.permissiongroupmaster",
+    "pk": 7,
+    "fields": {
+      "group_name": "Common Read",
+      "group_code": "COMMON_READ",
+      "description": "Safe lookup, self, and common read permissions for authenticated users.",
+      "display_order": 7,
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
   }
 ]

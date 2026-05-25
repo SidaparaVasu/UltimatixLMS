@@ -17,7 +17,7 @@ Rules:
 
 class PermissionCodes:
     """
-    All 45 permission codes organised by permission group.
+    All permission codes organised by permission group.
 
     Aliased as P at the bottom of this file for brevity:
         from apps.rbac.permission_codes import P
@@ -39,6 +39,14 @@ class PermissionCodes:
         ASSESSMENT_ATTEMPT     = "ASSESSMENT_ATTEMPT"
         NOTIFICATION_VIEW      = "NOTIFICATION_VIEW"
         PROFILE_MANAGE         = "PROFILE_MANAGE"
+
+    class COMMON_READ:
+        """Safe lookup, self, and common read permissions for authenticated users."""
+        ORG_LOOKUP_VIEW         = "ORG_LOOKUP_VIEW"
+        SKILL_LOOKUP_VIEW       = "SKILL_LOOKUP_VIEW"
+        SKILL_HISTORY_SELF_VIEW = "SKILL_HISTORY_SELF_VIEW"
+        SESSION_VIEW            = "SESSION_VIEW"
+        ASSESSMENT_CATALOG_VIEW = "ASSESSMENT_CATALOG_VIEW"
 
     class HR_MANAGEMENT:
         """Employee management, org structure, TNI, and training planning."""

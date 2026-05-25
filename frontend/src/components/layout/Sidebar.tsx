@@ -82,8 +82,8 @@ const NAV_CONFIG: NavSection[] = [
   {
     title: "Training",
     items: [
-      { label: "Training Calendar", icon: Calendar,    path: "/training-calendar" },
-      { label: "Assessments",       icon: CheckSquare, path: "/assessments",             requiredPermission: PERMISSIONS.ASSESSMENT_ATTEMPT },
+      { label: "Training Calendar", icon: Calendar,    path: "/training-calendar",       requiredPermission: PERMISSIONS.SESSION_VIEW },
+      { label: "Assessments",       icon: CheckSquare, path: "/assessments",             requiredPermission: PERMISSIONS.ASSESSMENT_CATALOG_VIEW },
       { label: "My Certificates",   icon: Award,       path: "/my-certificates",         requiredPermission: PERMISSIONS.CERTIFICATE_VIEW },
     ],
   },
@@ -96,7 +96,6 @@ const NAV_CONFIG: NavSection[] = [
       PERMISSIONS.TNI_APPROVE,
       PERMISSIONS.TRAINING_PLAN_VIEW,
       PERMISSIONS.TRAINING_PLAN_APPROVE,
-      PERMISSIONS.TRAINING_CALENDAR_VIEW,
       PERMISSIONS.TRAINING_CALENDAR_APPROVE,
       PERMISSIONS.ENROLLMENT_MANAGE,
       PERMISSIONS.ASSESSMENT_REVIEW_MANAGE,
@@ -108,7 +107,7 @@ const NAV_CONFIG: NavSection[] = [
       { label: "Training Needs",      icon: ClipboardList, path: "/admin/tni",               requiredPermission: PERMISSIONS.TNI_MANAGE },
       { label: "Training Plans",      icon: GraduationCap, path: "/admin/training-plans",    requiredPermission: PERMISSIONS.TRAINING_PLAN_VIEW },
       { label: "Training Plan Approval",           icon: CheckCircle,   path: "/admin/approvals",         requiredPermission: PERMISSIONS.TRAINING_PLAN_APPROVE },
-      { label: "Training Calendar",   icon: CalendarDays,  path: "/admin/training-calendar", requiredPermission: PERMISSIONS.TRAINING_CALENDAR_VIEW },
+      { label: "Training Calendar",   icon: CalendarDays,  path: "/admin/training-calendar", requiredPermission: PERMISSIONS.TRAINING_CALENDAR_APPROVE },
       { label: "Question Bank",       icon: CircleQuestionMark, path: "/admin/assessments/questions", requiredPermission: PERMISSIONS.ASSESSMENT_MANAGE },
       { label: "Manage Assessments",          icon: FilePenLine, path: "/admin/assessments", requiredPermission: PERMISSIONS.ASSESSMENT_MANAGE},
       { label: "Assessment Review",      icon: ClipboardCheck, path: "/admin/assessments/review",     requiredPermission: PERMISSIONS.ASSESSMENT_REVIEW_MANAGE },
@@ -208,6 +207,8 @@ export const Sidebar = () => {
   // All usePermission calls must be at the top level of the component.
   const permMap: Record<string, boolean> = {
     [PERMISSIONS.COURSE_VIEW]:               usePermission(PERMISSIONS.COURSE_VIEW),
+    [PERMISSIONS.SESSION_VIEW]:              usePermission(PERMISSIONS.SESSION_VIEW),
+    [PERMISSIONS.ASSESSMENT_CATALOG_VIEW]:   usePermission(PERMISSIONS.ASSESSMENT_CATALOG_VIEW),
     [PERMISSIONS.ASSESSMENT_ATTEMPT]:        usePermission(PERMISSIONS.ASSESSMENT_ATTEMPT),
     [PERMISSIONS.CERTIFICATE_VIEW]:          usePermission(PERMISSIONS.CERTIFICATE_VIEW),
     [PERMISSIONS.CERTIFICATE_MANAGE]:        usePermission(PERMISSIONS.CERTIFICATE_MANAGE),

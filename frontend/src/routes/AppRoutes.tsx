@@ -106,6 +106,11 @@ export const AppRoutes = () => {
             
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
+            {/* Assessment Player — learner route, full screen, no sidebar/header */}
+            <Route element={<RoleGuard requiredPermissions={[PERMISSIONS.ASSESSMENT_ATTEMPT]} />}>
+              <Route path="/assessments/:assessmentId/attempt" element={<AssessmentPlayerPage />} />
+            </Route>
+
             {/* Admin Routes Namespace
                 Minimum bar: EMPLOYEE_VIEW covers HR and admin users.
                 Individual routes add tighter guards where needed.        */}
@@ -172,8 +177,6 @@ export const AppRoutes = () => {
               {/* Studio runs outside of standard AdminLayout for full screen */}
               <Route path="/admin/courses/builder/:id" element={<CourseBuilderStudio />} />
 
-              {/* Assessment Player — full screen, no sidebar/header */}
-              <Route path="/assessments/:assessmentId/attempt" element={<AssessmentPlayerPage />} />
             </Route>
 
             <Route element={<DashboardLayout />}>
@@ -193,14 +196,18 @@ export const AppRoutes = () => {
               <Route path="/manager/tni" element={<ManagerTNIRatingPage />} />
 
               {/* Training Calendar */}
-              <Route path="/training-calendar" element={<TrainingCalendarPage />} />
+              <Route element={<RoleGuard requiredPermissions={[PERMISSIONS.SESSION_VIEW]} />}>
+                <Route path="/training-calendar" element={<TrainingCalendarPage />} />
+              </Route>
 
               {/* My Certificates — all authenticated learners */}
               <Route path="/my-certificates" element={<MyCertificatesPage />} />
 
               {/* Coming Soon Routes */}
               <Route path="/skills" element={<ComingSoon />} />
-              <Route path="/assessments" element={<AssessmentCatalogPage />} />
+              <Route element={<RoleGuard requiredPermissions={[PERMISSIONS.ASSESSMENT_CATALOG_VIEW]} />}>
+                <Route path="/assessments" element={<AssessmentCatalogPage />} />
+              </Route>
               <Route path="/certifications" element={<ComingSoon />} />
               <Route path="/reports" element={<ComingSoon />} />
               <Route path="/leaderboard" element={<ComingSoon />} />

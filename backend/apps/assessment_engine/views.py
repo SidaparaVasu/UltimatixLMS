@@ -839,7 +839,8 @@ class AssessmentCatalogViewSet(viewsets.ReadOnlyModelViewSet):
     GET /api/v1/assessment/catalog/
     """
     serializer_class = AssessmentCatalogSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [HasScopedPermission]
+    required_permission = P.COMMON_READ.ASSESSMENT_CATALOG_VIEW
 
     def get_queryset(self):
         return (

@@ -125,5 +125,11 @@
   {"model": "rbac.rolepermissionmaster", "pk": 119, "fields": {"role": 6, "permission": 42, "created_at": "2026-01-01T00:00:00Z"}},
 
   {"model": "rbac.rolepermissionmaster", "pk": 122, "fields": {"role": 2, "permission": 44, "created_at": "2026-01-01T00:00:00Z"}},
-  {"model": "rbac.rolepermissionmaster", "pk": 123, "fields": {"role": 2, "permission": 45, "created_at": "2026-01-01T00:00:00Z"}}
+  {"model": "rbac.rolepermissionmaster", "pk": 123, "fields": {"role": 2, "permission": 45, "created_at": "2026-01-01T00:00:00Z"}},
+
+  {"model": "rbac.rolepermissionmaster", "pk": 124, "fields": {"role": 1, "permission": 46, "created_at": "2026-01-01T00:00:00Z"}},
+  {"model": "rbac.rolepermissionmaster", "pk": 125, "fields": {"role": 1, "permission": 47, "created_at": "2026-01-01T00:00:00Z"}},
+  {"model": "rbac.rolepermissionmaster", "pk": 126, "fields": {"role": 1, "permission": 48, "created_at": "2026-01-01T00:00:00Z"}},
+  {"model": "rbac.rolepermissionmaster", "pk": 127, "fields": {"role": 1, "permission": 49, "created_at": "2026-01-01T00:00:00Z"}},
+  {"model": "rbac.rolepermissionmaster", "pk": 128, "fields": {"role": 1, "permission": 50, "created_at": "2026-01-01T00:00:00Z"}}
 ]

@@ -119,7 +119,12 @@ class SkillCategoryViewSet(BaseSkillViewSet):
     serializer_class = SkillCategorySerializer
     service_class = SkillCategoryService
     model = SkillCategoryMaster
-    required_permission = P.CONTENT_MANAGEMENT.SKILL_CATEGORY_MANAGE
+
+    @property
+    def required_permission(self):
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            return P.CONTENT_MANAGEMENT.SKILL_CATEGORY_MANAGE
+        return P.COMMON_READ.SKILL_LOOKUP_VIEW
 
 
 class SkillMasterViewSet(BaseSkillViewSet):
@@ -127,7 +132,12 @@ class SkillMasterViewSet(BaseSkillViewSet):
     serializer_class = SkillMasterSerializer
     service_class = SkillService
     model = SkillMaster
-    required_permission = P.CONTENT_MANAGEMENT.SKILL_MANAGE
+
+    @property
+    def required_permission(self):
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            return P.CONTENT_MANAGEMENT.SKILL_MANAGE
+        return P.COMMON_READ.SKILL_LOOKUP_VIEW
 
     def get_serializer_class(self):
         if self.action == "retrieve":
@@ -148,7 +158,12 @@ class SkillLevelViewSet(BaseSkillViewSet):
     serializer_class = SkillLevelSerializer
     service_class = SkillLevelService
     model = SkillLevelMaster
-    required_permission = P.CONTENT_MANAGEMENT.SKILL_MANAGE  # skill level management is part of skill management
+
+    @property
+    def required_permission(self):
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            return P.CONTENT_MANAGEMENT.SKILL_MANAGE
+        return P.COMMON_READ.SKILL_LOOKUP_VIEW
 
 
 class JobRoleSkillRequirementViewSet(BaseSkillViewSet):
@@ -214,8 +229,13 @@ class EmployeeSkillHistoryViewSet(BaseSkillViewSet):
     serializer_class = EmployeeSkillHistorySerializer
     service_class = EmployeeSkillHistoryService
     model = EmployeeSkillHistory
-    required_permission = P.HR_MANAGEMENT.EMPLOYEE_VIEW
     http_method_names = ["get"]
+
+    @property
+    def required_permission(self):
+        if self.request.query_params.get('my', '').lower() == 'true':
+            return P.COMMON_READ.SKILL_HISTORY_SELF_VIEW
+        return P.HR_MANAGEMENT.EMPLOYEE_VIEW
 
     def get_queryset(self):
         from apps.org_management.models import EmployeeMaster
