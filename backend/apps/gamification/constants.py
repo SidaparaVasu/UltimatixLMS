@@ -42,6 +42,27 @@ class PointSourceType:
     STREAK = "STREAK"
 
 
+class StreakType:
+    LEARNING = "LEARNING"
+    PASS_DAILY = "PASS_DAILY"
+    ATTEMPT_DAILY = "ATTEMPT_DAILY"
+    PASS_CONSECUTIVE = "PASS_CONSECUTIVE"
+    DAILY_TYPES = (LEARNING, PASS_DAILY, ATTEMPT_DAILY)
+    CHOICES = (
+        (LEARNING, "Learning"),
+        (PASS_DAILY, "Daily pass"),
+        (ATTEMPT_DAILY, "Daily attempt"),
+        (PASS_CONSECUTIVE, "Consecutive pass"),
+    )
+
+
+STREAK_SOURCE_ID_OFFSET = {
+    StreakType.LEARNING: 1,
+    StreakType.PASS_DAILY: 2,
+    StreakType.ATTEMPT_DAILY: 3,
+}
+
+
 class LeaderboardPeriod:
     WEEKLY = "weekly"
     MONTHLY = "monthly"

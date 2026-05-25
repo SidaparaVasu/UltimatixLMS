@@ -34,7 +34,7 @@ class GamificationStatusService:
         company_on = self.is_enabled_for_company(company_id) if global_on else False
         return {
             "module": "gamification",
-            "phase": 4,
+            "phase": 5,
             "global_feature_enabled": global_on,
             "company_enabled": company_on,
             "active": global_on and company_on,

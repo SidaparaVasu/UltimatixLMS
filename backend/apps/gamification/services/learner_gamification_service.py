@@ -2,26 +2,23 @@ from apps.gamification.models import PointBalance
 from apps.gamification.repositories import PointTransactionRepository
 from apps.gamification.services.gamification_status_service import GamificationStatusService
 from apps.gamification.services.point_ledger_service import PointLedgerService
+from apps.gamification.services.streak_service import StreakService
 from apps.org_management.constants import EmploymentStatus
 from apps.org_management.models import EmployeeMaster
 
 
 class LearnerGamificationService:
-    STREAK_PLACEHOLDER = {
-        "learning": {"current": 0, "longest": 0},
-        "pass_daily": {"current": 0, "longest": 0},
-        "attempt_daily": {"current": 0, "longest": 0},
-    }
-
     def __init__(
         self,
         ledger: PointLedgerService | None = None,
         transactions: PointTransactionRepository | None = None,
         status_service: GamificationStatusService | None = None,
+        streak_service: StreakService | None = None,
     ):
         self._ledger = ledger or PointLedgerService()
         self._transactions = transactions or PointTransactionRepository()
         self._status = status_service or GamificationStatusService()
+        self._streaks = streak_service or StreakService()
 
     def is_active_for_employee(self, employee) -> bool:
         return self._status.is_enabled_for_company(employee.company_id)
@@ -49,7 +46,7 @@ class LearnerGamificationService:
             "rank": rank_info["rank"],
             "pool_size": rank_info["pool_size"],
             "badges_count": 0,
-            "streaks": self.STREAK_PLACEHOLDER,
+            "streaks": self._streaks.build_streak_summary(employee.id),
             "recent_transactions": list(
                 self._transactions.recent_for_employee(employee.id, limit=5)
             ),

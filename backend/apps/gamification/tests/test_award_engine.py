@@ -218,7 +218,8 @@ class AwardEngineSignalTest(GamificationAwardTestBase):
             score_percentage=Decimal("90"),
             status="PASS",
         )
-        self.assertEqual(PointLedgerService().get_balance(self.employee.id), 50)
+        # 50 assessment pass + 10 first-day pass_daily streak bonus
+        self.assertEqual(PointLedgerService().get_balance(self.employee.id), 60)
 
     def test_skill_upgrade_approval_signal(self):
         skill = SkillMaster.objects.create(

@@ -148,3 +148,62 @@ class PointTransaction(models.Model):
 
     def __str__(self):
         return f"PointTransaction({self.rule_code}, {self.amount}, employee={self.employee_id})"
+
+
+class EmployeeStreak(models.Model):
+    employee = models.ForeignKey(
+        "org_management.EmployeeMaster",
+        on_delete=models.CASCADE,
+        related_name="gamification_streaks",
+    )
+    company = models.ForeignKey(
+        "org_management.CompanyMaster",
+        on_delete=models.CASCADE,
+        related_name="employee_streaks",
+    )
+    streak_type = models.CharField(max_length=32, db_index=True)
+    current_streak = models.PositiveIntegerField(default=0)
+    longest_streak = models.PositiveIntegerField(default=0)
+    last_activity_date = models.DateField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "gamification_employee_streak"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["employee", "streak_type"],
+                name="uniq_gamification_employee_streak",
+            ),
+        ]
+
+    def __str__(self):
+        return f"EmployeeStreak({self.employee_id}, {self.streak_type}, {self.current_streak})"
+
+
+class StreakActivityLog(models.Model):
+    employee = models.ForeignKey(
+        "org_management.EmployeeMaster",
+        on_delete=models.CASCADE,
+        related_name="streak_activity_logs",
+    )
+    company = models.ForeignKey(
+        "org_management.CompanyMaster",
+        on_delete=models.CASCADE,
+        related_name="streak_activity_logs",
+    )
+    streak_type = models.CharField(max_length=32, db_index=True)
+    activity_date = models.DateField(db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "gamification_streak_activity_log"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["employee", "streak_type", "activity_date"],
+                name="uniq_gamification_streak_activity_day",
+            ),
+        ]
+        ordering = ["-activity_date"]
+
+    def __str__(self):
+        return f"StreakActivityLog({self.employee_id}, {self.streak_type}, {self.activity_date})"

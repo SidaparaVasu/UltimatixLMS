@@ -21,6 +21,11 @@ def _engine():
     return AwardEngine()
 
 
+def _streaks():
+    from apps.gamification.services.streak_service import StreakService
+    return StreakService()
+
+
 # ---------------------------------------------------------------------------
 # UserCourseEnrollment — XP when status transitions to COMPLETED
 # ---------------------------------------------------------------------------
@@ -85,15 +90,96 @@ def _capture_result_old_status(sender, instance, **kwargs):
 @receiver(post_save, sender=AssessmentResult)
 def on_assessment_result_saved_award_points(sender, instance, created, **kwargs):
     try:
+        from django.utils import timezone
+        from apps.gamification.constants import StreakType
+
+        old_status = getattr(instance, "_gamification_old_status", None)
+        employee = instance.attempt.employee
+        streak_svc = _streaks()
+        activity_date = timezone.localdate()
+
+        if instance.status == "FAIL":
+            streak_svc.reset_pass_consecutive(employee)
+            return
+
         if instance.status != "PASS":
             return
-        old_status = getattr(instance, "_gamification_old_status", None)
+
         if created or old_status != "PASS":
             _engine().award_assessment_passed(instance)
+            streak_svc.record_calendar_streak(employee, StreakType.PASS_DAILY, activity_date)
+            streak_svc.increment_pass_consecutive(employee)
     except Exception as exc:
         logger.error(
             "gamification.signals.on_assessment_result_saved_award_points failed: "
             "result_id=%s error=%s",
+            instance.pk,
+            exc,
+        )
+
+
+# ---------------------------------------------------------------------------
+# AssessmentAttempt — daily attempt streak when submitted
+# ---------------------------------------------------------------------------
+
+from apps.assessment_engine.models import AssessmentAttempt  # noqa: E402
+
+
+@receiver(pre_save, sender=AssessmentAttempt)
+def _capture_attempt_submitted(sender, instance, **kwargs):
+    if instance.pk:
+        try:
+            instance._gamification_had_submitted = bool(
+                AssessmentAttempt.objects.filter(pk=instance.pk)
+                .values_list("submitted_at", flat=True)
+                .get()
+            )
+        except AssessmentAttempt.DoesNotExist:
+            instance._gamification_had_submitted = False
+    else:
+        instance._gamification_had_submitted = False
+
+
+@receiver(post_save, sender=AssessmentAttempt)
+def on_attempt_submitted_streak(sender, instance, created, **kwargs):
+    try:
+        from django.utils import timezone
+        from apps.gamification.constants import StreakType
+
+        if not instance.submitted_at:
+            return
+        had_submitted = getattr(instance, "_gamification_had_submitted", False)
+        if not created and had_submitted:
+            return
+        _streaks().record_calendar_streak(
+            instance.employee,
+            StreakType.ATTEMPT_DAILY,
+            timezone.localdate(),
+        )
+    except Exception as exc:
+        logger.error(
+            "gamification.signals.on_attempt_submitted_streak failed: attempt_id=%s error=%s",
+            instance.pk,
+            exc,
+        )
+
+
+# ---------------------------------------------------------------------------
+# UserContentProgress — learning streak from qualified daily engagement
+# ---------------------------------------------------------------------------
+
+from apps.learning_progress.models import UserContentProgress  # noqa: E402
+
+
+@receiver(post_save, sender=UserContentProgress)
+def on_content_progress_learning_streak(sender, instance, **kwargs):
+    try:
+        employee = instance.lesson_progress.enrollment.employee
+        _streaks().try_record_learning_day(employee)
+    except Exception as exc:
+        logger.error(
+            "gamification.signals.on_content_progress_learning_streak failed: "
+            "content_progress_id=%s error=%s",
             instance.pk,
             exc,
         )

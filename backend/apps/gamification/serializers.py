@@ -41,6 +41,7 @@ class StreaksSerializer(serializers.Serializer):
     learning = StreakSnapshotSerializer()
     pass_daily = StreakSnapshotSerializer()
     attempt_daily = StreakSnapshotSerializer()
+    pass_consecutive = StreakSnapshotSerializer()
 
 
 class PointTransactionSerializer(serializers.ModelSerializer):

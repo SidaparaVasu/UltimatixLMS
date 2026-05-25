@@ -3,8 +3,10 @@ from django.contrib import admin
 from apps.gamification.models import (
     AwardRule,
     CompanyGamificationConfig,
+    EmployeeStreak,
     PointBalance,
     PointTransaction,
+    StreakActivityLog,
 )
 
 
@@ -33,6 +35,20 @@ class PointBalanceAdmin(admin.ModelAdmin):
     list_display = ("employee", "company", "lifetime_xp", "updated_at")
     list_filter = ("company",)
     search_fields = ("employee__employee_code", "employee__email")
+
+
+@admin.register(EmployeeStreak)
+class EmployeeStreakAdmin(admin.ModelAdmin):
+    list_display = ("employee", "streak_type", "current_streak", "longest_streak", "last_activity_date")
+    list_filter = ("streak_type", "company")
+    search_fields = ("employee__employee_code",)
+
+
+@admin.register(StreakActivityLog)
+class StreakActivityLogAdmin(admin.ModelAdmin):
+    list_display = ("employee", "streak_type", "activity_date", "created_at")
+    list_filter = ("streak_type",)
+    search_fields = ("employee__employee_code",)
 
 
 @admin.register(PointTransaction)
