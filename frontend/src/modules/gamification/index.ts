@@ -1,4 +1,4 @@
-export { LeaderboardPlaceholderPage } from './pages/LeaderboardPlaceholderPage';
+export { LeaderboardPage } from './pages/LeaderboardPage';
 export { useGamificationEnabled } from './hooks/useGamificationEnabled';
 export {
   useGamificationSummary,
@@ -8,7 +8,8 @@ export {
   useGamificationMyBadges,
   useGamificationQueryEnabled,
 } from './hooks/useGamificationQueries';
-export { GAMIFICATION_QUERY_KEYS } from './hooks/query-keys';
+import { GAMIFICATION_QUERY_KEYS } from './hooks/query-keys';
+export { GAMIFICATION_QUERY_KEYS };
 export { gamificationApi } from './api/gamification-api';
 export { GAMIFICATION_API_BASE, GAMIFICATION_FEATURE_KEY } from './constants';
 export { GamificationEmptyState } from './components/GamificationEmptyState';

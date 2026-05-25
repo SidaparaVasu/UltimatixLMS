@@ -8,7 +8,7 @@ import {
   BookOpen,
   Calendar,
   CheckSquare,   // Assessments — not yet developed
-  // Trophy,        // Leaderboard — not yet developed
+  Trophy,
   Star,
   User,
   ShieldCheck,
@@ -36,6 +36,8 @@ import {
   Award,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import { useMemo } from "react";
+import { useGamificationEnabled } from "@/modules/gamification/hooks/useGamificationEnabled";
 import { getFullName, getInitials, getPrimaryRoleName } from "@/utils/user.utils";
 
 // ---------------------------------------------------------------------------
@@ -175,7 +177,6 @@ const NAV_CONFIG: NavSection[] = [
     title: "Analytics",
     items: [
       // { label: "Reports",     icon: BarChart2, path: "/admin/reports",  requiredPermission: PERMISSIONS.REPORTS_VIEW }, // TODO: not yet developed
-      // { label: "Leaderboard", icon: Trophy,    path: "/leaderboard" },                                                  // TODO: not yet developed
     ],
   },
 
@@ -198,6 +199,21 @@ export const Sidebar = () => {
   const { isSidebarOpen } = useUIStore();
   const { user } = useAuthStore();
   const location = useLocation();
+  const { isEnabled: gamificationEnabled } = useGamificationEnabled();
+
+  const navConfig = useMemo(() => {
+    if (!gamificationEnabled) return NAV_CONFIG;
+    return NAV_CONFIG.map((section) => {
+      if (section.title !== "Analytics") return section;
+      return {
+        ...section,
+        items: [
+          ...section.items,
+          { label: "Leaderboard", icon: Trophy, path: "/leaderboard" },
+        ],
+      };
+    });
+  }, [gamificationEnabled]);
 
   const fullName = getFullName(user);
   const initials = getInitials(user);
@@ -258,7 +274,7 @@ export const Sidebar = () => {
 
       {/* Navigation */}
       <nav className="sidebar-nav">
-        {NAV_CONFIG.map((section) => {
+        {navConfig.map((section) => {
           const visibleItems = getVisibleItems(section.items);
 
           // Hide the entire section if it has no visible items

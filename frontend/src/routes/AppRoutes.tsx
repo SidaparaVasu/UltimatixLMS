@@ -58,8 +58,8 @@ const RolesPage            = lazy(() => import('@/pages/admin/rbac/RolesPage'));
 const CertificateManagementPage = lazy(() => import('@/pages/admin/certificates/CertificateManagementPage'));
 const MyCertificatesPage        = lazy(() => import('@/pages/learner/MyCertificatesPage'));
 const CertificateVerificationPage = lazy(() => import('@/pages/public/CertificateVerificationPage'));
-const LeaderboardPlaceholderPage = lazy(() =>
-  import('@/modules/gamification').then((m) => ({ default: m.LeaderboardPlaceholderPage }))
+const LeaderboardPage = lazy(() =>
+  import('@/modules/gamification').then((m) => ({ default: m.LeaderboardPage }))
 );
 // RoleDetailPage is preserved for future use — unlinked from routing intentionally
 // const RoleDetailPage    = lazy(() => import('@/pages/admin/rbac/RoleDetailPage'));
@@ -213,9 +213,10 @@ export const AppRoutes = () => {
               </Route>
               <Route path="/certifications" element={<ComingSoon />} />
               <Route path="/reports" element={<ComingSoon />} />
-              <Route element={<RoleGuard requiredPermissions={[PERMISSIONS.GAMIFICATION_VIEW_LEADERBOARD]} />}>
-                <Route path="/leaderboard" element={<LeaderboardPlaceholderPage />} />
-              </Route>
+              {/* Leaderboard: page + API gate on gamification; avoid RoleGuard here so
+                  learners with VIEW_OWN (dashboard strip) are not sent to /unauthorized
+                  when VIEW_LEADERBOARD is missing from the login permission map. */}
+              <Route path="/leaderboard" element={<LeaderboardPage />} />
               {/* Notifications */}
               <Route path="/notifications" element={<NotificationsPage />} />
             </Route>
