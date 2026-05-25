@@ -44,9 +44,8 @@ export const GamificationStrip: React.FC = () => {
   const badgesQuery = useGamificationMyBadges();
 
   const isLoading =
-    summaryQuery.isLoading ||
-    badgesQuery.isLoading ||
-    (summaryQuery.isFetching && !summaryQuery.data);
+    (summaryQuery.isLoading && !summaryQuery.data) ||
+    (badgesQuery.isLoading && !badgesQuery.data);
 
   if (isLoading) {
     return <GamificationStripSkeleton />;

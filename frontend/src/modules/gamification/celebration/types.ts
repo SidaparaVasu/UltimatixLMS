@@ -32,4 +32,6 @@ export interface GamificationSnapshot {
     attempt_daily: number;
     pass_consecutive: number;
   };
+  /** `${streakKey}:${milestone}` keys already celebrated this session */
+  celebrated_streak_milestones?: string[];
 }

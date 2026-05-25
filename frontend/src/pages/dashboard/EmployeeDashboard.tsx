@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { WelcomeBanner } from '@/modules/dashboard/components/WelcomeBanner';
 import { StatsGrid } from '@/modules/dashboard/components/StatsGrid';
 import { CourseStrip } from '@/modules/dashboard/components/CourseStrip';
@@ -9,24 +9,9 @@ import { RecommendedCourses } from '@/modules/dashboard/components/RecommendedCo
 import { GamificationStrip } from '@/modules/dashboard/components/GamificationStrip';
 import { ActivityFeed, NotificationPanel } from '@/modules/dashboard/components/BottomPanels';
 import { useGamificationEnabled } from '@/modules/gamification';
-import { useCelebrationQueue } from '@/modules/gamification/context/CelebrationQueueProvider';
-import { loadGamificationSnapshot } from '@/modules/gamification/celebration/detectCelebrations';
 
 const EmployeeDashboard: React.FC = () => {
   const { isEnabled, isLoading: gamificationStatusLoading } = useGamificationEnabled();
-  const { checkForCelebrations, syncSnapshot } = useCelebrationQueue();
-
-  useEffect(() => {
-    if (!isEnabled || gamificationStatusLoading) return;
-    const run = async () => {
-      if (!loadGamificationSnapshot()) {
-        await syncSnapshot();
-      } else {
-        await checkForCelebrations();
-      }
-    };
-    void run();
-  }, [isEnabled, gamificationStatusLoading, checkForCelebrations, syncSnapshot]);
 
   return (
     <div style={{ padding: 'var(--space-4) 0', display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>

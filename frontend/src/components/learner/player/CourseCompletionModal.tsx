@@ -3,7 +3,7 @@
  * Congratulates the learner and offers certificate download + back to learning.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Award, X, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -22,6 +22,7 @@ export const CourseCompletionModal = ({
   const [dismissed, setDismissed] = useState(false);
   const queryClient = useQueryClient();
   const { checkForCelebrations } = useCelebrationQueue();
+  const celebrationCheckedRef = useRef(false);
 
   // Invalidate My Certificates so the list refreshes when the learner
   // navigates there — the backend issues the certificate asynchronously
@@ -36,6 +37,8 @@ export const CourseCompletionModal = ({
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    if (celebrationCheckedRef.current) return;
+    celebrationCheckedRef.current = true;
     const celebrationTimer = setTimeout(() => {
       void checkForCelebrations();
     }, 2500);

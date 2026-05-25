@@ -28,7 +28,12 @@ export function loadGamificationSnapshot(): GamificationSnapshot | null {
   }
 }
 
-export function saveGamificationSnapshot(summary: GamificationSummary, badges: Badge[]) {
+export function saveGamificationSnapshot(
+  summary: GamificationSummary,
+  badges: Badge[],
+  celebratedStreakMilestones?: string[],
+) {
+  const previous = loadGamificationSnapshot();
   const snapshot: GamificationSnapshot = {
     lifetime_xp: summary.lifetime_xp,
     badge_codes: badges.filter((b) => b.is_earned).map((b) => b.code),
@@ -38,6 +43,8 @@ export function saveGamificationSnapshot(summary: GamificationSummary, badges: B
       attempt_daily: summary.streaks.attempt_daily.current,
       pass_consecutive: summary.streaks.pass_consecutive.current,
     },
+    celebrated_streak_milestones:
+      celebratedStreakMilestones ?? previous?.celebrated_streak_milestones ?? [],
   };
   sessionStorage.setItem(SNAPSHOT_KEY, JSON.stringify(snapshot));
 }
@@ -50,9 +57,9 @@ export function detectCelebrations(
   previous: GamificationSnapshot | null,
   summary: GamificationSummary,
   catalog: Badge[],
-): CelebrationEvent[] {
+): { events: CelebrationEvent[]; newCelebrated: string[] } {
   if (!previous) {
-    return [];
+    return { events: [], newCelebrated: [] };
   }
 
   const events: CelebrationEvent[] = [];
@@ -89,12 +96,19 @@ export function detectCelebrations(
     }
   }
 
+  const celebrated = new Set(previous.celebrated_streak_milestones ?? []);
+  const newCelebrated: string[] = [];
+
   const streakKeys = Object.keys(STREAK_LABELS) as (keyof GamificationSnapshot['streaks'])[];
   for (const key of streakKeys) {
     const current = summary.streaks[key].current;
     const prevCurrent = previous.streaks[key];
     for (const milestone of STREAK_MILESTONES) {
+      const milestoneKey = `${key}:${milestone}`;
+      if (celebrated.has(milestoneKey)) continue;
       if (current >= milestone && prevCurrent < milestone) {
+        celebrated.add(milestoneKey);
+        newCelebrated.push(milestoneKey);
         events.push({
           id: uid(),
           type: 'streak',
@@ -109,5 +123,5 @@ export function detectCelebrations(
     }
   }
 
-  return events;
+  return { events, newCelebrated };
 }
