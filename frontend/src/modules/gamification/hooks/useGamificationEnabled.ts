@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { gamificationApi } from '../api/gamification-api';
-
-export const GAMIFICATION_STATUS_QUERY_KEY = ['gamification', 'health'] as const;
+import { GAMIFICATION_QUERY_KEYS } from './query-keys';
 
 /**
  * True when global feature flag and company config are both enabled.
@@ -9,7 +8,7 @@ export const GAMIFICATION_STATUS_QUERY_KEY = ['gamification', 'health'] as const
  */
 export function useGamificationEnabled() {
   const query = useQuery({
-    queryKey: GAMIFICATION_STATUS_QUERY_KEY,
+    queryKey: GAMIFICATION_QUERY_KEYS.health,
     queryFn: () => gamificationApi.getHealth(),
     staleTime: 60_000,
     retry: 1,

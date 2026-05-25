@@ -1,18 +1,79 @@
 /**
- * Gamification API — health / status.
+ * Gamification API client.
  * Base path: /api/v1/gamification/
  */
 
 import { apiClient } from '@/api/axios-client';
 import { handleApiResponse, handleApiError } from '@/utils/api-utils';
 import { GAMIFICATION_API_BASE } from '../constants';
-import type { GamificationHealthResponse } from '../types';
+import type {
+  Badge,
+  BadgeCatalogResponse,
+  GamificationHealthResponse,
+  GamificationPaginated,
+  GamificationSummary,
+  LeaderboardParams,
+  LeaderboardResponse,
+  PointTransaction,
+  TransactionListParams,
+} from '../types';
 
 export const gamificationApi = {
   getHealth: async (): Promise<GamificationHealthResponse> => {
     try {
       const response = await apiClient.get(`${GAMIFICATION_API_BASE}/health/`);
-      return handleApiResponse<GamificationHealthResponse>(response, { notify: false });
+      return handleApiResponse<GamificationHealthResponse>(response.data, false) as GamificationHealthResponse;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  getMySummary: async (): Promise<GamificationSummary> => {
+    try {
+      const response = await apiClient.get(`${GAMIFICATION_API_BASE}/me/summary/`);
+      return handleApiResponse<GamificationSummary>(response.data, false) as GamificationSummary;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  getMyTransactions: async (
+    params?: TransactionListParams,
+  ): Promise<GamificationPaginated<PointTransaction>> => {
+    try {
+      const response = await apiClient.get(`${GAMIFICATION_API_BASE}/me/transactions/`, {
+        params,
+      });
+      return handleApiResponse<GamificationPaginated<PointTransaction>>(response.data, false) as GamificationPaginated<PointTransaction>;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  getLeaderboard: async (params?: LeaderboardParams): Promise<LeaderboardResponse> => {
+    try {
+      const response = await apiClient.get(`${GAMIFICATION_API_BASE}/leaderboard/`, {
+        params,
+      });
+      return handleApiResponse<LeaderboardResponse>(response.data, false) as LeaderboardResponse;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  getBadgeCatalog: async (): Promise<BadgeCatalogResponse> => {
+    try {
+      const response = await apiClient.get(`${GAMIFICATION_API_BASE}/badges/catalog/`);
+      return handleApiResponse<BadgeCatalogResponse>(response.data, false) as BadgeCatalogResponse;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  getMyBadges: async (): Promise<Badge[]> => {
+    try {
+      const response = await apiClient.get(`${GAMIFICATION_API_BASE}/me/badges/`);
+      return handleApiResponse<Badge[]>(response.data, false) as Badge[];
     } catch (error) {
       return handleApiError(error);
     }

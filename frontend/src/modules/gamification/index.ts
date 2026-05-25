@@ -1,4 +1,34 @@
 export { LeaderboardPlaceholderPage } from './pages/LeaderboardPlaceholderPage';
-export { useGamificationEnabled, GAMIFICATION_STATUS_QUERY_KEY } from './hooks/useGamificationEnabled';
+export { useGamificationEnabled } from './hooks/useGamificationEnabled';
+export {
+  useGamificationSummary,
+  useGamificationTransactions,
+  useGamificationLeaderboard,
+  useGamificationBadgeCatalog,
+  useGamificationMyBadges,
+  useGamificationQueryEnabled,
+} from './hooks/useGamificationQueries';
+export { GAMIFICATION_QUERY_KEYS } from './hooks/query-keys';
 export { gamificationApi } from './api/gamification-api';
-export type { GamificationHealthResponse } from './types';
+export { GAMIFICATION_API_BASE, GAMIFICATION_FEATURE_KEY } from './constants';
+export { GamificationEmptyState } from './components/GamificationEmptyState';
+export { GamificationErrorState } from './components/GamificationErrorState';
+export { GamificationQueryState } from './components/GamificationQueryState';
+export type {
+  GamificationHealthResponse,
+  GamificationSummary,
+  PointTransaction,
+  LeaderboardEntry,
+  LeaderboardResponse,
+  LeaderboardParams,
+  LeaderboardPeriod,
+  Badge,
+  BadgeCatalogResponse,
+  Streaks,
+  StreakSnapshot,
+  GamificationPaginated,
+  TransactionListParams,
+} from './types';
+
+/** @deprecated Use GAMIFICATION_QUERY_KEYS.health */
+export const GAMIFICATION_STATUS_QUERY_KEY = GAMIFICATION_QUERY_KEYS.health;
