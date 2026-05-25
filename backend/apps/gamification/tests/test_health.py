@@ -33,6 +33,6 @@ class GamificationHealthAPITest(APITestCase):
         data = response.data["data"]
         self.assertEqual(data["status"], "ok")
         self.assertEqual(data["module"], "gamification")
-        self.assertEqual(data["phase"], 7)
+        self.assertEqual(data["phase"], 8)
         self.assertIn("global_feature_enabled", data)
         self.assertIn("active", data)

@@ -9,6 +9,7 @@ from .badge_catalog_service import BadgeCatalogService
 from .award_engine import AwardOutcome
 from .team_gamification_service import TeamGamificationService
 from .gamification_admin_service import GamificationAdminService
+from .gamification_backfill_service import GamificationBackfillService, BackfillStats
 
 __all__ = [
     "GamificationStatusService",
@@ -24,4 +25,6 @@ __all__ = [
     "AwardOutcome",
     "TeamGamificationService",
     "GamificationAdminService",
+    "GamificationBackfillService",
+    "BackfillStats",
 ]
