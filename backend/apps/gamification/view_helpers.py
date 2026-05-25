@@ -35,3 +35,26 @@ def require_active_gamification(request) -> tuple:
         )
 
     return employee, None
+
+
+def require_company_gamification(request) -> tuple:
+    """
+    Returns (employee, None) when the caller's company has gamification enabled.
+    Used for manager/admin endpoints that are not limited to the learner summary flow.
+    """
+    employee = get_request_employee(request.user)
+    if not employee:
+        return None, error_response(
+            message="Employee profile is required to access gamification.",
+            status_code=403,
+        )
+
+    if not GamificationStatusService().is_globally_enabled():
+        return None, forbidden_response("Gamification is not enabled.")
+
+    if not GamificationStatusService().is_enabled_for_company(employee.company_id):
+        return None, forbidden_response(
+            "Gamification is not enabled for your organization."
+        )
+
+    return employee, None

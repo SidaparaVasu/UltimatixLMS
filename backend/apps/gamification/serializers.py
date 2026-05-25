@@ -1,7 +1,9 @@
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from apps.gamification.constants import AWARD_RULE_LABELS
-from apps.gamification.models import CompanyGamificationConfig, PointTransaction
+from apps.gamification.models import AwardRule, CompanyGamificationConfig, PointTransaction
 
 
 class GamificationHealthSerializer(serializers.Serializer):
@@ -110,6 +112,66 @@ class EarnedBadgeSerializer(BadgeCatalogItemSerializer):
 class BadgeCatalogResponseSerializer(serializers.Serializer):
     count = serializers.IntegerField()
     results = BadgeCatalogItemSerializer(many=True)
+
+
+class TeamGamificationMemberSerializer(serializers.Serializer):
+    employee_id = serializers.IntegerField()
+    employee_code = serializers.CharField()
+    display_name = serializers.CharField()
+    department_name = serializers.CharField()
+    designation_name = serializers.CharField()
+    lifetime_xp = serializers.IntegerField()
+    rank = serializers.IntegerField()
+    badges_count = serializers.IntegerField()
+    streaks = StreaksSerializer()
+
+
+class TeamGamificationDetailSerializer(serializers.Serializer):
+    employee_id = serializers.IntegerField()
+    employee_code = serializers.CharField()
+    display_name = serializers.CharField()
+    department_name = serializers.CharField()
+    designation_name = serializers.CharField()
+    lifetime_xp = serializers.IntegerField()
+    rank = serializers.IntegerField()
+    pool_size = serializers.IntegerField()
+    badges_count = serializers.IntegerField()
+    streaks = StreaksSerializer()
+    badges = EarnedBadgeSerializer(many=True)
+    recent_transactions = PointTransactionSerializer(many=True)
+
+
+class AwardRuleSerializer(serializers.ModelSerializer):
+    is_company_override = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AwardRule
+        fields = [
+            "id",
+            "code",
+            "name",
+            "event_type",
+            "base_points",
+            "multiplier",
+            "company",
+            "is_active",
+            "is_company_override",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "code", "event_type", "company", "created_at", "updated_at"]
+
+    def get_is_company_override(self, obj) -> bool:
+        return obj.company_id is not None
+
+
+class AwardRuleUpdateSerializer(serializers.Serializer):
+    name = serializers.CharField(required=False, max_length=128)
+    base_points = serializers.IntegerField(required=False, min_value=0)
+    multiplier = serializers.DecimalField(
+        required=False, max_digits=6, decimal_places=2, min_value=Decimal("0")
+    )
+    is_active = serializers.BooleanField(required=False)
 
 
 class LeaderboardResponseSerializer(serializers.Serializer):

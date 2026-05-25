@@ -12,25 +12,36 @@ from rest_framework.views import APIView
 
 from apps.gamification.constants import LeaderboardPeriod
 from apps.gamification.serializers import (
+    AwardRuleSerializer,
+    AwardRuleUpdateSerializer,
     BadgeCatalogItemSerializer,
     BadgeCatalogResponseSerializer,
+    CompanyGamificationConfigSerializer,
     EarnedBadgeSerializer,
     GamificationHealthSerializer,
     GamificationSummarySerializer,
     LeaderboardResponseSerializer,
     PointTransactionSerializer,
+    TeamGamificationDetailSerializer,
+    TeamGamificationMemberSerializer,
 )
 from apps.gamification.services import (
     BadgeCatalogService,
+    GamificationAdminService,
     GamificationStatusService,
     LeaderboardService,
     LearnerGamificationService,
+    TeamGamificationService,
 )
-from apps.gamification.view_helpers import get_request_employee, require_active_gamification
+from apps.gamification.view_helpers import (
+    get_request_employee,
+    require_active_gamification,
+    require_company_gamification,
+)
 from apps.rbac.permission_codes import P
 from apps.rbac.permissions import HasScopedPermission
 from common.pagination import StandardResultsPagination
-from common.response import success_response
+from common.response import error_response, not_found_response, success_response
 
 
 def _resolve_company_id(user) -> int | None:
@@ -264,4 +275,152 @@ class LeaderboardViewSet(viewsets.GenericViewSet):
                 "previous": None,
                 "results": results,
             },
+        )
+
+
+class TeamGamificationViewSet(viewsets.GenericViewSet):
+    permission_classes = [HasScopedPermission]
+    required_permission = P.GAMIFICATION.VIEW_TEAM
+    pagination_class = StandardResultsPagination
+
+    def _get_service(self) -> TeamGamificationService:
+        return TeamGamificationService()
+
+    @extend_schema(
+        summary="Gamification overview for manager's reports",
+        responses={200: TeamGamificationMemberSerializer(many=True)},
+    )
+    def list(self, request):
+        manager, error = require_company_gamification(request)
+        if error:
+            return error
+
+        rows = self._get_service().build_team_list(manager)
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(rows, request)
+        if page is not None:
+            serializer = TeamGamificationMemberSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+
+        serializer = TeamGamificationMemberSerializer(rows, many=True)
+        return success_response(
+            message="Team gamification retrieved",
+            data=serializer.data,
+        )
+
+    @extend_schema(
+        summary="Gamification detail for a direct or indirect report",
+        responses={200: TeamGamificationDetailSerializer},
+    )
+    def retrieve(self, request, pk=None):
+        manager, error = require_company_gamification(request)
+        if error:
+            return error
+
+        try:
+            target_id = int(pk)
+        except (TypeError, ValueError):
+            return error_response(message="Invalid employee id.", status_code=400)
+
+        detail = self._get_service().build_member_detail(manager, target_id)
+        if detail is None:
+            return not_found_response("Employee not found in your reporting hierarchy.")
+
+        serializer = TeamGamificationDetailSerializer(detail)
+        return success_response(
+            message="Team member gamification retrieved",
+            data=serializer.data,
+        )
+
+
+class GamificationConfigAPIView(APIView):
+    permission_classes = [HasScopedPermission]
+    required_permission = P.GAMIFICATION.MANAGE_CONFIG
+
+    @extend_schema(
+        summary="Get company gamification configuration",
+        responses={200: CompanyGamificationConfigSerializer},
+    )
+    def get(self, request):
+        employee, error = require_company_gamification(request)
+        if error:
+            return error
+
+        config = GamificationAdminService().get_company_config(employee.company_id)
+        serializer = CompanyGamificationConfigSerializer(config)
+        return success_response(
+            message="Gamification configuration retrieved",
+            data=serializer.data,
+        )
+
+    @extend_schema(
+        summary="Update company gamification configuration",
+        request=CompanyGamificationConfigSerializer,
+        responses={200: CompanyGamificationConfigSerializer},
+    )
+    def patch(self, request):
+        employee, error = require_company_gamification(request)
+        if error:
+            return error
+
+        serializer = CompanyGamificationConfigSerializer(
+            data=request.data,
+            partial=True,
+        )
+        serializer.is_valid(raise_exception=True)
+        config = GamificationAdminService().update_company_config(
+            employee.company_id,
+            serializer.validated_data,
+        )
+        return success_response(
+            message="Gamification configuration updated",
+            data=CompanyGamificationConfigSerializer(config).data,
+        )
+
+
+class GamificationRulesViewSet(viewsets.GenericViewSet):
+    permission_classes = [HasScopedPermission]
+    required_permission = P.GAMIFICATION.MANAGE_CONFIG
+    serializer_class = AwardRuleSerializer
+
+    @extend_schema(
+        summary="List award rules for the company",
+        responses={200: AwardRuleSerializer(many=True)},
+    )
+    def list(self, request):
+        employee, error = require_company_gamification(request)
+        if error:
+            return error
+
+        rules = GamificationAdminService().list_award_rules(employee.company_id)
+        serializer = AwardRuleSerializer(rules, many=True)
+        return success_response(
+            message="Award rules retrieved",
+            data=serializer.data,
+        )
+
+    @extend_schema(
+        summary="Update a company award rule override",
+        request=AwardRuleUpdateSerializer,
+        responses={200: AwardRuleSerializer},
+    )
+    def partial_update(self, request, pk=None):
+        employee, error = require_company_gamification(request)
+        if error:
+            return error
+
+        update_serializer = AwardRuleUpdateSerializer(data=request.data, partial=True)
+        update_serializer.is_valid(raise_exception=True)
+
+        rule = GamificationAdminService().update_award_rule(
+            employee.company_id,
+            int(pk),
+            update_serializer.validated_data,
+        )
+        if rule is None:
+            return not_found_response("Award rule not found.")
+
+        return success_response(
+            message="Award rule updated",
+            data=AwardRuleSerializer(rule).data,
         )
