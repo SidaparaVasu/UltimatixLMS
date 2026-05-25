@@ -21,7 +21,10 @@ import { GAMIFICATION_QUERY_KEYS } from './hooks/query-keys';
 export { GAMIFICATION_QUERY_KEYS };
 export { gamificationApi } from './api/gamification-api';
 export { GAMIFICATION_API_BASE, GAMIFICATION_FEATURE_KEY } from './constants';
+export { BadgeIcon } from './components/BadgeIcon';
 export { GamificationEmptyState } from './components/GamificationEmptyState';
+export { BADGE_CATALOG_CODES } from './constants/badgeCatalog';
+export { badgeImageSources, badgePngUrl, badgeSvgUrl, BADGES_ASSET_BASE } from './assets/badgeAssets';
 export { GamificationErrorState } from './components/GamificationErrorState';
 export { GamificationQueryState } from './components/GamificationQueryState';
 export type {

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Lock } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import type { Badge } from '../types';
-import { badgeVisual } from '../utils/badgeVisual';
+import { BadgeIcon } from './BadgeIcon';
 
 type BadgeFilter = 'all' | 'earned' | 'locked';
 
@@ -89,8 +89,6 @@ export const BadgeCatalogGrid: React.FC<BadgeCatalogGridProps> = ({
           }}
         >
           {filtered.map((badge) => {
-            const visual = badgeVisual(badge);
-            const Icon = visual.icon;
             const earnedAt = earnedAtByCode[badge.code];
             return (
               <div
@@ -119,24 +117,13 @@ export const BadgeCatalogGrid: React.FC<BadgeCatalogGridProps> = ({
                     aria-hidden
                   />
                 ) : null}
-                <div
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 12,
-                    background: visual.bg,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    margin: '0 auto 10px',
-                  }}
-                >
-                  <Icon size={24} color={visual.color} strokeWidth={1.5} aria-hidden />
+                <div style={{ margin: '0 auto 10px', width: 48, height: 48 }}>
+                  <BadgeIcon badge={badge} size={48} />
                 </div>
                 <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 4 }}>
                   {badge.name}
                 </div>
-                <p
+                {/* <p
                   style={{
                     fontSize: 11,
                     color: 'var(--color-text-muted)',
@@ -145,7 +132,7 @@ export const BadgeCatalogGrid: React.FC<BadgeCatalogGridProps> = ({
                   }}
                 >
                   {badge.description}
-                </p>
+                </p> */}
                 {badge.is_earned && earnedAt ? (
                   <p style={{ fontSize: 10, color: '#E8833A', marginTop: 8, fontWeight: 600 }}>
                     Earned {formatEarnedDate(earnedAt)}

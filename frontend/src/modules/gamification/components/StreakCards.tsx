@@ -60,7 +60,7 @@ export const StreakCards: React.FC<StreakCardsProps> = ({ streaks }) => (
           <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
             {hint}
           </p>
-          <div style={{ display: 'flex', gap: 'var(--space-5)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <div>
               <div
                 style={{

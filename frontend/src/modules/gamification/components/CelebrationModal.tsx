@@ -8,7 +8,7 @@ import {
   celebrationStaticUrl,
   DEFAULT_CELEBRATION_GIFS,
 } from '../celebration/celebrationAssets';
-import { badgeVisual } from '../utils/badgeVisual';
+import { BadgeIcon } from './BadgeIcon';
 
 interface CelebrationModalProps {
   event: CelebrationEvent;
@@ -38,8 +38,11 @@ function CelebrationVisual({
   const gifKey = event.gifKey ?? DEFAULT_CELEBRATION_GIFS.generic;
 
   if (event.type === 'badge' && event.badge) {
-    const visual = badgeVisual(event.badge);
-    const Icon = visual.icon;
+    const badgeForIcon = {
+      code: event.badge.code,
+      category: event.badge.category,
+      name: event.badge.name,
+    };
     return (
       <div style={{ position: 'relative', margin: '0 auto 20px', width: 120, height: 120 }}>
         {!reducedMotion && !gifFailed ? (
@@ -56,20 +59,8 @@ function CelebrationVisual({
             }}
           />
         ) : (
-          <div
-            style={{
-              width: 88,
-              height: 88,
-              margin: '16px auto',
-              borderRadius: 20,
-              background: visual.bg,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 8px 24px rgba(232, 131, 58, 0.25)',
-            }}
-          >
-            <Icon size={40} color={visual.color} strokeWidth={1.5} aria-hidden />
+          <div style={{ margin: '16px auto', width: 88, height: 88 }}>
+            <BadgeIcon badge={badgeForIcon} size={88} />
           </div>
         )}
       </div>

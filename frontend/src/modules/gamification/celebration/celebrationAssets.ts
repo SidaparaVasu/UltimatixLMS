@@ -1,7 +1,9 @@
 /**
- * Maps celebration keys to static assets under public/assets/gamification/celebrations/.
- * placeholders with production GIFs (same filenames).
+ * Maps celebration keys to assets under public/assets/gamification/celebrations/.
+ * Drop in production GIFs/PNGs using the same filenames.
  */
+
+import { BADGE_CELEBRATION_GIF_OVERRIDES } from '../constants/badgeCatalog';
 
 export type CelebrationGifTier = 'common' | 'rare' | 'epic';
 
@@ -22,10 +24,20 @@ export const DEFAULT_CELEBRATION_GIFS = {
   generic: 'generic-common',
 } as const;
 
-/** Badge-specific GIF when available; otherwise category tier. */
+function normalizeIconKey(iconKey: string): string {
+  return (iconKey || '').toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+}
+
+/**
+ * Badge-specific GIF when a file is mapped under celebrations/; otherwise tier GIF.
+ * Add optional `badge-{icon_key}.gif` files to override tier defaults.
+ */
 export function resolveBadgeGifKey(iconKey: string, category: string): string {
-  const normalized = (iconKey || 'badge-default').toLowerCase().replace(/[^a-z0-9_-]/g, '-');
-  return `badge-${normalized}`;
+  const key = normalizeIconKey(iconKey);
+  if (key && BADGE_CELEBRATION_GIF_OVERRIDES[key]) {
+    return BADGE_CELEBRATION_GIF_OVERRIDES[key]!;
+  }
+  return tierFallbackGifKey(badgeTierFromCategory(category));
 }
 
 export function badgeTierFromCategory(category: string): CelebrationGifTier {

@@ -19,4 +19,6 @@ Optional static fallbacks (reduced motion): `{key}.png`
 | `tier-epic.gif` | Epic tier badge |
 | `badge-{icon_key}.gif` | Per-badge (e.g. `badge-first_course.gif`) |
 
-Until GIFs exist, the modal shows animated CSS confetti and Lucide badge icons.
+Tier GIFs (`tier-common`, `tier-rare`, `tier-epic`) are used for badge celebrations by default. Add per-badge overrides in `BADGE_CELEBRATION_GIF_OVERRIDES` (`badgeCatalog.ts`) when custom `badge-{icon_key}.gif` files exist.
+
+Until a GIF loads, the modal shows CSS confetti and the badge icon from `/assets/gamification/badges/`.

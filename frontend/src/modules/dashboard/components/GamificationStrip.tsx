@@ -5,7 +5,7 @@ import {
   useGamificationMyBadges,
   useGamificationSummary,
 } from '@/modules/gamification/hooks/useGamificationQueries';
-import { badgeVisual } from '@/modules/gamification/utils/badgeVisual';
+import { BadgeIcon } from '@/modules/gamification/components/BadgeIcon';
 
 const MAX_BADGE_ICONS = 4;
 
@@ -110,21 +110,17 @@ export const GamificationStrip: React.FC = () => {
 
       <div className="gami-badges-wrap">
         {visibleBadges.length > 0 ? (
-          visibleBadges.map((badge) => {
-            const visual = badgeVisual(badge);
-            const Icon = visual.icon;
-            return (
+          visibleBadges.map((badge) => (
               <div
                 key={badge.code}
                 className="gami-badge-item"
-                style={{ background: visual.bg }}
                 data-tip={badge.name}
                 title={badge.name}
+                style={{ padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
-                <Icon size={18} color={visual.color} strokeWidth={1.5} />
+                <BadgeIcon badge={badge} size={28} />
               </div>
-            );
-          })
+            ))
         ) : summary.badges_count > 0 ? (
           <span className="gami-rank-sub">{summary.badges_count} earned</span>
         ) : null}
