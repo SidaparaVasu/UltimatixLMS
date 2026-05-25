@@ -1081,6 +1081,22 @@
 }
 .gami-link:hover { color: var(--color-accent-hover); }
 
+.gami-skeleton-block {
+  display: block;
+  background: var(--color-border);
+  border-radius: var(--radius-sm);
+  animation: gami-pulse 1.4s ease-in-out infinite;
+}
+.gami-skeleton-value { width: 72px; height: 24px; }
+.gami-skeleton-rank { width: 40px; height: 18px; margin-top: 2px; }
+.gami-skeleton-sub { width: 100px; height: 12px; margin-top: 4px; }
+.gami-skeleton-badge { width: 36px; height: 36px; border-radius: var(--radius-sm); flex-shrink: 0; }
+.gami-skeleton-link { width: 120px; height: 16px; margin-left: auto; }
+@keyframes gami-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
 /* ═══════════════════════════════════════════════
    RECOMMENDED COURSES GRID
 ═══════════════════════════════════════════════ */

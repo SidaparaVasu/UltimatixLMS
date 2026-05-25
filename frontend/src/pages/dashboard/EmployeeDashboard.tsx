@@ -8,8 +8,11 @@ import { ComplianceTracker } from '@/modules/dashboard/components/ComplianceTrac
 import { RecommendedCourses } from '@/modules/dashboard/components/RecommendedCourses';
 import { GamificationStrip } from '@/modules/dashboard/components/GamificationStrip';
 import { ActivityFeed, NotificationPanel } from '@/modules/dashboard/components/BottomPanels';
+import { useGamificationEnabled } from '@/modules/gamification';
 
 const EmployeeDashboard: React.FC = () => {
+  const { isEnabled, isLoading: gamificationStatusLoading } = useGamificationEnabled();
+
   return (
     <div style={{ padding: 'var(--space-4) 0', display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
       <WelcomeBanner />
@@ -23,7 +26,7 @@ const EmployeeDashboard: React.FC = () => {
 
       <ComplianceTracker />
       <RecommendedCourses />
-      <GamificationStrip />
+      {(gamificationStatusLoading || isEnabled) && <GamificationStrip />}
 
       <div className="bottom-row anim delay-5">
         <ActivityFeed />
