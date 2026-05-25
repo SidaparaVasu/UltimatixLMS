@@ -58,6 +58,9 @@ const RolesPage            = lazy(() => import('@/pages/admin/rbac/RolesPage'));
 const CertificateManagementPage = lazy(() => import('@/pages/admin/certificates/CertificateManagementPage'));
 const MyCertificatesPage        = lazy(() => import('@/pages/learner/MyCertificatesPage'));
 const CertificateVerificationPage = lazy(() => import('@/pages/public/CertificateVerificationPage'));
+const LeaderboardPlaceholderPage = lazy(() =>
+  import('@/modules/gamification').then((m) => ({ default: m.LeaderboardPlaceholderPage }))
+);
 // RoleDetailPage is preserved for future use — unlinked from routing intentionally
 // const RoleDetailPage    = lazy(() => import('@/pages/admin/rbac/RoleDetailPage'));
 
@@ -210,7 +213,9 @@ export const AppRoutes = () => {
               </Route>
               <Route path="/certifications" element={<ComingSoon />} />
               <Route path="/reports" element={<ComingSoon />} />
-              <Route path="/leaderboard" element={<ComingSoon />} />
+              <Route element={<RoleGuard requiredPermissions={[PERMISSIONS.GAMIFICATION_VIEW_LEADERBOARD]} />}>
+                <Route path="/leaderboard" element={<LeaderboardPlaceholderPage />} />
+              </Route>
               {/* Notifications */}
               <Route path="/notifications" element={<NotificationsPage />} />
             </Route>

@@ -101,6 +101,13 @@ class PermissionCodes:
         REPORTS_VIEW   = "REPORTS_VIEW"
         REPORTS_EXPORT = "REPORTS_EXPORT"
 
+    class GAMIFICATION:
+        """Learner engagement: points, badges, leaderboards, and streaks."""
+        VIEW_OWN           = "GAMIFICATION_VIEW_OWN"
+        VIEW_LEADERBOARD   = "GAMIFICATION_VIEW_LEADERBOARD"
+        VIEW_TEAM          = "GAMIFICATION_VIEW_TEAM"
+        MANAGE_CONFIG      = "GAMIFICATION_MANAGE_CONFIG"
+
 
 # Short alias used throughout the codebase
 P = PermissionCodes

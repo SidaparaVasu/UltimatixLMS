@@ -89,5 +89,18 @@
       "created_at": "2026-01-01T00:00:00Z",
       "updated_at": "2026-01-01T00:00:00Z"
     }
+  },
+  {
+    "model": "rbac.permissiongroupmaster",
+    "pk": 8,
+    "fields": {
+      "group_name": "Gamification",
+      "group_code": "GAMIFICATION",
+      "description": "Learner engagement: points, badges, leaderboards, and streaks.",
+      "display_order": 8,
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
   }
 ]

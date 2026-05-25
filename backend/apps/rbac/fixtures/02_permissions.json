@@ -648,5 +648,57 @@
       "created_at": "2026-01-01T00:00:00Z",
       "updated_at": "2026-01-01T00:00:00Z"
     }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 51,
+    "fields": {
+      "permission_group": 8,
+      "permission_name": "View Own Gamification",
+      "permission_code": "GAMIFICATION_VIEW_OWN",
+      "description": "View own XP, badges, streaks, and transaction history.",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 52,
+    "fields": {
+      "permission_group": 8,
+      "permission_name": "View Leaderboard",
+      "permission_code": "GAMIFICATION_VIEW_LEADERBOARD",
+      "description": "View company leaderboards with department and org filters.",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 53,
+    "fields": {
+      "permission_group": 8,
+      "permission_name": "View Team Gamification",
+      "permission_code": "GAMIFICATION_VIEW_TEAM",
+      "description": "View gamification stats for direct and indirect reports.",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "rbac.permissionmaster",
+    "pk": 54,
+    "fields": {
+      "permission_group": 8,
+      "permission_name": "Manage Gamification Config",
+      "permission_code": "GAMIFICATION_MANAGE_CONFIG",
+      "description": "Configure company gamification rules and award settings.",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
   }
 ]
