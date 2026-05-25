@@ -7,6 +7,7 @@ import { ProtectedRoute } from '@/routes/ProtectedRoute';
 import { RoleGuard } from '@/routes/RoleGuard';
 import { useThemeStore } from '@/stores/themeStore';
 import { GlobalToast } from '@/components/layout/GlobalToast';
+import { CelebrationQueueProvider } from '@/modules/gamification/context/CelebrationQueueProvider';
 import { PERMISSIONS } from '@/constants/permissions';
 
 // Lazy-loaded pages
@@ -94,6 +95,7 @@ const ThemeInitializer = () => {
 export const AppRoutes = () => {
   return (
     <BrowserRouter>
+      <CelebrationQueueProvider>
       <ThemeInitializer />
       <GlobalToast />
       <Suspense fallback={<PageLoader />}>
@@ -233,6 +235,7 @@ export const AppRoutes = () => {
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Suspense>
+      </CelebrationQueueProvider>
     </BrowserRouter>
   );
 };

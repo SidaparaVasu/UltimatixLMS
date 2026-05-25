@@ -1,5 +1,8 @@
 export { LeaderboardPage } from './pages/LeaderboardPage';
 export { GamificationProfilePage } from './pages/GamificationProfilePage';
+export { CelebrationQueueProvider, useCelebrationQueue } from './context/CelebrationQueueProvider';
+export { CelebrationModal } from './components/CelebrationModal';
+export type { CelebrationEvent, CelebrationEventType } from './celebration/types';
 export { useGamificationEnabled } from './hooks/useGamificationEnabled';
 export {
   useGamificationSummary,
