@@ -112,3 +112,26 @@ export interface TransactionListParams {
   page?: number;
   page_size?: number;
 }
+
+export interface TeamGamificationMember {
+  employee_id: number;
+  employee_code: string;
+  display_name: string;
+  department_name: string;
+  designation_name: string;
+  lifetime_xp: number;
+  rank: number;
+  badges_count: number;
+  streaks: Streaks;
+}
+
+export interface TeamGamificationDetail extends TeamGamificationMember {
+  pool_size: number;
+  badges: Badge[];
+  recent_transactions: PointTransaction[];
+}
+
+export interface TeamListParams {
+  page?: number;
+  page_size?: number;
+}

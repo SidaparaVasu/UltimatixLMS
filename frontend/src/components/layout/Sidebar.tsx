@@ -204,14 +204,34 @@ export const Sidebar = () => {
   const navConfig = useMemo(() => {
     if (!gamificationEnabled) return NAV_CONFIG;
     return NAV_CONFIG.map((section) => {
-      if (section.title !== "Analytics") return section;
-      return {
-        ...section,
-        items: [
-          ...section.items,
-          { label: "Leaderboard", icon: Trophy, path: "/leaderboard" },
-        ],
-      };
+      if (section.title === "Analytics") {
+        return {
+          ...section,
+          items: [
+            ...section.items,
+            { label: "Leaderboard", icon: Trophy, path: "/leaderboard" },
+          ],
+        };
+      }
+      if (section.title === "Management") {
+        return {
+          ...section,
+          requiresAnyPermission: [
+            ...(section.requiresAnyPermission ?? []),
+            PERMISSIONS.GAMIFICATION_VIEW_TEAM,
+          ],
+          items: [
+            ...section.items,
+            {
+              label: "Team Rewards",
+              icon: Trophy,
+              path: "/manager/team-gamification",
+              requiredPermission: PERMISSIONS.GAMIFICATION_VIEW_TEAM,
+            },
+          ],
+        };
+      }
+      return section;
     });
   }, [gamificationEnabled]);
 
@@ -249,6 +269,7 @@ export const Sidebar = () => {
     [PERMISSIONS.ROLE_VIEW]:                 usePermission(PERMISSIONS.ROLE_VIEW),
     [PERMISSIONS.REPORTS_VIEW]:              usePermission(PERMISSIONS.REPORTS_VIEW),
     [PERMISSIONS.CONFIG_VIEW]:               usePermission(PERMISSIONS.CONFIG_VIEW),
+    [PERMISSIONS.GAMIFICATION_VIEW_TEAM]:    usePermission(PERMISSIONS.GAMIFICATION_VIEW_TEAM),
   };
 
   /** Returns only the items the current user is allowed to see. */

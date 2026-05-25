@@ -1,4 +1,4 @@
-import type { LeaderboardParams, TransactionListParams } from '../types';
+import type { LeaderboardParams, TeamListParams, TransactionListParams } from '../types';
 
 export const GAMIFICATION_QUERY_KEYS = {
   health: ['gamification', 'health'] as const,
@@ -9,4 +9,6 @@ export const GAMIFICATION_QUERY_KEYS = {
     ['gamification', 'leaderboard', params] as const,
   badgeCatalog: ['gamification', 'badges', 'catalog'] as const,
   myBadges: ['gamification', 'me', 'badges'] as const,
+  team: (params?: TeamListParams) => ['gamification', 'team', params] as const,
+  teamMember: (employeeId: number) => ['gamification', 'team', employeeId] as const,
 };

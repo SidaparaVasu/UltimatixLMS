@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { DashboardLayout } from '@/layouts/DashboardLayout';
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { AuthLayout } from '@/layouts/AuthLayout';
@@ -65,6 +65,9 @@ const LeaderboardPage = lazy(() =>
 const GamificationProfilePage = lazy(() =>
   import('@/modules/gamification').then((m) => ({ default: m.GamificationProfilePage }))
 );
+const TeamGamificationPage = lazy(() =>
+  import('@/modules/gamification').then((m) => ({ default: m.TeamGamificationPage }))
+);
 // RoleDetailPage is preserved for future use — unlinked from routing intentionally
 // const RoleDetailPage    = lazy(() => import('@/pages/admin/rbac/RoleDetailPage'));
 
@@ -92,10 +95,16 @@ const ThemeInitializer = () => {
   return null;
 };
 
+/** Gamification celebrations only run for authenticated app shells (not login/register). */
+const AuthenticatedAppShell = () => (
+  <CelebrationQueueProvider>
+    <Outlet />
+  </CelebrationQueueProvider>
+);
+
 export const AppRoutes = () => {
   return (
     <BrowserRouter>
-      <CelebrationQueueProvider>
       <ThemeInitializer />
       <GlobalToast />
       <Suspense fallback={<PageLoader />}>
@@ -111,7 +120,7 @@ export const AppRoutes = () => {
 
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
-            
+            <Route element={<AuthenticatedAppShell />}>
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
             {/* Assessment Player — learner route, full screen, no sidebar/header */}
@@ -203,6 +212,9 @@ export const AppRoutes = () => {
               <Route path="/my-tni" element={<SelfTNIRatingPage />} />
               <Route path="/my-skills" element={<MySkillMatrixPage />} />
               <Route path="/manager/tni" element={<ManagerTNIRatingPage />} />
+              <Route element={<RoleGuard requiredPermissions={[PERMISSIONS.GAMIFICATION_VIEW_TEAM]} />}>
+                <Route path="/manager/team-gamification" element={<TeamGamificationPage />} />
+              </Route>
 
               {/* Training Calendar */}
               <Route element={<RoleGuard requiredPermissions={[PERMISSIONS.SESSION_VIEW]} />}>
@@ -226,6 +238,7 @@ export const AppRoutes = () => {
               {/* Notifications */}
               <Route path="/notifications" element={<NotificationsPage />} />
             </Route>
+            </Route>
           </Route>
 
           {/* Public certificate verification — no auth required */}
@@ -235,7 +248,6 @@ export const AppRoutes = () => {
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Suspense>
-      </CelebrationQueueProvider>
     </BrowserRouter>
   );
 };

@@ -15,6 +15,9 @@ import type {
   LeaderboardParams,
   LeaderboardResponse,
   PointTransaction,
+  TeamGamificationDetail,
+  TeamGamificationMember,
+  TeamListParams,
   TransactionListParams,
 } from '../types';
 
@@ -74,6 +77,29 @@ export const gamificationApi = {
     try {
       const response = await apiClient.get(`${GAMIFICATION_API_BASE}/me/badges/`);
       return handleApiResponse<Badge[]>(response.data, false) as Badge[];
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  getTeamList: async (
+    params?: TeamListParams,
+  ): Promise<GamificationPaginated<TeamGamificationMember>> => {
+    try {
+      const response = await apiClient.get(`${GAMIFICATION_API_BASE}/team/`, { params });
+      return handleApiResponse<GamificationPaginated<TeamGamificationMember>>(
+        response.data,
+        false,
+      ) as GamificationPaginated<TeamGamificationMember>;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  getTeamMember: async (employeeId: number): Promise<TeamGamificationDetail> => {
+    try {
+      const response = await apiClient.get(`${GAMIFICATION_API_BASE}/team/${employeeId}/`);
+      return handleApiResponse<TeamGamificationDetail>(response.data, false) as TeamGamificationDetail;
     } catch (error) {
       return handleApiError(error);
     }

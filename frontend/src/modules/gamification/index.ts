@@ -1,5 +1,7 @@
 export { LeaderboardPage } from './pages/LeaderboardPage';
 export { GamificationProfilePage } from './pages/GamificationProfilePage';
+export { TeamGamificationPage } from './pages/TeamGamificationPage';
+export { TeamGamificationPanel } from './components/TeamGamificationPanel';
 export { CelebrationQueueProvider, useCelebrationQueue } from './context/CelebrationQueueProvider';
 export { CelebrationModal } from './components/CelebrationModal';
 export type { CelebrationEvent, CelebrationEventType } from './celebration/types';
@@ -10,6 +12,9 @@ export {
   useGamificationLeaderboard,
   useGamificationBadgeCatalog,
   useGamificationMyBadges,
+  useGamificationTeamList,
+  useGamificationTeamMember,
+  useGamificationTeamQueryEnabled,
   useGamificationQueryEnabled,
 } from './hooks/useGamificationQueries';
 import { GAMIFICATION_QUERY_KEYS } from './hooks/query-keys';
@@ -33,6 +38,9 @@ export type {
   StreakSnapshot,
   GamificationPaginated,
   TransactionListParams,
+  TeamGamificationMember,
+  TeamGamificationDetail,
+  TeamListParams,
 } from './types';
 
 /** @deprecated Use GAMIFICATION_QUERY_KEYS.health */
