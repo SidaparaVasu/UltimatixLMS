@@ -284,20 +284,13 @@ class BadgeEvaluator:
 
     @staticmethod
     def _is_top_n_monthly(employee, rank_limit: int) -> bool:
-        from django.db.models import Sum
+        from apps.gamification.period_utils import current_month_bounds, top_employee_ids_for_period
 
-        from apps.gamification.models import PointTransaction
-
-        now = timezone.now()
-        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        ranked = (
-            PointTransaction.objects.filter(
-                company_id=employee.company_id,
-                created_at__gte=month_start,
-            )
-            .values("employee_id")
-            .annotate(period_xp=Sum("amount"))
-            .order_by("-period_xp", "employee_id")
+        period_start, period_end = current_month_bounds()
+        top_ids = top_employee_ids_for_period(
+            employee.company_id,
+            period_start,
+            period_end,
+            rank_limit,
         )
-        top_ids = [row["employee_id"] for row in ranked[:rank_limit]]
         return employee.id in top_ids
