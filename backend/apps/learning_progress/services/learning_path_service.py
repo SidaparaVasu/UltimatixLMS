@@ -1,7 +1,7 @@
 from common.services.base import BaseService
 from django.utils import timezone
 from django.db import transaction
-from django.db.models import Count
+from django.db.models import Count, Q
 from ..models import UserLessonProgress
 from ..repositories import (
     LearningPathRepository,
@@ -122,21 +122,31 @@ class UserCourseEnrollmentService(BaseService):
             return
 
         # 1. Lesson-based Progress
-        total_lessons = enrollment.course.sections.all().aggregate(
-            lesson_count=Count('lessons')
+        total_lessons = enrollment.course.sections.filter(is_active=True).aggregate(
+            lesson_count=Count('lessons', filter=Q(lessons__is_active=True))
         )['lesson_count'] or 0
         
         if total_lessons == 0:
             return
 
         completed_lessons = enrollment.lesson_progress.filter(
-            status=ProgressStatus.COMPLETED
+            status=ProgressStatus.COMPLETED,
+            lesson__is_active=True,
+            lesson__section__is_active=True,
         ).count()
 
         lesson_percentage = (completed_lessons / total_lessons * 100)
 
         # 2. Assessment Integrity Check
-        required_assessments = AssessmentMaster.objects.filter(course=enrollment.course)
+        # Only learner-visible published quiz assessments on active lessons
+        # should gate course completion.
+        required_assessments = AssessmentMaster.objects.filter(
+            course=enrollment.course,
+            status="PUBLISHED",
+            lesson__is_active=True,
+            lesson__section__is_active=True,
+            lesson__contents__content_type="QUIZ",
+        ).distinct()
         pass_count = AssessmentResult.objects.filter(
             attempt__employee=enrollment.employee,
             attempt__assessment__in=required_assessments,
