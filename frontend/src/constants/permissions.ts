@@ -78,6 +78,13 @@ export const PERMISSIONS = {
   REPORTS_EXPORT:          'REPORTS_EXPORT',
   CERTIFICATE_MANAGE:      'CERTIFICATE_MANAGE',
 
+  // ── GAMIFICATION (4) ─────────────────────────────────────────────────────
+  // Points, badges, leaderboards, and streaks.
+  GAMIFICATION_VIEW_OWN:         'GAMIFICATION_VIEW_OWN',
+  GAMIFICATION_VIEW_LEADERBOARD: 'GAMIFICATION_VIEW_LEADERBOARD',
+  GAMIFICATION_VIEW_TEAM:        'GAMIFICATION_VIEW_TEAM',
+  GAMIFICATION_MANAGE_CONFIG:    'GAMIFICATION_MANAGE_CONFIG',
+
   // ── AUDIT_ACCESS (3) ────────────────────────────────────────────────────
   // Read-only audit and reporting access — assigned to LMS_AUDITOR.
   // Note: AUDIT_VIEW, REPORTS_VIEW, REPORTS_EXPORT are shared with

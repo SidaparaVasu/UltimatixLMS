@@ -8,7 +8,7 @@ import {
   BookOpen,
   Calendar,
   CheckSquare,   // Assessments — not yet developed
-  // Trophy,        // Leaderboard — not yet developed
+  Trophy,
   Star,
   User,
   ShieldCheck,
@@ -36,6 +36,8 @@ import {
   Award,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import { useMemo } from "react";
+import { useGamificationEnabled } from "@/modules/gamification/hooks/useGamificationEnabled";
 import { getFullName, getInitials, getPrimaryRoleName } from "@/utils/user.utils";
 
 // ---------------------------------------------------------------------------
@@ -163,9 +165,11 @@ const NAV_CONFIG: NavSection[] = [
       PERMISSIONS.ROLE_VIEW,
       PERMISSIONS.REPORTS_VIEW,
       PERMISSIONS.CONFIG_VIEW,
+      PERMISSIONS.GAMIFICATION_MANAGE_CONFIG,
     ],
     items: [
       { label: "Roles",         icon: ShieldCheck, path: "/admin/roles",    requiredPermission: PERMISSIONS.ROLE_VIEW },
+      { label: "Gamification",  icon: Trophy,      path: "/admin/gamification", requiredPermission: PERMISSIONS.GAMIFICATION_MANAGE_CONFIG },
       // { label: "Settings",      icon: Settings,    path: "/admin/settings", requiredPermission: PERMISSIONS.CONFIG_VIEW },
     ],
   },
@@ -175,7 +179,6 @@ const NAV_CONFIG: NavSection[] = [
     title: "Analytics",
     items: [
       // { label: "Reports",     icon: BarChart2, path: "/admin/reports",  requiredPermission: PERMISSIONS.REPORTS_VIEW }, // TODO: not yet developed
-      // { label: "Leaderboard", icon: Trophy,    path: "/leaderboard" },                                                  // TODO: not yet developed
     ],
   },
 
@@ -198,6 +201,41 @@ export const Sidebar = () => {
   const { isSidebarOpen } = useUIStore();
   const { user } = useAuthStore();
   const location = useLocation();
+  const { isEnabled: gamificationEnabled } = useGamificationEnabled();
+
+  const navConfig = useMemo(() => {
+    if (!gamificationEnabled) return NAV_CONFIG;
+    return NAV_CONFIG.map((section) => {
+      if (section.title === "Analytics") {
+        return {
+          ...section,
+          items: [
+            ...section.items,
+            { label: "Leaderboard", icon: Trophy, path: "/leaderboard" },
+          ],
+        };
+      }
+      if (section.title === "Management") {
+        return {
+          ...section,
+          requiresAnyPermission: [
+            ...(section.requiresAnyPermission ?? []),
+            PERMISSIONS.GAMIFICATION_VIEW_TEAM,
+          ],
+          items: [
+            ...section.items,
+            {
+              label: "Team Rewards",
+              icon: Trophy,
+              path: "/manager/team-gamification",
+              requiredPermission: PERMISSIONS.GAMIFICATION_VIEW_TEAM,
+            },
+          ],
+        };
+      }
+      return section;
+    });
+  }, [gamificationEnabled]);
 
   const fullName = getFullName(user);
   const initials = getInitials(user);
@@ -233,6 +271,8 @@ export const Sidebar = () => {
     [PERMISSIONS.ROLE_VIEW]:                 usePermission(PERMISSIONS.ROLE_VIEW),
     [PERMISSIONS.REPORTS_VIEW]:              usePermission(PERMISSIONS.REPORTS_VIEW),
     [PERMISSIONS.CONFIG_VIEW]:               usePermission(PERMISSIONS.CONFIG_VIEW),
+    [PERMISSIONS.GAMIFICATION_VIEW_TEAM]:    usePermission(PERMISSIONS.GAMIFICATION_VIEW_TEAM),
+    [PERMISSIONS.GAMIFICATION_MANAGE_CONFIG]: usePermission(PERMISSIONS.GAMIFICATION_MANAGE_CONFIG),
   };
 
   /** Returns only the items the current user is allowed to see. */
@@ -258,7 +298,7 @@ export const Sidebar = () => {
 
       {/* Navigation */}
       <nav className="sidebar-nav">
-        {NAV_CONFIG.map((section) => {
+        {navConfig.map((section) => {
           const visibleItems = getVisibleItems(section.items);
 
           // Hide the entire section if it has no visible items

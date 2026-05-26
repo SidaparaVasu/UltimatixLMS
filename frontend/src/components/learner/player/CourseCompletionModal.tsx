@@ -3,10 +3,11 @@
  * Congratulates the learner and offers certificate download + back to learning.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Award, X, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import { useCelebrationQueue } from '@/modules/gamification/context/CelebrationQueueProvider';
 import { CERTIFICATE_QUERY_KEYS } from '@/queries/admin/useCertificateQueries';
 
 interface CourseCompletionModalProps {
@@ -20,6 +21,8 @@ export const CourseCompletionModal = ({
 }: CourseCompletionModalProps) => {
   const [dismissed, setDismissed] = useState(false);
   const queryClient = useQueryClient();
+  const { checkForCelebrations } = useCelebrationQueue();
+  const celebrationCheckedRef = useRef(false);
 
   // Invalidate My Certificates so the list refreshes when the learner
   // navigates there — the backend issues the certificate asynchronously
@@ -32,6 +35,18 @@ export const CourseCompletionModal = ({
     }, 2000);
     return () => clearTimeout(timer);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (celebrationCheckedRef.current) return;
+    celebrationCheckedRef.current = true;
+    const delays = [1500, 3500, 6000];
+    const timers = delays.map((ms) =>
+      setTimeout(() => {
+        void checkForCelebrations();
+      }, ms),
+    );
+    return () => timers.forEach(clearTimeout);
+  }, [checkForCelebrations]);
 
   if (dismissed) return null;
 

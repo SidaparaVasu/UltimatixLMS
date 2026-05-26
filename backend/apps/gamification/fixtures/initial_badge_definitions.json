@@ -1,0 +1,511 @@
+[
+  {
+    "model": "gamification.badgedefinition",
+    "pk": 1,
+    "fields": {
+      "code": "FIRST_COURSE",
+      "name": "First Steps",
+      "description": "First Steps",
+      "category": "learning",
+      "criteria_type": "COURSE_COMPLETED_COUNT",
+      "criteria_value": {
+        "count": 1
+      },
+      "sort_order": 10,
+      "icon_key": "first_course",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.badgedefinition",
+    "pk": 2,
+    "fields": {
+      "code": "COURSES_5",
+      "name": "Dedicated Learner",
+      "description": "Dedicated Learner",
+      "category": "learning",
+      "criteria_type": "COURSE_COMPLETED_COUNT",
+      "criteria_value": {
+        "count": 5
+      },
+      "sort_order": 20,
+      "icon_key": "courses_5",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.badgedefinition",
+    "pk": 3,
+    "fields": {
+      "code": "COURSES_10",
+      "name": "Course Champion",
+      "description": "Course Champion",
+      "category": "learning",
+      "criteria_type": "COURSE_COMPLETED_COUNT",
+      "criteria_value": {
+        "count": 10
+      },
+      "sort_order": 30,
+      "icon_key": "courses_10",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.badgedefinition",
+    "pk": 4,
+    "fields": {
+      "code": "FAST_LEARNER",
+      "name": "Fast Learner",
+      "description": "Fast Learner",
+      "category": "learning",
+      "criteria_type": "COURSE_COMPLETED_IN_DAYS",
+      "criteria_value": {
+        "count": 3,
+        "days": 30
+      },
+      "sort_order": 40,
+      "icon_key": "fast_learner",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.badgedefinition",
+    "pk": 5,
+    "fields": {
+      "code": "MANDATORY_HERO",
+      "name": "Compliance Hero",
+      "description": "Compliance Hero",
+      "category": "compliance",
+      "criteria_type": "MANDATORY_ALL_COMPLETE",
+      "criteria_value": {},
+      "sort_order": 50,
+      "icon_key": "mandatory_hero",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.badgedefinition",
+    "pk": 6,
+    "fields": {
+      "code": "COMPLIANCE_COMPLETE",
+      "name": "Compliance Complete",
+      "description": "Compliance Complete",
+      "category": "compliance",
+      "criteria_type": "COMPLIANCE_COURSE_COMPLETE",
+      "criteria_value": {},
+      "sort_order": 60,
+      "icon_key": "compliance_complete",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.badgedefinition",
+    "pk": 7,
+    "fields": {
+      "code": "OVERDUE_RECOVERY",
+      "name": "Catch-Up Champion",
+      "description": "Catch-Up Champion",
+      "category": "learning",
+      "criteria_type": "OVERDUE_RECOVERY",
+      "criteria_value": {},
+      "sort_order": 70,
+      "icon_key": "overdue_recovery",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.badgedefinition",
+    "pk": 8,
+    "fields": {
+      "code": "PATH_FINISHER",
+      "name": "Path Finisher",
+      "description": "Path Finisher",
+      "category": "learning",
+      "criteria_type": "LEARNING_PATH_COMPLETE",
+      "criteria_value": {},
+      "sort_order": 80,
+      "icon_key": "path_finisher",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.badgedefinition",
+    "pk": 9,
+    "fields": {
+      "code": "FIRST_PASS",
+      "name": "First Pass",
+      "description": "First Pass",
+      "category": "assessment",
+      "criteria_type": "ASSESSMENT_PASS_COUNT",
+      "criteria_value": {
+        "count": 1
+      },
+      "sort_order": 90,
+      "icon_key": "first_pass",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.badgedefinition",
+    "pk": 10,
+    "fields": {
+      "code": "ASSESSES_10",
+      "name": "Assessment Ace",
+      "description": "Assessment Ace",
+      "category": "assessment",
+      "criteria_type": "ASSESSMENT_PASS_COUNT",
+      "criteria_value": {
+        "count": 10
+      },
+      "sort_order": 100,
+      "icon_key": "assesses_10",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.badgedefinition",
+    "pk": 11,
+    "fields": {
+      "code": "PERFECT_SCORE",
+      "name": "Perfect Score",
+      "description": "Perfect Score",
+      "category": "assessment",
+      "criteria_type": "ASSESSMENT_PERFECT_SCORE",
+      "criteria_value": {},
+      "sort_order": 110,
+      "icon_key": "perfect_score",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.badgedefinition",
+    "pk": 12,
+    "fields": {
+      "code": "HIGH_ACHIEVER",
+      "name": "High Achiever",
+      "description": "High Achiever",
+      "category": "assessment",
+      "criteria_type": "ASSESSMENT_HIGH_SCORE_COUNT",
+      "criteria_value": {
+        "count": 5,
+        "min_score": 90
+      },
+      "sort_order": 120,
+      "icon_key": "high_achiever",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.badgedefinition",
+    "pk": 13,
+    "fields": {
+      "code": "FIRST_TRY_PASS",
+      "name": "Sharp Shooter",
+      "description": "Sharp Shooter",
+      "category": "assessment",
+      "criteria_type": "ASSESSMENT_FIRST_TRY_PASS",
+      "criteria_value": {},
+      "sort_order": 130,
+      "icon_key": "first_try_pass",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.badgedefinition",
+    "pk": 14,
+    "fields": {
+      "code": "PASS_STREAK_5",
+      "name": "On a Roll",
+      "description": "On a Roll",
+      "category": "assessment",
+      "criteria_type": "STREAK_CURRENT",
+      "criteria_value": {
+        "streak_type": "PASS_CONSECUTIVE",
+        "min_days": 5
+      },
+      "sort_order": 140,
+      "icon_key": "pass_streak_5",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.badgedefinition",
+    "pk": 15,
+    "fields": {
+      "code": "DAILY_ATTEMPT_7",
+      "name": "Steady Tester",
+      "description": "Steady Tester",
+      "category": "assessment",
+      "criteria_type": "STREAK_CURRENT",
+      "criteria_value": {
+        "streak_type": "ATTEMPT_DAILY",
+        "min_days": 7
+      },
+      "sort_order": 150,
+      "icon_key": "daily_attempt_7",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.badgedefinition",
+    "pk": 16,
+    "fields": {
+      "code": "FIRST_SKILL_UP",
+      "name": "Skill Builder",
+      "description": "Skill Builder",
+      "category": "skills",
+      "criteria_type": "SKILL_UPGRADE_COUNT",
+      "criteria_value": {
+        "count": 1
+      },
+      "sort_order": 160,
+      "icon_key": "first_skill_up",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.badgedefinition",
+    "pk": 17,
+    "fields": {
+      "code": "SKILL_UP_3",
+      "name": "Rising Expert",
+      "description": "Rising Expert",
+      "category": "skills",
+      "criteria_type": "SKILL_UPGRADE_COUNT",
+      "criteria_value": {
+        "count": 3
+      },
+      "sort_order": 170,
+      "icon_key": "skill_up_3",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.badgedefinition",
+    "pk": 18,
+    "fields": {
+      "code": "MULTI_SKILL",
+      "name": "Multi-Skilled",
+      "description": "Multi-Skilled",
+      "category": "skills",
+      "criteria_type": "DISTINCT_SKILL_UPGRADE_COUNT",
+      "criteria_value": {
+        "count": 3
+      },
+      "sort_order": 180,
+      "icon_key": "multi_skill",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.badgedefinition",
+    "pk": 19,
+    "fields": {
+      "code": "FIRST_CERT",
+      "name": "Certified",
+      "description": "Certified",
+      "category": "certificates",
+      "criteria_type": "CERTIFICATE_COUNT",
+      "criteria_value": {
+        "count": 1
+      },
+      "sort_order": 190,
+      "icon_key": "first_cert",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.badgedefinition",
+    "pk": 20,
+    "fields": {
+      "code": "CERT_COLLECTOR",
+      "name": "Certificate Collector",
+      "description": "Certificate Collector",
+      "category": "certificates",
+      "criteria_type": "CERTIFICATE_COUNT",
+      "criteria_value": {
+        "count": 5
+      },
+      "sort_order": 200,
+      "icon_key": "cert_collector",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.badgedefinition",
+    "pk": 21,
+    "fields": {
+      "code": "LEARN_STREAK_7",
+      "name": "Week Warrior",
+      "description": "Week Warrior",
+      "category": "streak",
+      "criteria_type": "STREAK_CURRENT",
+      "criteria_value": {
+        "streak_type": "LEARNING",
+        "min_days": 7
+      },
+      "sort_order": 210,
+      "icon_key": "learn_streak_7",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.badgedefinition",
+    "pk": 22,
+    "fields": {
+      "code": "LEARN_STREAK_30",
+      "name": "Monthly Momentum",
+      "description": "Monthly Momentum",
+      "category": "streak",
+      "criteria_type": "STREAK_CURRENT",
+      "criteria_value": {
+        "streak_type": "LEARNING",
+        "min_days": 30
+      },
+      "sort_order": 220,
+      "icon_key": "learn_streak_30",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.badgedefinition",
+    "pk": 23,
+    "fields": {
+      "code": "LEARN_STREAK_90",
+      "name": "Learning Legend",
+      "description": "Learning Legend",
+      "category": "streak",
+      "criteria_type": "STREAK_CURRENT",
+      "criteria_value": {
+        "streak_type": "LEARNING",
+        "min_days": 90
+      },
+      "sort_order": 230,
+      "icon_key": "learn_streak_90",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.badgedefinition",
+    "pk": 24,
+    "fields": {
+      "code": "PASS_STREAK_DAY_7",
+      "name": "Daily Pass Habit",
+      "description": "Daily Pass Habit",
+      "category": "streak",
+      "criteria_type": "STREAK_CURRENT",
+      "criteria_value": {
+        "streak_type": "PASS_DAILY",
+        "min_days": 7
+      },
+      "sort_order": 240,
+      "icon_key": "pass_streak_day_7",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.badgedefinition",
+    "pk": 25,
+    "fields": {
+      "code": "XP_1000",
+      "name": "Point Milestone",
+      "description": "Point Milestone",
+      "category": "milestone",
+      "criteria_type": "LIFETIME_XP",
+      "criteria_value": {
+        "threshold": 1000
+      },
+      "sort_order": 250,
+      "icon_key": "xp_1000",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.badgedefinition",
+    "pk": 26,
+    "fields": {
+      "code": "XP_5000",
+      "name": "XP Elite",
+      "description": "XP Elite",
+      "category": "milestone",
+      "criteria_type": "LIFETIME_XP",
+      "criteria_value": {
+        "threshold": 5000
+      },
+      "sort_order": 260,
+      "icon_key": "xp_5000",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.badgedefinition",
+    "pk": 27,
+    "fields": {
+      "code": "TOP_10_MONTH",
+      "name": "Top Performer",
+      "description": "Top Performer",
+      "category": "milestone",
+      "criteria_type": "TOP_N_MONTHLY",
+      "criteria_value": {
+        "rank": 10
+      },
+      "sort_order": 270,
+      "icon_key": "top_10_month",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  }
+]

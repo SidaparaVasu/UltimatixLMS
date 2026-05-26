@@ -1,0 +1,77 @@
+[
+  {
+    "model": "gamification.awardrule",
+    "pk": 1,
+    "fields": {
+      "code": "COURSE_COMPLETED",
+      "name": "Course Completed",
+      "event_type": "COURSE",
+      "base_points": 100,
+      "multiplier": "1.00",
+      "company": null,
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.awardrule",
+    "pk": 2,
+    "fields": {
+      "code": "ASSESSMENT_PASSED",
+      "name": "Assessment Passed",
+      "event_type": "ASSESSMENT",
+      "base_points": 50,
+      "multiplier": "1.00",
+      "company": null,
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.awardrule",
+    "pk": 3,
+    "fields": {
+      "code": "SKILL_UPGRADE_APPROVED",
+      "name": "Skill Upgrade Approved",
+      "event_type": "SKILL",
+      "base_points": 75,
+      "multiplier": "1.00",
+      "company": null,
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.awardrule",
+    "pk": 4,
+    "fields": {
+      "code": "CERTIFICATE_ISSUED",
+      "name": "Certificate Issued",
+      "event_type": "CERTIFICATE",
+      "base_points": 50,
+      "multiplier": "1.00",
+      "company": null,
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "gamification.awardrule",
+    "pk": 5,
+    "fields": {
+      "code": "STREAK_DAY_BONUS",
+      "name": "Streak Day Bonus",
+      "event_type": "STREAK",
+      "base_points": 10,
+      "multiplier": "1.00",
+      "company": null,
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  }
+]

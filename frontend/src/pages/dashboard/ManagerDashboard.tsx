@@ -4,6 +4,7 @@ import { TeamStatsGrid } from '@/modules/dashboard/components/manager/TeamStatsG
 import { TeamCompletionChart } from '@/modules/dashboard/components/manager/TeamCompletionChart';
 import { TeamMemberTable } from '@/modules/dashboard/components/manager/TeamMemberTable';
 import { PendingApprovalsPanel } from '@/modules/dashboard/components/manager/PendingApprovalsPanel';
+import { TeamGamificationPanel } from '@/modules/gamification/components/TeamGamificationPanel';
 
 const ManagerDashboard: React.FC = () => {
   // KPI cards — company-wide stats scoped by HR role assignment
@@ -47,6 +48,8 @@ const ManagerDashboard: React.FC = () => {
         <TeamCompletionChart members={scopedEmployees} isLoading={empLoading} />
         <PendingApprovalsPanel />
       </div>
+
+      <TeamGamificationPanel />
 
       {/* Employee table — scoped by HR role assignment */}
       <div className="anim delay-4">

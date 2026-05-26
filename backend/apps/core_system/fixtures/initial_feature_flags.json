@@ -37,5 +37,18 @@
       "created_at": "2026-01-01T00:00:00Z",
       "updated_at": "2026-01-01T00:00:00Z"
     }
+  },
+  {
+    "model": "core_system.featureflag",
+    "pk": 4,
+    "fields": {
+      "feature_key": "gamification_enabled",
+      "description": "Master toggle for the gamification module (points, badges, leaderboards, streaks).",
+      "is_enabled": false,
+      "target_scope": "GLOBAL",
+      "rollout_percentage": 100,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
   }
 ]

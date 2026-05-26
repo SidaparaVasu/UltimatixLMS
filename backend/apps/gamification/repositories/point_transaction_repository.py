@@ -1,0 +1,40 @@
+from common.repositories.base import BaseRepository
+from apps.gamification.models import PointTransaction
+
+
+class PointTransactionRepository(BaseRepository):
+    model = PointTransaction
+
+    def get_by_idempotency(
+        self,
+        employee_id: int,
+        rule_code: str,
+        source_type: str,
+        source_id: int,
+    ):
+        return self.filter(
+            employee_id=employee_id,
+            rule_code=rule_code,
+            source_type=source_type,
+            source_id=source_id,
+        ).first()
+
+    def exists_idempotency(
+        self,
+        employee_id: int,
+        rule_code: str,
+        source_type: str,
+        source_id: int,
+    ) -> bool:
+        return self.exists(
+            employee_id=employee_id,
+            rule_code=rule_code,
+            source_type=source_type,
+            source_id=source_id,
+        )
+
+    def list_for_employee(self, employee_id: int):
+        return self.filter(employee_id=employee_id).order_by("-created_at")
+
+    def recent_for_employee(self, employee_id: int, limit: int = 5):
+        return self.list_for_employee(employee_id)[:limit]

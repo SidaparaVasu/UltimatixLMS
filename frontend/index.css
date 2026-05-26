@@ -1081,6 +1081,22 @@
 }
 .gami-link:hover { color: var(--color-accent-hover); }
 
+.gami-skeleton-block {
+  display: block;
+  background: var(--color-border);
+  border-radius: var(--radius-sm);
+  animation: gami-pulse 1.4s ease-in-out infinite;
+}
+.gami-skeleton-value { width: 72px; height: 24px; }
+.gami-skeleton-rank { width: 40px; height: 18px; margin-top: 2px; }
+.gami-skeleton-sub { width: 100px; height: 12px; margin-top: 4px; }
+.gami-skeleton-badge { width: 36px; height: 36px; border-radius: var(--radius-sm); flex-shrink: 0; }
+.gami-skeleton-link { width: 120px; height: 16px; margin-left: auto; }
+@keyframes gami-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
 /* ═══════════════════════════════════════════════
    RECOMMENDED COURSES GRID
 ═══════════════════════════════════════════════ */
@@ -1497,4 +1513,86 @@
   background: var(--color-surface-alt);
   color: var(--color-text-muted);
   cursor: not-allowed;
+}
+
+/* ── Gamification celebration modal ── */
+@keyframes celebration-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes celebration-card-in {
+  from {
+    opacity: 0;
+    transform: scale(0.88) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes celebration-confetti-fall {
+  0% {
+    transform: translateY(-10vh) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(110vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+.celebration-backdrop-in {
+  animation: celebration-backdrop-in 220ms ease-out forwards;
+}
+
+.celebration-card-in {
+  animation: celebration-card-in 380ms cubic-bezier(0.34, 1.4, 0.64, 1) forwards;
+}
+
+.celebration-confetti {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.celebration-confetti::before,
+.celebration-confetti::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 14px;
+  top: -20px;
+  left: 50%;
+  border-radius: 2px;
+  background: #e8833a;
+  box-shadow:
+    -120px 0 0 #2870b8,
+    80px 0 0 #2e8b5e,
+    -200px 40px 0 #fbbf24,
+    160px 60px 0 #7c3aed,
+    -60px 100px 0 #e8833a,
+    220px 20px 0 #2870b8;
+  animation: celebration-confetti-fall 2.8s ease-in forwards;
+}
+
+.celebration-confetti::after {
+  left: 30%;
+  animation-delay: 0.35s;
+  background: #2e8b5e;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .celebration-backdrop-in,
+  .celebration-card-in {
+    animation: none;
+  }
+  .celebration-confetti,
+  .celebration-confetti::before,
+  .celebration-confetti::after {
+    display: none;
+  }
 }

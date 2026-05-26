@@ -1,11 +1,14 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ProfileEditForm } from '@/modules/profile/ProfileEditForm';
+import { useGamificationEnabled } from '@/modules/gamification/hooks/useGamificationEnabled';
 import { useProfile } from '@/queries/auth/useProfile';
-import { Loader2, Pencil, Check, Lock, Calendar, Phone, User as UserIcon } from 'lucide-react';
+import { Loader2, Pencil, Check, Lock, Calendar, Phone, User as UserIcon, Trophy } from 'lucide-react';
 import { getFullName, getInitials } from '@/utils/user.utils';
 
 export const ProfilePage = () => {
   const { data: user, isLoading, error } = useProfile();
+  const { isEnabled: gamificationEnabled } = useGamificationEnabled();
   const [isEditing, setIsEditing] = useState(false);
 
   if (isLoading) {
@@ -121,6 +124,51 @@ export const ProfilePage = () => {
           </div>
         </div>
       </div>
+
+      {gamificationEnabled ? (
+        <Link
+          to="/profile/gamification"
+          className="anim delay-2"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 'var(--space-4)',
+            background: 'var(--color-surface)',
+            borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--color-border)',
+            padding: 'var(--space-4) var(--space-5)',
+            boxShadow: 'var(--shadow-sm)',
+            textDecoration: 'none',
+            color: 'inherit',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+            <div
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                background: '#FDF1E8',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Trophy size={20} style={{ color: '#E8833A' }} strokeWidth={1.5} />
+            </div>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: 600 }}>Learning rewards</div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
+                View XP, badges, streaks, and activity history
+              </div>
+            </div>
+          </div>
+          <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-accent, #2870B8)' }}>
+            Open →
+          </span>
+        </Link>
+      ) : null}
 
       {/* Main Content Area */}
       <div className="anim delay-2">

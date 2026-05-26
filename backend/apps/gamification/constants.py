@@ -1,0 +1,118 @@
+"""
+Gamification constants — single source of truth for codes and defaults.
+"""
+
+
+class FeatureKeys:
+    GAMIFICATION_ENABLED = "gamification_enabled"
+
+
+class GamificationDefaults:
+    """Default values for company GamificationConfig (overridable per company)."""
+
+    INACTIVE_LEADERBOARD_DAYS = 90
+    LEARNING_STREAK_MIN_SECONDS = 300
+    MANDATORY_COURSE_XP_MULTIPLIER = 1.5
+    RETAKE_XP_PERCENT_2ND = 40
+    RETAKE_XP_PERCENT_3RD_PLUS = 20
+    STREAK_DAILY_XP_BONUS = 10
+
+
+class AwardEventType:
+    COURSE = "COURSE"
+    ASSESSMENT = "ASSESSMENT"
+    SKILL = "SKILL"
+    CERTIFICATE = "CERTIFICATE"
+    STREAK = "STREAK"
+
+
+class AwardRuleCode:
+    COURSE_COMPLETED = "COURSE_COMPLETED"
+    ASSESSMENT_PASSED = "ASSESSMENT_PASSED"
+    SKILL_UPGRADE_APPROVED = "SKILL_UPGRADE_APPROVED"
+    CERTIFICATE_ISSUED = "CERTIFICATE_ISSUED"
+    STREAK_DAY_BONUS = "STREAK_DAY_BONUS"
+
+
+class PointSourceType:
+    ENROLLMENT = "ENROLLMENT"
+    ASSESSMENT_RESULT = "ASSESSMENT_RESULT"
+    SKILL_UPGRADE_PROPOSAL = "SKILL_UPGRADE_PROPOSAL"
+    ISSUED_CERTIFICATE = "ISSUED_CERTIFICATE"
+    STREAK = "STREAK"
+
+
+class StreakType:
+    LEARNING = "LEARNING"
+    PASS_DAILY = "PASS_DAILY"
+    ATTEMPT_DAILY = "ATTEMPT_DAILY"
+    PASS_CONSECUTIVE = "PASS_CONSECUTIVE"
+    DAILY_TYPES = (LEARNING, PASS_DAILY, ATTEMPT_DAILY)
+    CHOICES = (
+        (LEARNING, "Learning"),
+        (PASS_DAILY, "Daily pass"),
+        (ATTEMPT_DAILY, "Daily attempt"),
+        (PASS_CONSECUTIVE, "Consecutive pass"),
+    )
+
+
+STREAK_SOURCE_ID_OFFSET = {
+    StreakType.LEARNING: 1,
+    StreakType.PASS_DAILY: 2,
+    StreakType.ATTEMPT_DAILY: 3,
+}
+
+
+class LeaderboardPeriod:
+    WEEKLY = "weekly"
+    MONTHLY = "monthly"
+    ALL_TIME = "all_time"
+    CHOICES = (WEEKLY, MONTHLY, ALL_TIME)
+    DEFAULT = ALL_TIME
+
+
+class BadgeCategory:
+    LEARNING = "learning"
+    COMPLIANCE = "compliance"
+    ASSESSMENT = "assessment"
+    SKILLS = "skills"
+    CERTIFICATES = "certificates"
+    STREAK = "streak"
+    MILESTONE = "milestone"
+    CHOICES = (
+        (LEARNING, "Learning"),
+        (COMPLIANCE, "Compliance"),
+        (ASSESSMENT, "Assessment"),
+        (SKILLS, "Skills"),
+        (CERTIFICATES, "Certificates"),
+        (STREAK, "Streak"),
+        (MILESTONE, "Milestone"),
+    )
+
+
+class BadgeCriteriaType:
+    COURSE_COMPLETED_COUNT = "COURSE_COMPLETED_COUNT"
+    COURSE_COMPLETED_IN_DAYS = "COURSE_COMPLETED_IN_DAYS"
+    MANDATORY_ALL_COMPLETE = "MANDATORY_ALL_COMPLETE"
+    COMPLIANCE_COURSE_COMPLETE = "COMPLIANCE_COURSE_COMPLETE"
+    OVERDUE_RECOVERY = "OVERDUE_RECOVERY"
+    LEARNING_PATH_COMPLETE = "LEARNING_PATH_COMPLETE"
+    ASSESSMENT_PASS_COUNT = "ASSESSMENT_PASS_COUNT"
+    ASSESSMENT_PERFECT_SCORE = "ASSESSMENT_PERFECT_SCORE"
+    ASSESSMENT_HIGH_SCORE_COUNT = "ASSESSMENT_HIGH_SCORE_COUNT"
+    ASSESSMENT_FIRST_TRY_PASS = "ASSESSMENT_FIRST_TRY_PASS"
+    STREAK_CURRENT = "STREAK_CURRENT"
+    SKILL_UPGRADE_COUNT = "SKILL_UPGRADE_COUNT"
+    DISTINCT_SKILL_UPGRADE_COUNT = "DISTINCT_SKILL_UPGRADE_COUNT"
+    CERTIFICATE_COUNT = "CERTIFICATE_COUNT"
+    LIFETIME_XP = "LIFETIME_XP"
+    TOP_N_MONTHLY = "TOP_N_MONTHLY"
+
+
+AWARD_RULE_LABELS = {
+    AwardRuleCode.COURSE_COMPLETED: "Course completed",
+    AwardRuleCode.ASSESSMENT_PASSED: "Assessment passed",
+    AwardRuleCode.SKILL_UPGRADE_APPROVED: "Skill upgrade approved",
+    AwardRuleCode.CERTIFICATE_ISSUED: "Certificate issued",
+    AwardRuleCode.STREAK_DAY_BONUS: "Streak day bonus",
+}

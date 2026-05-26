@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, XCircle, AlertTriangle, ArrowLeft, Award, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useCelebrationQueue } from '@/modules/gamification/context/CelebrationQueueProvider';
 import { SubmissionReason } from '@/types/assessment-player.types';
 import { assessmentPlayerApi } from '@/api/assessment-player-api';
 
@@ -25,6 +26,8 @@ export default function AssessmentPlayerResult({
   const [resultStatus, setResultStatus]         = useState<ResultStatus>(null);
   const [scorePercentage, setScorePercentage]   = useState<number | null>(null);
   const [loadingResult, setLoadingResult]       = useState(true);
+  const { checkForCelebrations } = useCelebrationQueue();
+  const celebrationCheckedRef = useRef(false);
 
   // Fetch the result — poll briefly since grading may be async
   useEffect(() => {
@@ -69,6 +72,15 @@ export default function AssessmentPlayerResult({
       clearTimeout(timer);
     };
   }, [attemptId]);
+
+  useEffect(() => {
+    if (loadingResult || resultStatus !== 'PASS' || celebrationCheckedRef.current) return;
+    celebrationCheckedRef.current = true;
+    const timer = setTimeout(() => {
+      void checkForCelebrations();
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [loadingResult, resultStatus, checkForCelebrations]);
 
   // ── Result config ─────────────────────────────────────────────────────────
   const isPassed  = resultStatus === 'PASS';
