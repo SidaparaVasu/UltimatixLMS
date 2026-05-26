@@ -7,6 +7,13 @@ export { CelebrationModal } from './components/CelebrationModal';
 export type { CelebrationEvent, CelebrationEventType } from './celebration/types';
 export { useGamificationEnabled } from './hooks/useGamificationEnabled';
 export {
+  useGamificationCompanyConfig,
+  useGamificationAwardRules,
+  useUpdateGamificationConfig,
+  useUpdateAwardRule,
+  useGamificationAdminEnabled,
+} from './hooks/useGamificationAdminQueries';
+export {
   useGamificationSummary,
   useGamificationTransactions,
   useGamificationLeaderboard,
@@ -44,6 +51,10 @@ export type {
   TeamGamificationMember,
   TeamGamificationDetail,
   TeamListParams,
+  CompanyGamificationConfig,
+  AwardRule,
+  AwardRuleUpdatePayload,
+  CompanyGamificationConfigUpdatePayload,
 } from './types';
 
 /** @deprecated Use GAMIFICATION_QUERY_KEYS.health */

@@ -57,6 +57,9 @@ const RolesPage            = lazy(() => import('@/pages/admin/rbac/RolesPage'));
 
 // Certificate Management pages
 const CertificateManagementPage = lazy(() => import('@/pages/admin/certificates/CertificateManagementPage'));
+const GamificationSettingsPage = lazy(() =>
+  import('@/pages/admin/gamification/GamificationSettingsPage')
+);
 const MyCertificatesPage        = lazy(() => import('@/pages/learner/MyCertificatesPage'));
 const CertificateVerificationPage = lazy(() => import('@/pages/public/CertificateVerificationPage'));
 const LeaderboardPage = lazy(() =>
@@ -188,6 +191,11 @@ export const AppRoutes = () => {
                 {/* Certificate Management — requires CERTIFICATE_MANAGE */}
                 <Route element={<RoleGuard requiredPermissions={[PERMISSIONS.CERTIFICATE_MANAGE]} />}>
                   <Route path="/admin/certificates" element={<CertificateManagementPage />} />
+                </Route>
+
+                {/* Gamification — company config & award rules */}
+                <Route element={<RoleGuard requiredPermissions={[PERMISSIONS.GAMIFICATION_MANAGE_CONFIG]} />}>
+                  <Route path="/admin/gamification" element={<GamificationSettingsPage />} />
                 </Route>
               </Route>
 

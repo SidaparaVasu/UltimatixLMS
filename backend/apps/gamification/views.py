@@ -37,6 +37,7 @@ from apps.gamification.view_helpers import (
     get_request_employee,
     require_active_gamification,
     require_company_gamification,
+    require_gamification_admin,
 )
 from apps.rbac.permission_codes import P
 from apps.rbac.permissions import HasScopedPermission
@@ -342,7 +343,7 @@ class GamificationConfigAPIView(APIView):
         responses={200: CompanyGamificationConfigSerializer},
     )
     def get(self, request):
-        employee, error = require_company_gamification(request)
+        employee, error = require_gamification_admin(request)
         if error:
             return error
 
@@ -359,7 +360,7 @@ class GamificationConfigAPIView(APIView):
         responses={200: CompanyGamificationConfigSerializer},
     )
     def patch(self, request):
-        employee, error = require_company_gamification(request)
+        employee, error = require_gamification_admin(request)
         if error:
             return error
 
@@ -388,7 +389,7 @@ class GamificationRulesViewSet(viewsets.GenericViewSet):
         responses={200: AwardRuleSerializer(many=True)},
     )
     def list(self, request):
-        employee, error = require_company_gamification(request)
+        employee, error = require_gamification_admin(request)
         if error:
             return error
 
@@ -405,7 +406,7 @@ class GamificationRulesViewSet(viewsets.GenericViewSet):
         responses={200: AwardRuleSerializer},
     )
     def partial_update(self, request, pk=None):
-        employee, error = require_company_gamification(request)
+        employee, error = require_gamification_admin(request)
         if error:
             return error
 

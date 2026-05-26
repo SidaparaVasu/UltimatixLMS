@@ -165,9 +165,11 @@ const NAV_CONFIG: NavSection[] = [
       PERMISSIONS.ROLE_VIEW,
       PERMISSIONS.REPORTS_VIEW,
       PERMISSIONS.CONFIG_VIEW,
+      PERMISSIONS.GAMIFICATION_MANAGE_CONFIG,
     ],
     items: [
       { label: "Roles",         icon: ShieldCheck, path: "/admin/roles",    requiredPermission: PERMISSIONS.ROLE_VIEW },
+      { label: "Gamification",  icon: Trophy,      path: "/admin/gamification", requiredPermission: PERMISSIONS.GAMIFICATION_MANAGE_CONFIG },
       // { label: "Settings",      icon: Settings,    path: "/admin/settings", requiredPermission: PERMISSIONS.CONFIG_VIEW },
     ],
   },
@@ -270,6 +272,7 @@ export const Sidebar = () => {
     [PERMISSIONS.REPORTS_VIEW]:              usePermission(PERMISSIONS.REPORTS_VIEW),
     [PERMISSIONS.CONFIG_VIEW]:               usePermission(PERMISSIONS.CONFIG_VIEW),
     [PERMISSIONS.GAMIFICATION_VIEW_TEAM]:    usePermission(PERMISSIONS.GAMIFICATION_VIEW_TEAM),
+    [PERMISSIONS.GAMIFICATION_MANAGE_CONFIG]: usePermission(PERMISSIONS.GAMIFICATION_MANAGE_CONFIG),
   };
 
   /** Returns only the items the current user is allowed to see. */

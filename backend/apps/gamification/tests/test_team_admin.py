@@ -200,6 +200,24 @@ class GamificationTeamAdminAPITest(APITestCase):
         config = CompanyGamificationConfig.objects.get(company=self.company)
         self.assertEqual(config.streak_daily_xp_bonus, 15)
 
+    def test_admin_can_manage_config_when_company_disabled(self):
+        config = CompanyGamificationConfig.objects.get(company=self.company)
+        config.is_enabled = False
+        config.save(update_fields=["is_enabled"])
+
+        self.client.force_authenticate(user=self.admin_user)
+        get_response = self.client.get(reverse("gamification-config"))
+        self.assertEqual(get_response.status_code, status.HTTP_200_OK)
+
+        patch_response = self.client.patch(
+            reverse("gamification-config"),
+            {"is_enabled": True},
+            format="json",
+        )
+        self.assertEqual(patch_response.status_code, status.HTTP_200_OK)
+        config.refresh_from_db()
+        self.assertTrue(config.is_enabled)
+
     def test_manager_cannot_patch_company_config(self):
         self.client.force_authenticate(user=self.manager_user)
         response = self.client.patch(

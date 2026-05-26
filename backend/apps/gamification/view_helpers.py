@@ -19,11 +19,8 @@ def require_active_gamification(request) -> tuple:
     Returns (None, error Response) otherwise.
     """
     employee = get_request_employee(request.user)
-    if not employee:
-        return None, error_response(
-            message="Employee profile is required to access gamification.",
-            status_code=403,
-        )
+    if error := _require_gamification_employee(employee):
+        return None, error
 
     if not GamificationStatusService().is_globally_enabled():
         return None, forbidden_response("Gamification is not enabled.")
@@ -43,11 +40,8 @@ def require_company_gamification(request) -> tuple:
     Used for manager/admin endpoints that are not limited to the learner summary flow.
     """
     employee = get_request_employee(request.user)
-    if not employee:
-        return None, error_response(
-            message="Employee profile is required to access gamification.",
-            status_code=403,
-        )
+    if error := _require_gamification_employee(employee):
+        return None, error
 
     if not GamificationStatusService().is_globally_enabled():
         return None, forbidden_response("Gamification is not enabled.")
@@ -58,3 +52,27 @@ def require_company_gamification(request) -> tuple:
         )
 
     return employee, None
+
+
+def require_gamification_admin(request) -> tuple:
+    """
+    Returns (employee, None) for config/rule management.
+    Requires global feature flag only — company may still be disabled so admins can turn it on.
+    """
+    employee = get_request_employee(request.user)
+    if error := _require_gamification_employee(employee):
+        return None, error
+
+    if not GamificationStatusService().is_globally_enabled():
+        return None, forbidden_response("Gamification is not enabled.")
+
+    return employee, None
+
+
+def _require_gamification_employee(employee):
+    if not employee:
+        return error_response(
+            message="Employee profile is required to access gamification.",
+            status_code=403,
+        )
+    return None

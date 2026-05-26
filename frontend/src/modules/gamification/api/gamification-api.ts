@@ -7,8 +7,12 @@ import { apiClient } from '@/api/axios-client';
 import { handleApiResponse, handleApiError } from '@/utils/api-utils';
 import { GAMIFICATION_API_BASE } from '../constants';
 import type {
+  AwardRule,
+  AwardRuleUpdatePayload,
   Badge,
   BadgeCatalogResponse,
+  CompanyGamificationConfig,
+  CompanyGamificationConfigUpdatePayload,
   GamificationHealthResponse,
   GamificationPaginated,
   GamificationSummary,
@@ -100,6 +104,47 @@ export const gamificationApi = {
     try {
       const response = await apiClient.get(`${GAMIFICATION_API_BASE}/team/${employeeId}/`);
       return handleApiResponse<TeamGamificationDetail>(response.data, false) as TeamGamificationDetail;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  getCompanyConfig: async (): Promise<CompanyGamificationConfig> => {
+    try {
+      const response = await apiClient.get(`${GAMIFICATION_API_BASE}/config/`);
+      return handleApiResponse<CompanyGamificationConfig>(response.data, false) as CompanyGamificationConfig;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  updateCompanyConfig: async (
+    payload: CompanyGamificationConfigUpdatePayload,
+  ): Promise<CompanyGamificationConfig> => {
+    try {
+      const response = await apiClient.patch(`${GAMIFICATION_API_BASE}/config/`, payload);
+      return handleApiResponse<CompanyGamificationConfig>(response.data) as CompanyGamificationConfig;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  listAwardRules: async (): Promise<AwardRule[]> => {
+    try {
+      const response = await apiClient.get(`${GAMIFICATION_API_BASE}/rules/`);
+      return handleApiResponse<AwardRule[]>(response.data, false) as AwardRule[];
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  updateAwardRule: async (
+    ruleId: number,
+    payload: AwardRuleUpdatePayload,
+  ): Promise<AwardRule> => {
+    try {
+      const response = await apiClient.patch(`${GAMIFICATION_API_BASE}/rules/${ruleId}/`, payload);
+      return handleApiResponse<AwardRule>(response.data) as AwardRule;
     } catch (error) {
       return handleApiError(error);
     }

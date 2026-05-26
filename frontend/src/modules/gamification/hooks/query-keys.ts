@@ -11,4 +11,6 @@ export const GAMIFICATION_QUERY_KEYS = {
   myBadges: ['gamification', 'me', 'badges'] as const,
   team: (params?: TeamListParams) => ['gamification', 'team', params] as const,
   teamMember: (employeeId: number) => ['gamification', 'team', employeeId] as const,
+  adminConfig: ['gamification', 'admin', 'config'] as const,
+  adminRules: ['gamification', 'admin', 'rules'] as const,
 };

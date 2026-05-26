@@ -135,3 +135,48 @@ export interface TeamListParams {
   page?: number;
   page_size?: number;
 }
+
+export interface CompanyGamificationConfig {
+  id: number;
+  company: number;
+  is_enabled: boolean;
+  inactive_leaderboard_days: number;
+  learning_streak_min_seconds: number;
+  mandatory_course_xp_multiplier: string;
+  retake_xp_percent_2nd: number;
+  retake_xp_percent_3rd_plus: number;
+  streak_daily_xp_bonus: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AwardRule {
+  id: number;
+  code: string;
+  name: string;
+  event_type: string;
+  base_points: number;
+  multiplier: string;
+  company: number | null;
+  is_active: boolean;
+  is_company_override: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AwardRuleUpdatePayload {
+  name?: string;
+  base_points?: number;
+  multiplier?: number;
+  is_active?: boolean;
+}
+
+export interface CompanyGamificationConfigUpdatePayload {
+  is_enabled?: boolean;
+  inactive_leaderboard_days?: number;
+  learning_streak_min_seconds?: number;
+  mandatory_course_xp_multiplier?: number;
+  retake_xp_percent_2nd?: number;
+  retake_xp_percent_3rd_plus?: number;
+  streak_daily_xp_bonus?: number;
+}
