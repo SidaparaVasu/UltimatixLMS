@@ -170,9 +170,10 @@ class UserLessonProgressService(BaseService):
 class UserContentProgressService(BaseService):
     repository_class = UserContentProgressRepository
 
-    def record_heartbeat(self, enrollment_id, lesson_id, content_id, playhead):
+    def record_heartbeat(self, enrollment_id, lesson_id, content_id, playhead, signal_completion=False):
         """
-        Updates the playhead and marks content as 'completed' if requirements met.
+        Updates playhead on background heartbeats.
+        Completion is explicit and only applied when signal_completion=True.
         """
         with transaction.atomic():
             # 1. Ensure Lesson Progress exists
@@ -191,10 +192,12 @@ class UserContentProgressService(BaseService):
                 lesson_progress=lesson_progress,
                 content_id=content_id
             )
-            content_progress.playhead_seconds = playhead
-            
-            # Simple logic: Moving playhead forward marks it as completed (stub for video logic)
-            if playhead > 0:
+            # Never regress saved resume position on delayed/out-of-order heartbeats
+            # or explicit completion calls carrying a minimal/dummy playhead.
+            content_progress.playhead_seconds = max(content_progress.playhead_seconds, playhead)
+
+            # Completion must be explicit; passive heartbeats only sync playhead.
+            if signal_completion:
                 content_progress.is_completed = True
             
             content_progress.save()
@@ -225,7 +228,8 @@ class UserContentProgressService(BaseService):
                 enrollment_id=enrollment_id,
                 lesson_id=content.lesson_id,
                 content_id=content_id,
-                playhead=1
+                playhead=1,
+                signal_completion=True,
             )
 
 

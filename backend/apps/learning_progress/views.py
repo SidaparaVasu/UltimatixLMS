@@ -227,7 +227,8 @@ class HeartbeatViewSet(viewsets.ViewSet):
                   enrollment_id=enrollment_id,
                   lesson_id=serializer.data["lesson_id"],
                   content_id=serializer.data["content_id"],
-                  playhead=serializer.data["playhead_seconds"]
+                  playhead=serializer.data["playhead_seconds"],
+                  signal_completion=serializer.data.get("signal_completion", False),
              )
              return success_response(message="Heartbeat recorded", data={"playhead": heartbeat.playhead_seconds})
         return error_response(message="Invalid heartbeat data", errors=serializer.errors)

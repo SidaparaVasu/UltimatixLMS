@@ -74,7 +74,8 @@ class LearningProgressAPITest(APITestCase):
             "enrollment_id": enrollment.id,
             "lesson_id": self.lesson_1.id,
             "content_id": self.content_1.id,
-            "playhead_seconds": 100
+            "playhead_seconds": 100,
+            "signal_completion": True,
         }
         res = self.client.post(url, data)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
@@ -95,6 +96,32 @@ class LearningProgressAPITest(APITestCase):
         enrollment.refresh_from_db()
         self.assertEqual(float(enrollment.progress_percentage), 100.00)
         self.assertEqual(enrollment.status, "COMPLETED")
+
+    def test_heartbeat_without_completion_signal_does_not_mark_content_complete(self):
+        """Verify passive heartbeats update playhead only and do not complete content."""
+        enrollment = UserCourseEnrollment.objects.create(employee=self.emp_a, course=self.course)
+        url = reverse("heartbeat-sync")
+
+        payload = {
+            "enrollment_id": enrollment.id,
+            "lesson_id": self.lesson_1.id,
+            "content_id": self.content_1.id,
+            "playhead_seconds": 100,
+            "signal_completion": False,
+        }
+        res = self.client.post(url, payload)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        content_progress = UserContentProgress.objects.get(
+            lesson_progress__enrollment=enrollment,
+            lesson_progress__lesson=self.lesson_1,
+            content=self.content_1,
+        )
+        self.assertEqual(content_progress.playhead_seconds, 100)
+        self.assertFalse(content_progress.is_completed)
+
+        lesson_progress = UserLessonProgress.objects.get(enrollment=enrollment, lesson=self.lesson_1)
+        self.assertEqual(lesson_progress.status, "IN_PROGRESS")
 
     def test_student_isolation_security(self):
         """Verify that Student A cannot access Student B's enrollment."""

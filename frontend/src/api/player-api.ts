@@ -57,8 +57,8 @@ export const playerApi = {
 
   /**
    * Mark a lesson as complete.
-   * Backend requires playhead_seconds > 0 to set is_completed = True.
-   * We send playhead_seconds: 1 as the minimum valid value.
+   * Completion is explicit via signal_completion=true.
+   * playhead_seconds is included for compatibility and resume continuity.
    */
   markLessonComplete: async (enrollmentId: number, lessonId: number, contentId: number) => {
     try {
