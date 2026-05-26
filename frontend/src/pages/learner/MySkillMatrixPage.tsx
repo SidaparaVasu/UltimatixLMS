@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BarChart2, ArrowRight, RefreshCw } from 'lucide-react';
+import { ArrowRight, RefreshCw } from 'lucide-react';
 import { useMySkillMatrix } from '@/queries/tni/useTNIQueries';
 import { SkillMatrixTable } from '@/components/tni/SkillMatrixTable';
 import { SkillGapBadge } from '@/components/tni/SkillGapBadge';
@@ -40,7 +40,8 @@ const StatCard: React.FC<{
 // ---------------------------------------------------------------------------
 
 export default function MySkillMatrixPage() {
-  const { data: matrixData, isLoading, refetch, isFetching } = useMySkillMatrix();
+  const [matrixScope, setMatrixScope] = useState<'all_user' | 'job_required'>('all_user');
+  const { data: matrixData, isLoading, refetch, isFetching } = useMySkillMatrix({ scope: matrixScope });
   const [categoryFilter, setCategoryFilter] = useState<string>('');
   const [historySkill, setHistorySkill] = useState<{ id: number; name: string } | null>(null);
 
@@ -52,7 +53,7 @@ export default function MySkillMatrixPage() {
     met:      rows.filter(r => r.gap_severity === 'NONE').length,
     minor:    rows.filter(r => r.gap_severity === 'MINOR').length,
     critical: rows.filter(r => r.gap_severity === 'CRITICAL').length,
-    notRated: rows.filter(r => r.gap_severity === 'NOT_RATED' || !r.gap_severity).length,
+    notRated: rows.filter(r => r.gap_severity === 'NOT_RATED').length,
   }), [rows]);
 
   // ── Category filter options ───────────────────────────────────────────────
@@ -95,7 +96,7 @@ export default function MySkillMatrixPage() {
                 My Skill Matrix
               </h1>
               <p style={{ margin: '3px 0 0', fontSize: '13px', color: 'var(--color-text-muted)' }}>
-                Your current skill levels vs role requirements
+                Your current skills, with job-role requirements shown where applicable
               </p>
             </div>
           </div>
@@ -136,12 +137,47 @@ export default function MySkillMatrixPage() {
         <div style={{ height: '1px', background: 'var(--color-border)', marginTop: 'var(--space-4)' }} />
       </div>
 
+      {/* Scope filter */}
+      <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
+        {[
+          { value: 'all_user' as const, label: 'All my skills' },
+          { value: 'job_required' as const, label: 'Job required' },
+        ].map(option => (
+          <button
+            key={option.value}
+            onClick={() => {
+              setMatrixScope(option.value);
+              setCategoryFilter('');
+            }}
+            style={{
+              padding: '6px 14px',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid',
+              borderColor: matrixScope === option.value ? 'var(--color-accent)' : 'var(--color-border)',
+              background: matrixScope === option.value
+                ? 'color-mix(in srgb, var(--color-accent) 10%, transparent)'
+                : 'var(--color-surface)',
+              color: matrixScope === option.value ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+              fontSize: '12px',
+              fontWeight: matrixScope === option.value ? 600 : 500,
+              cursor: 'pointer',
+              transition: 'all 150ms',
+            }}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
       {/* No skills state */}
       {rows.length === 0 ? (
         <RatingStatusBanner
           variant="info"
-          message="No skills mapped to your role yet."
-          detail="Ask your admin to map skills to your job role, then complete your self-assessment."
+          message={matrixScope === 'all_user' ? 'No skills found in your profile yet.' : 'No skills mapped to your role yet.'}
+          detail={matrixScope === 'all_user'
+            ? 'Complete your self-assessment or ask your admin to add skills to your profile.'
+            : 'Ask your admin to map skills to your job role, then complete your self-assessment.'
+          }
           action={
             <Link
               to="/my-tni"

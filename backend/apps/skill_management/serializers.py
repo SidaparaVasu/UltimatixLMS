@@ -196,6 +196,7 @@ class SkillMatrixRowSerializer(serializers.Serializer):
     skill_code      = serializers.CharField()
     category_id     = serializers.IntegerField(allow_null=True)
     category_name   = serializers.CharField(allow_null=True)
+    is_role_skill   = serializers.BooleanField()
     required_level  = SkillLevelNestedSerializer(allow_null=True)
     current_level   = SkillLevelNestedSerializer(allow_null=True)
     identified_by   = serializers.CharField(allow_null=True)

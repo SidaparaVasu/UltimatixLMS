@@ -744,12 +744,14 @@ class SkillMatrixViewSet(viewsets.GenericViewSet):
     Read-only composite view that assembles the skill matrix for an employee.
 
     GET /skills/my-skill-matrix/
-        Returns all job-role-required skills for the current user, enriched with:
+        Returns job-role-required skills for the current user, enriched with:
           - required level (from JobRoleSkillRequirement)
           - current level + identified_by (from EmployeeSkill)
           - self-rating (from EmployeeSkillRating SELF)
           - manager-rating (from EmployeeSkillRating MANAGER)
           - gap_value and gap_severity
+        Pass ?scope=all_user to return all active EmployeeSkill rows for the
+        current user, with role requirement/gap data attached when applicable.
     """
     permission_classes = [IsAuthenticated]
     serializer_class   = SkillMatrixRowSerializer
@@ -760,13 +762,14 @@ class SkillMatrixViewSet(viewsets.GenericViewSet):
         if err:
             return err
 
-        rows = self._build_matrix(employee)
+        scope = request.query_params.get("scope", "job_required")
+        rows = self._build_matrix(employee, scope=scope)
         serializer = self.get_serializer(rows, many=True)
         return success_response(data=serializer.data)
 
     # ── Internal builder ──────────────────────────────────────────────────
 
-    def _build_matrix(self, employee):
+    def _build_matrix(self, employee, scope="job_required"):
         from .models import (
             JobRoleSkillRequirement,
             EmployeeSkill,
@@ -781,13 +784,14 @@ class SkillMatrixViewSet(viewsets.GenericViewSet):
             .filter(job_role_id=employee.job_role_id, is_active=True)
             .select_related("skill", "required_level")
         )
+        requirements_by_skill = {req.skill_id: req for req in requirements}
 
         # 2. Current finalized skills keyed by skill_id
         current_skills = {
             es.skill_id: es
             for es in EmployeeSkill.objects.filter(
                 employee=employee, is_active=True
-            ).select_related("current_level")
+            ).select_related("skill", "current_level")
         }
 
         # 3. Self-ratings keyed by skill_id
@@ -809,9 +813,14 @@ class SkillMatrixViewSet(viewsets.GenericViewSet):
         }
 
         # 5. Category mapping: skill_id → first category found
+        if scope == "all_user":
+            skill_ids = list(current_skills.keys())
+        else:
+            skill_ids = [req.skill_id for req in requirements]
+
         category_map = {}
         for mapping in SkillCategorySkillMap.objects.filter(
-            skill_id__in=[r.skill_id for r in requirements],
+            skill_id__in=skill_ids,
             is_active=True,
         ).select_related("category"):
             if mapping.skill_id not in category_map:
@@ -819,9 +828,15 @@ class SkillMatrixViewSet(viewsets.GenericViewSet):
 
         # 6. Assemble rows
         rows = []
-        for req in requirements:
-            skill        = req.skill
-            req_level    = req.required_level
+        if scope == "all_user":
+            source_items = [current_skills[skill_id] for skill_id in skill_ids]
+        else:
+            source_items = list(requirements)
+
+        for item in source_items:
+            req          = requirements_by_skill.get(item.skill_id)
+            skill        = item.skill
+            req_level    = req.required_level if req else None
             emp_skill    = current_skills.get(skill.id)
             self_rating  = self_ratings.get(skill.id)
             mgr_rating   = manager_ratings.get(skill.id)
@@ -850,6 +865,7 @@ class SkillMatrixViewSet(viewsets.GenericViewSet):
                 "skill_code":     skill.skill_code,
                 "category_id":    category.id if category else None,
                 "category_name":  category.category_name if category else None,
+                "is_role_skill":  req is not None,
                 "required_level": req_level,
                 "current_level":  emp_skill.current_level if emp_skill else None,
                 "identified_by":  emp_skill.identified_by if emp_skill else None,
@@ -859,6 +875,7 @@ class SkillMatrixViewSet(viewsets.GenericViewSet):
                 "gap_severity":   gap_severity,
             })
 
+        rows.sort(key=lambda row: (not row["is_role_skill"], row["skill_name"].lower()))
         return rows
 
 

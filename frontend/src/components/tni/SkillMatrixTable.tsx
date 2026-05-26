@@ -53,7 +53,7 @@ export const SkillMatrixTable: React.FC<SkillMatrixTableProps> = ({
           fontSize: '14px',
         }}
       >
-        No skills mapped to your job role yet.
+        No skills match the current filters.
       </div>
     );
   }

@@ -14,7 +14,7 @@ import {
 // ---------------------------------------------------------------------------
 
 export const TNI_QUERY_KEYS = {
-  mySkillMatrix:        ['tni', 'my-skill-matrix'],
+  mySkillMatrix:        (params?: { scope?: 'all_user' | 'job_required' }) => ['tni', 'my-skill-matrix', params],
   skillRatings:         (params?: SkillRatingListParams) => ['tni', 'skill-ratings', params],
   skillRatingHistory:   (params?: SkillRatingHistoryParams) => ['tni', 'skill-rating-history', params],
   trainingNeeds:        (params?: TrainingNeedListParams) => ['tni', 'training-needs', params],
@@ -28,10 +28,10 @@ export const TNI_QUERY_KEYS = {
 // ---------------------------------------------------------------------------
 
 /** Composite skill matrix for the current user (required level + current + ratings + gap) */
-export const useMySkillMatrix = () =>
+export const useMySkillMatrix = (params?: { scope?: 'all_user' | 'job_required' }) =>
   useQuery({
-    queryKey: TNI_QUERY_KEYS.mySkillMatrix,
-    queryFn:  tniApi.getMySkillMatrix,
+    queryKey: TNI_QUERY_KEYS.mySkillMatrix(params),
+    queryFn:  () => tniApi.getMySkillMatrix(params),
   });
 
 /** All direct reports who have submitted a self-rating (reviewed or not) */
@@ -90,7 +90,7 @@ export const useSubmitSelfRatings = () => {
     mutationFn: tniApi.submitSelfRatings,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: TNI_QUERY_KEYS.skillRatings() });
-      qc.invalidateQueries({ queryKey: TNI_QUERY_KEYS.mySkillMatrix });
+      qc.invalidateQueries({ queryKey: ['tni', 'my-skill-matrix'] });
     },
   });
 };
@@ -119,7 +119,7 @@ export const useSubmitManagerRatings = () => {
       tniApi.submitManagerRatings(payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: TNI_QUERY_KEYS.skillRatings() });
-      qc.invalidateQueries({ queryKey: TNI_QUERY_KEYS.mySkillMatrix });
+      qc.invalidateQueries({ queryKey: ['tni', 'my-skill-matrix'] });
       qc.invalidateQueries({ queryKey: ['tni', 'training-needs'] });
     },
   });

@@ -34,8 +34,8 @@ export default function SelfTNIRatingPage() {
 
   // ── Server data ──────────────────────────────────────────────────────────
   const { data: matrixData, isLoading: matrixLoading } = useQuery({
-    queryKey: TNI_QUERY_KEYS.mySkillMatrix,
-    queryFn:  tniApi.getMySkillMatrix,
+    queryKey: TNI_QUERY_KEYS.mySkillMatrix(),
+    queryFn:  () => tniApi.getMySkillMatrix(),
   });
 
   const { data: existingRatingsData, isLoading: ratingsLoading } = useSkillRatings({

@@ -165,6 +165,8 @@ export interface SkillMatrixRow {
   skill_code: string;
   category_id: number | null;
   category_name: string | null;
+  /** true when this skill is required by the employee's current job role */
+  is_role_skill: boolean;
   required_level: SkillLevelNested | null;
   current_level: SkillLevelNested | null;
   identified_by: SkillIdentifiedBy | null;

@@ -42,12 +42,12 @@ export const tniApi = {
 
   /**
    * GET /skills/my-skill-matrix/
-   * Returns the composite skill matrix for the current user:
-   * required level + current level + self-rating + manager-rating + gap.
+   * Returns the composite skill matrix for the current user.
+   * scope=all_user returns active profile skills; default/job_required returns role skills.
    */
-  getMySkillMatrix: async () => {
+  getMySkillMatrix: async (params?: { scope?: 'all_user' | 'job_required' }) => {
     try {
-      const response = await apiClient.get('/skills/my-skill-matrix/');
+      const response = await apiClient.get('/skills/my-skill-matrix/', { params });
       return handleApiResponse<SkillMatrixRow[]>(response.data, false);
     } catch (error) {
       return handleApiError(error);
