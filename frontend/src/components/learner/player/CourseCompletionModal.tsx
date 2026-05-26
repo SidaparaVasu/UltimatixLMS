@@ -39,10 +39,13 @@ export const CourseCompletionModal = ({
   useEffect(() => {
     if (celebrationCheckedRef.current) return;
     celebrationCheckedRef.current = true;
-    const celebrationTimer = setTimeout(() => {
-      void checkForCelebrations();
-    }, 2500);
-    return () => clearTimeout(celebrationTimer);
+    const delays = [1500, 3500, 6000];
+    const timers = delays.map((ms) =>
+      setTimeout(() => {
+        void checkForCelebrations();
+      }, ms),
+    );
+    return () => timers.forEach(clearTimeout);
   }, [checkForCelebrations]);
 
   if (dismissed) return null;

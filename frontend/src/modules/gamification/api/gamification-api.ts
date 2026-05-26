@@ -13,6 +13,8 @@ import type {
   BadgeCatalogResponse,
   CompanyGamificationConfig,
   CompanyGamificationConfigUpdatePayload,
+  PendingCelebrationsResponse,
+  GamificationSnapshotPayload,
   GamificationHealthResponse,
   GamificationPaginated,
   GamificationSummary,
@@ -30,6 +32,29 @@ export const gamificationApi = {
     try {
       const response = await apiClient.get(`${GAMIFICATION_API_BASE}/health/`);
       return handleApiResponse<GamificationHealthResponse>(response.data, false) as GamificationHealthResponse;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  getPendingCelebrations: async (): Promise<PendingCelebrationsResponse> => {
+    try {
+      const response = await apiClient.get(`${GAMIFICATION_API_BASE}/me/pending-celebrations/`);
+      return handleApiResponse<PendingCelebrationsResponse>(response.data, false) as PendingCelebrationsResponse;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  acknowledgeCelebrations: async (
+    snapshot?: GamificationSnapshotPayload,
+  ): Promise<PendingCelebrationsResponse> => {
+    try {
+      const response = await apiClient.post(
+        `${GAMIFICATION_API_BASE}/me/pending-celebrations/ack/`,
+        snapshot ? { snapshot } : undefined,
+      );
+      return handleApiResponse<PendingCelebrationsResponse>(response.data, false) as PendingCelebrationsResponse;
     } catch (error) {
       return handleApiError(error);
     }

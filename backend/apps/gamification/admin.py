@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from apps.gamification.models import (
+    EmployeeCelebrationAck,
     AwardRule,
     BadgeDefinition,
     CompanyGamificationConfig,

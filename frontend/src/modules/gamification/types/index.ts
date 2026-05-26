@@ -171,6 +171,42 @@ export interface AwardRuleUpdatePayload {
   is_active?: boolean;
 }
 
+export interface CelebrationEventApi {
+  id: string;
+  type: 'xp' | 'badge' | 'streak';
+  title: string;
+  subtitle?: string;
+  amount?: number;
+  badge?: {
+    code: string;
+    name: string;
+    description: string;
+    category: string;
+    icon_key: string;
+  };
+  streak_label?: string;
+  streak_days?: number;
+  gif_key?: string;
+}
+
+export interface GamificationSnapshotPayload {
+  lifetime_xp: number;
+  badge_codes: string[];
+  streaks: {
+    learning: number;
+    pass_daily: number;
+    attempt_daily: number;
+    pass_consecutive: number;
+  };
+  celebrated_streak_milestones?: string[];
+}
+
+export interface PendingCelebrationsResponse {
+  needs_baseline: boolean;
+  events: CelebrationEventApi[];
+  snapshot?: GamificationSnapshotPayload;
+}
+
 export interface CompanyGamificationConfigUpdatePayload {
   is_enabled?: boolean;
   inactive_leaderboard_days?: number;

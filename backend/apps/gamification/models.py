@@ -263,3 +263,29 @@ class EmployeeBadge(models.Model):
 
     def __str__(self):
         return f"EmployeeBadge({self.employee_id}, {self.badge_id})"
+
+
+class EmployeeCelebrationAck(models.Model):
+    """
+    Last gamification state the learner has seen in celebration modals.
+    Used to compute pending celebrations across sessions/devices.
+    """
+
+    employee = models.OneToOneField(
+        "org_management.EmployeeMaster",
+        on_delete=models.CASCADE,
+        related_name="gamification_celebration_ack",
+    )
+    company = models.ForeignKey(
+        "org_management.CompanyMaster",
+        on_delete=models.CASCADE,
+        related_name="celebration_acks",
+    )
+    snapshot = models.JSONField(default=dict, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "gamification_employee_celebration_ack"
+
+    def __str__(self):
+        return f"CelebrationAck(employee={self.employee_id})"

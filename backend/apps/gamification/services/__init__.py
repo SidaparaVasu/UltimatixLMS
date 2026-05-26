@@ -10,6 +10,7 @@ from .award_engine import AwardOutcome
 from .team_gamification_service import TeamGamificationService
 from .gamification_admin_service import GamificationAdminService
 from .gamification_backfill_service import GamificationBackfillService, BackfillStats
+from .pending_celebration_service import PendingCelebrationService
 from .monthly_top_badge_service import (
     MonthlyTopBadgeRunStats,
     MonthlyTopBadgeService,
@@ -35,4 +36,5 @@ __all__ = [
     "MonthlyTopBadgeService",
     "MonthlyTopBadgeStats",
     "MonthlyTopBadgeRunStats",
+    "PendingCelebrationService",
 ]

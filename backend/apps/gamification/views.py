@@ -20,6 +20,8 @@ from apps.gamification.serializers import (
     EarnedBadgeSerializer,
     GamificationHealthSerializer,
     GamificationSummarySerializer,
+    AcknowledgeCelebrationsRequestSerializer,
+    PendingCelebrationsResponseSerializer,
     LeaderboardResponseSerializer,
     PointTransactionSerializer,
     TeamGamificationDetailSerializer,
@@ -31,6 +33,7 @@ from apps.gamification.services import (
     GamificationStatusService,
     LeaderboardService,
     LearnerGamificationService,
+    PendingCelebrationService,
     TeamGamificationService,
 )
 from apps.gamification.view_helpers import (
@@ -144,6 +147,48 @@ class MeGamificationViewSet(viewsets.GenericViewSet):
         return success_response(
             message="Earned badges retrieved",
             data=serializer.data,
+        )
+
+    @extend_schema(
+        summary="Pending celebration modals since last acknowledgement",
+        responses={200: PendingCelebrationsResponseSerializer},
+    )
+    @action(detail=False, methods=["get"], url_path="pending-celebrations")
+    def pending_celebrations(self, request):
+        employee, error = require_active_gamification(request)
+        if error:
+            return error
+
+        payload = PendingCelebrationService().get_pending(employee)
+        serializer = PendingCelebrationsResponseSerializer(payload)
+        return success_response(
+            message="Pending celebrations retrieved",
+            data=serializer.data,
+        )
+
+    @extend_schema(
+        summary="Acknowledge current gamification state (dismiss pending celebrations)",
+        request=AcknowledgeCelebrationsRequestSerializer,
+        responses={200: PendingCelebrationsResponseSerializer},
+    )
+    @action(detail=False, methods=["post"], url_path="pending-celebrations/ack")
+    def acknowledge_celebrations(self, request):
+        employee, error = require_active_gamification(request)
+        if error:
+            return error
+
+        service = PendingCelebrationService()
+        body = AcknowledgeCelebrationsRequestSerializer(data=request.data or {})
+        body.is_valid(raise_exception=True)
+        snapshot_payload = body.validated_data.get("snapshot")
+        snapshot = service.save_ack(employee, snapshot_payload)
+        return success_response(
+            message="Celebrations acknowledged",
+            data={
+                "needs_baseline": False,
+                "events": [],
+                "snapshot": snapshot,
+            },
         )
 
 

@@ -174,6 +174,46 @@ class AwardRuleUpdateSerializer(serializers.Serializer):
     is_active = serializers.BooleanField(required=False)
 
 
+class CelebrationBadgeSerializer(serializers.Serializer):
+    code = serializers.CharField()
+    name = serializers.CharField()
+    description = serializers.CharField()
+    category = serializers.CharField()
+    icon_key = serializers.CharField()
+
+
+class CelebrationEventSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    type = serializers.ChoiceField(choices=("xp", "badge", "streak"))
+    title = serializers.CharField()
+    subtitle = serializers.CharField(required=False, allow_blank=True)
+    amount = serializers.IntegerField(required=False)
+    badge = CelebrationBadgeSerializer(required=False)
+    streak_label = serializers.CharField(required=False)
+    streak_days = serializers.IntegerField(required=False)
+    gif_key = serializers.CharField(required=False)
+
+
+class GamificationSnapshotSerializer(serializers.Serializer):
+    lifetime_xp = serializers.IntegerField()
+    badge_codes = serializers.ListField(child=serializers.CharField())
+    streaks = serializers.DictField()
+    celebrated_streak_milestones = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+    )
+
+
+class PendingCelebrationsResponseSerializer(serializers.Serializer):
+    needs_baseline = serializers.BooleanField()
+    events = CelebrationEventSerializer(many=True)
+    snapshot = GamificationSnapshotSerializer(required=False)
+
+
+class AcknowledgeCelebrationsRequestSerializer(serializers.Serializer):
+    snapshot = GamificationSnapshotSerializer(required=False)
+
+
 class LeaderboardResponseSerializer(serializers.Serializer):
     period = serializers.CharField()
     department_id = serializers.IntegerField(allow_null=True)
