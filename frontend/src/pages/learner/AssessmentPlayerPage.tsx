@@ -107,6 +107,15 @@ export default function AssessmentPlayerPage() {
   // setCameraStream state update has flushed.
   const activeStreamRef = useRef<MediaStream | null>(null);
 
+  const stopCameraStream = useCallback(() => {
+    const stream = activeStreamRef.current ?? cameraStream;
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+    }
+    activeStreamRef.current = null;
+    setCameraStream(null);
+  }, [cameraStream]);
+
   // Resume data — when ?attempt exists, we store resume info but still
   // show instructions (for camera/mic permissions). After "Begin" is clicked,
   // we skip startAttempt and use this stored data.
@@ -125,14 +134,19 @@ export default function AssessmentPlayerPage() {
   // ── "Back to Assessments" handler ─────────────────────────────────────────
   const handleBack = useCallback(() => {
     // Stop camera stream — check both ref and state to cover all phases
-    const stream = activeStreamRef.current ?? cameraStream;
-    stream?.getTracks().forEach(t => t.stop());
+    stopCameraStream();
     if (window.opener) {
       window.close();
     } else {
       navigate('/assessments');
     }
-  }, [cameraStream, navigate]);
+  }, [navigate, stopCameraStream]);
+
+  // Ensure camera/microphone are always released when this page unmounts,
+  // including result-screen navigations that bypass handleBack.
+  useEffect(() => {
+    return () => stopCameraStream();
+  }, [stopCameraStream]);
 
   // ── Page load — fetch metadata + optionally resume ────────────────────────
   useEffect(() => {
@@ -243,6 +257,7 @@ export default function AssessmentPlayerPage() {
     const firstQ = await assessmentPlayerApi.nextQuestion(newAttemptId);
     if (!firstQ || ('completed' in firstQ && firstQ.completed)) {
       await assessmentPlayerApi.finalize(newAttemptId);
+      stopCameraStream();
       setSubmissionReason('normal');
       setPhase('result');
       return;
@@ -251,7 +266,7 @@ export default function AssessmentPlayerPage() {
     setInitialQuestion(firstQ as NextQuestionResponse);
     setInitialOverallSecs(meta.durationMinutes * 60);
     setPhase('active');
-  }, [assessmentId, meta]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [assessmentId, meta, stopCameraStream]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Active → Result transition ────────────────────────────────────────────
   // Invalidate My Certificates when the attempt is finalized — the backend
@@ -259,12 +274,13 @@ export default function AssessmentPlayerPage() {
   // requiring a manual page reload (Requirement 12.2)
   const queryClient = useQueryClient();
   const handleFinalize = useCallback((reason: SubmissionReason) => {
+    stopCameraStream();
     setSubmissionReason(reason);
     setPhase('result');
     queryClient.invalidateQueries({
       queryKey: CERTIFICATE_QUERY_KEYS.myCertificates.list(),
     });
-  }, [queryClient]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [queryClient, stopCameraStream]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Render ────────────────────────────────────────────────────────────────
 
