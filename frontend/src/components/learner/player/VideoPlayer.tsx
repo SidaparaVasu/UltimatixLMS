@@ -42,6 +42,9 @@ const buildEmbedUrl = (url: string, provider: VideoProvider, startSeconds = 0): 
       origin: window.location.origin,
       rel: '0',
       modestbranding: '1',
+      autoplay: '1',
+      mute: '1',
+      playsinline: '1',
       start: String(startSeconds),
     });
     return `https://www.youtube.com/embed/${videoId}?${params}`;
@@ -52,7 +55,9 @@ const buildEmbedUrl = (url: string, provider: VideoProvider, startSeconds = 0): 
     const params = new URLSearchParams({
       api: '1',
       player_id: 'vimeo-player',
-      autoplay: '0',
+      autoplay: '1',
+      muted: '1',
+      playsinline: '1',
     });
     return `https://player.vimeo.com/video/${videoId}?${params}#t=${startSeconds}s`;
   }
