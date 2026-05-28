@@ -207,6 +207,8 @@ class SkillMatrixRowSerializer(serializers.Serializer):
         choices=["NONE", "MINOR", "CRITICAL", "NOT_RATED"],
         allow_null=True,
     )
+    active_training_need_status = serializers.CharField(allow_null=True, required=False)
+    can_reassess                = serializers.BooleanField(default=False)
 
 
 class SelfRatingDetailSerializer(serializers.ModelSerializer):

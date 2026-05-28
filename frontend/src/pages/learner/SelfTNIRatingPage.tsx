@@ -158,8 +158,19 @@ export default function SelfTNIRatingPage() {
   }, [ratings, observations, accomplishments]);
 
   const handleSaveDraft = () => {
+    // Only send ratings that are not already SUBMITTED
+    const unsubmittedRatings = Object.entries(ratings).filter(([skillId]) => {
+      const sId = Number(skillId);
+      const matrixRow = matrix.find(r => r.skill_id === sId);
+      if (matrixRow) {
+        return matrixRow.self_rating?.status !== 'SUBMITTED';
+      }
+      const existing = existingRatings.find(r => r.skill === sId);
+      return !existing || existing.status !== 'SUBMITTED';
+    });
+
     const payload: SelfRatingBulkSavePayload = {
-      ratings: Object.entries(ratings).map(([skillId, r]) => ({
+      ratings: unsubmittedRatings.map(([skillId, r]) => ({
         skill_id:       Number(skillId),
         level_id:       r.levelId,
         observations,
@@ -186,9 +197,19 @@ export default function SelfTNIRatingPage() {
   };
 
   const handleConfirmSubmit = () => {
-    // Save all ratings first, then submit
+    // Only send ratings that are not already SUBMITTED
+    const unsubmittedRatings = Object.entries(ratings).filter(([skillId]) => {
+      const sId = Number(skillId);
+      const matrixRow = matrix.find(r => r.skill_id === sId);
+      if (matrixRow) {
+        return matrixRow.self_rating?.status !== 'SUBMITTED';
+      }
+      const existing = existingRatings.find(r => r.skill === sId);
+      return !existing || existing.status !== 'SUBMITTED';
+    });
+
     const payload: SelfRatingBulkSavePayload = {
-      ratings: Object.entries(ratings).map(([skillId, r]) => ({
+      ratings: unsubmittedRatings.map(([skillId, r]) => ({
         skill_id:       Number(skillId),
         level_id:       r.levelId,
         observations,
@@ -244,6 +265,7 @@ export default function SelfTNIRatingPage() {
         requiredLevel:  row.required_level,
         selectedLevelId: ratings[row.skill_id]?.levelId ?? null,
         isMissing:      missingSkillIds.includes(row.skill_id),
+        readOnly:       row.self_rating?.status === 'SUBMITTED',
       });
     });
 
@@ -260,6 +282,7 @@ export default function SelfTNIRatingPage() {
         requiredLevel:   null,
         selectedLevelId: ratings[skillId]?.levelId ?? null,
         isMissing:       false,
+        readOnly:        existingRatings.find(r => r.skill === skillId)?.status === 'SUBMITTED',
       };
     });
   }, [extraSkillIds, allSkills, ratings]);
@@ -367,7 +390,7 @@ export default function SelfTNIRatingPage() {
             skills={section.skills}
             levels={levels}
             onLevelChange={handleLevelChange}
-            readOnly={isSubmitted}
+            readOnly={false}
           />
         ))
       )}
@@ -400,13 +423,13 @@ export default function SelfTNIRatingPage() {
           {extraSkillRows.length > 0 && (
             <div style={{
               display: 'grid',
-              gridTemplateColumns: isSubmitted ? '1fr 120px 1fr' : '1fr 120px 1fr 32px',
+              gridTemplateColumns: extraSkillRows.every(s => s.readOnly) ? '1fr 120px 1fr' : '1fr 120px 1fr 32px',
               gap: 'var(--space-4)',
               padding: 'var(--space-2) var(--space-4)',
               background: 'var(--color-bg)',
               borderBottom: '1px solid var(--color-border)',
             }}>
-              {(isSubmitted
+              {(extraSkillRows.every(s => s.readOnly)
                 ? ['Skill', 'Required Level', 'Rated Level']
                 : ['Skill', 'Required Level', 'Your Rating', '']
               ).map((col, i) => (
@@ -427,7 +450,7 @@ export default function SelfTNIRatingPage() {
               key={skill.skillId}
               style={{
                 display: 'grid',
-                gridTemplateColumns: isSubmitted ? '1fr 120px 1fr' : '1fr 120px 1fr 32px',
+                gridTemplateColumns: skill.readOnly ? '1fr 120px 1fr' : '1fr 120px 1fr 32px',
                 alignItems: 'center',
                 gap: 'var(--space-4)',
                 padding: 'var(--space-3) var(--space-4)',
@@ -444,7 +467,7 @@ export default function SelfTNIRatingPage() {
 
               {/* Level selector */}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
-                {isSubmitted ? (
+                {skill.readOnly ? (
                   skill.selectedLevelId ? (
                     (() => {
                       const selected = levels.find(l => l.id === skill.selectedLevelId);

@@ -95,6 +95,18 @@ export const useSubmitSelfRatings = () => {
   });
 };
 
+/** Unlock a skill for re-assessment */
+export const useReassessSkill = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: tniApi.reassessSkill,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: TNI_QUERY_KEYS.skillRatings() });
+      qc.invalidateQueries({ queryKey: ['tni', 'my-skill-matrix'] });
+    },
+  });
+};
+
 // ---------------------------------------------------------------------------
 // Manager-rating mutations
 // ---------------------------------------------------------------------------

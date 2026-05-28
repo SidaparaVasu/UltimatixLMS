@@ -59,6 +59,7 @@ class ManagerRatingService:
                 employee_id__in=direct_report_ids,
                 rating_type=SkillRatingType.SELF,
                 status=SkillRatingStatus.SUBMITTED,
+                is_latest=True,
             )
             .values_list("employee_id", flat=True)
             .distinct()
@@ -84,6 +85,7 @@ class ManagerRatingService:
             rating_type=SkillRatingType.MANAGER,
             rated_by_id=manager_id,
             status=SkillRatingStatus.DRAFT,
+            is_latest=True,
         )
 
     def get_manager_submitted_ratings(self, manager_id, employee_id):
@@ -93,19 +95,34 @@ class ManagerRatingService:
             rating_type=SkillRatingType.MANAGER,
             rated_by_id=manager_id,
             status=SkillRatingStatus.SUBMITTED,
+            is_latest=True,
         )
 
     def has_submitted(self, manager_id, employee_id):
         """
-        Return True if this manager has already submitted ratings for this employee.
-        Used to make the review form read-only.
+        Return True if this manager has already submitted ratings for ALL of the employee's 
+        submitted self-ratings (i.e. there are no pending reviews).
         """
-        return self.rating_repo.filter(
-            employee_id=employee_id,
-            rating_type=SkillRatingType.MANAGER,
-            rated_by_id=manager_id,
-            status=SkillRatingStatus.SUBMITTED,
-        ).exists()
+        self_submitted_skills = set(
+            self.rating_repo.filter(
+                employee_id=employee_id,
+                rating_type=SkillRatingType.SELF,
+                status=SkillRatingStatus.SUBMITTED,
+                is_latest=True,
+            ).values_list("skill_id", flat=True)
+        )
+        mgr_submitted_skills = set(
+            self.rating_repo.filter(
+                employee_id=employee_id,
+                rating_type=SkillRatingType.MANAGER,
+                rated_by_id=manager_id,
+                status=SkillRatingStatus.SUBMITTED,
+                is_latest=True,
+            ).values_list("skill_id", flat=True)
+        )
+        if not self_submitted_skills:
+            return False
+        return self_submitted_skills.issubset(mgr_submitted_skills)
 
     # ------------------------------------------------------------------
     # Write helpers
@@ -121,10 +138,15 @@ class ManagerRatingService:
 
         Returns the EmployeeSkillRating instance.
         """
-        if self.has_submitted(manager_id, employee_id):
+        existing = self.rating_repo.get_single(
+            employee_id=employee_id,
+            skill_id=skill_id,
+            rating_type=SkillRatingType.MANAGER,
+        )
+
+        if existing and existing.status == SkillRatingStatus.SUBMITTED:
             raise ValidationError(
-                "You have already submitted your ratings for this employee. "
-                "Submitted ratings cannot be edited."
+                "This skill rating has already been submitted and cannot be edited."
             )
 
         instance, _ = self.rating_repo.upsert(

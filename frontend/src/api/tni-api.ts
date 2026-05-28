@@ -152,6 +152,19 @@ export const tniApi = {
     }
   },
 
+  /**
+   * POST /skills/skill-ratings/reassess/
+   * Unlock a skill for re-assessment.
+   */
+  reassessSkill: async (skillId: number) => {
+    try {
+      const response = await apiClient.post('/skills/skill-ratings/reassess/', { skill_id: skillId });
+      return handleApiResponse(response.data, true);
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
   // -------------------------------------------------------------------------
   // Manager rating workflow
   // -------------------------------------------------------------------------

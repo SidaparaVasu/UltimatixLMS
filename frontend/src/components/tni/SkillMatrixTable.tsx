@@ -1,5 +1,5 @@
 import React from 'react';
-import { History } from 'lucide-react';
+import { History, RefreshCw } from 'lucide-react';
 import { SkillMatrixRow } from '@/types/tni.types';
 import { SkillGapBadge } from './SkillGapBadge';
 import { ProficiencyBadge } from '@/components/ui/proficiency-badge';
@@ -18,6 +18,9 @@ interface SkillMatrixTableProps {
   showCategory?: boolean;
   /** If provided, a history icon button is rendered on each row */
   onHistoryClick?: (skillId: number, skillName: string) => void;
+  /** If provided, a re-assess icon/button is rendered if row.can_reassess is true */
+  onReassessClick?: (skillId: number, skillName: string) => void;
+  isReassessing?: boolean;
 }
 
 const identifiedByLabel: Record<string, string> = {
@@ -39,6 +42,8 @@ export const SkillMatrixTable: React.FC<SkillMatrixTableProps> = ({
   rows,
   showCategory = true,
   onHistoryClick,
+  onReassessClick,
+  isReassessing = false,
 }) => {
   if (rows.length === 0) {
     return (
@@ -68,7 +73,7 @@ export const SkillMatrixTable: React.FC<SkillMatrixTableProps> = ({
           <TableHead>Current Level</TableHead>
           <TableHead>Identified By</TableHead>
           <TableHead>Gap</TableHead>
-          {onHistoryClick && <TableHead style={{ width: '40px' }} />}
+          {(onHistoryClick || onReassessClick) && <TableHead style={{ width: onReassessClick ? '200px' : '40px', textAlign: 'right' }}>Actions</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -172,27 +177,52 @@ export const SkillMatrixTable: React.FC<SkillMatrixTableProps> = ({
               />
             </TableCell>
 
-            {/* History icon */}
-            {onHistoryClick && (
-              <TableCell>
-                <button
-                  onClick={() => onHistoryClick(row.skill_id, row.skill_name)}
-                  title="View skill history"
-                  style={{
-                    padding: '4px',
-                    borderRadius: 'var(--radius-sm)',
-                    border: 'none',
-                    background: 'transparent',
-                    color: 'var(--color-text-muted)',
-                    cursor: 'pointer',
-                    display: 'flex', alignItems: 'center',
-                    transition: 'color 150ms',
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-accent)')}
-                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-text-muted)')}
-                >
-                  <History size={14} />
-                </button>
+            {/* Actions */}
+            {(onHistoryClick || onReassessClick) && (
+              <TableCell style={{ textAlign: 'right' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                  {onReassessClick && row.can_reassess && (
+                    <button
+                      onClick={() => onReassessClick(row.skill_id, row.skill_name)}
+                      title="Re-assess this skill"
+                      disabled={isReassessing}
+                      style={{
+                        padding: '4px 8px',
+                        borderRadius: 'var(--radius-sm)',
+                        border: '1px solid var(--color-accent)',
+                        background: 'var(--color-surface)',
+                        color: 'var(--color-accent)',
+                        cursor: isReassessing ? 'not-allowed' : 'pointer',
+                        display: 'flex', alignItems: 'center', gap: '4px',
+                        fontSize: '11px', fontWeight: 600,
+                        opacity: isReassessing ? 0.6 : 1,
+                      }}
+                    >
+                      <RefreshCw size={12} />
+                      Re-assess
+                    </button>
+                  )}
+                  {onHistoryClick && (
+                    <button
+                      onClick={() => onHistoryClick(row.skill_id, row.skill_name)}
+                      title="View skill history"
+                      style={{
+                        padding: '4px',
+                        borderRadius: 'var(--radius-sm)',
+                        border: 'none',
+                        background: 'transparent',
+                        color: 'var(--color-text-muted)',
+                        cursor: 'pointer',
+                        display: 'flex', alignItems: 'center',
+                        transition: 'color 150ms',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-accent)')}
+                      onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-text-muted)')}
+                    >
+                      <History size={14} />
+                    </button>
+                  )}
+                </div>
               </TableCell>
             )}
           </TableRow>

@@ -379,14 +379,23 @@ export default function ManagerTNIRatingPage() {
     }));
   }, []);
 
-  const buildPayload = (): ManagerRatingSubmitPayload => ({
-    employee_id: selectedEmployeeId!,
-    ratings: Object.entries(ratings).map(([skillId, r]) => ({
-      skill_id: Number(skillId),
-      level_id: r.levelId,
-      notes:    r.notes,
-    })),
-  });
+  const buildPayload = (): ManagerRatingSubmitPayload => {
+    // Only send ratings that are not already SUBMITTED
+    const unsubmittedRatings = Object.entries(ratings).filter(([skillId]) => {
+      const sId = Number(skillId);
+      const row = reviewRows.find(r => r.skill_id === sId);
+      return !row || row.manager_rating?.status !== 'SUBMITTED';
+    });
+
+    return {
+      employee_id: selectedEmployeeId!,
+      ratings: unsubmittedRatings.map(([skillId, r]) => ({
+        skill_id: Number(skillId),
+        level_id: r.levelId,
+        notes:    r.notes,
+      })),
+    };
+  };
 
   const handleSaveDraft = () => {
     if (!selectedEmployeeId) return;

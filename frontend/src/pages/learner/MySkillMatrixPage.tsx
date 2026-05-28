@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, RefreshCw } from 'lucide-react';
-import { useMySkillMatrix } from '@/queries/tni/useTNIQueries';
+import { useMySkillMatrix, useReassessSkill } from '@/queries/tni/useTNIQueries';
 import { SkillMatrixTable } from '@/components/tni/SkillMatrixTable';
 import { SkillGapBadge } from '@/components/tni/SkillGapBadge';
 import { RatingStatusBanner } from '@/components/tni/RatingStatusBanner';
 import SkillHistoryDrawer from '@/components/learner/skills/SkillHistoryDrawer';
 import { SkillMatrixRow, GapSeverity } from '@/types/tni.types';
+import { useNotificationStore } from '@/stores/notificationStore';
 
 // ---------------------------------------------------------------------------
 // Summary stat card
@@ -42,6 +43,8 @@ const StatCard: React.FC<{
 export default function MySkillMatrixPage() {
   const [matrixScope, setMatrixScope] = useState<'all_user' | 'job_required'>('all_user');
   const { data: matrixData, isLoading, refetch, isFetching } = useMySkillMatrix({ scope: matrixScope });
+  const reassessSkillMutation = useReassessSkill();
+  const showNotification = useNotificationStore(s => s.showNotification);
   const [categoryFilter, setCategoryFilter] = useState<string>('');
   const [historySkill, setHistorySkill] = useState<{ id: number; name: string } | null>(null);
 
@@ -85,7 +88,7 @@ export default function MySkillMatrixPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div>
+    <div className='pb-10'>
 
       {/* Page header */}
       <div style={{ marginBottom: 'var(--space-6)' }}>
@@ -250,6 +253,10 @@ export default function MySkillMatrixPage() {
             rows={filteredRows}
             showCategory={!categoryFilter}
             onHistoryClick={(id, name) => setHistorySkill({ id, name })}
+            onReassessClick={(id) => reassessSkillMutation.mutate(id, {
+              onSuccess: () => showNotification('Skill unlocked for reassessment', 'success'),
+            })}
+            isReassessing={reassessSkillMutation.isPending || isFetching}
           />
         </>
       )}

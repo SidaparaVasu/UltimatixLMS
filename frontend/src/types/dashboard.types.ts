@@ -140,6 +140,8 @@ export interface SkillMatrixRow {
   manager_rating: { id: number; rated_level: SkillLevel | null; status: string; submitted_at: string } | null;
   gap_value: number | null;
   gap_severity: 'NONE' | 'MINOR' | 'CRITICAL' | 'NOT_RATED' | null;
+  active_training_need_status?: string | null;
+  can_reassess?: boolean;
 }
 
 // ---------------------------------------------------------------------------

@@ -265,6 +265,71 @@ class SelfRatingService:
         }
 
     # ------------------------------------------------------------------
+    # Re-Assessment
+    # ------------------------------------------------------------------
+
+    @transaction.atomic
+    def reassess_skill(self, employee_id, skill_id):
+        """
+        Unlock a skill for re-assessment.
+        Validates that there is no active TrainingNeed for this skill.
+        Validates that the previous rating is SUBMITTED (meaning manager has reviewed it).
+        Freezes old ratings and creates a new DRAFT rating.
+        """
+        from apps.tni_management.models import TrainingNeed
+        from apps.tni_management.constants import TNIStatus
+        
+        # 1. Check for active TrainingNeed
+        active_need = TrainingNeed.objects.filter(
+            employee_id=employee_id,
+            skill_id=skill_id,
+            status__in=[TNIStatus.PENDING, TNIStatus.APPROVED, TNIStatus.PLANNED],
+            is_active=True
+        ).exists()
+        
+        if active_need:
+            raise ValidationError("Cannot re-assess this skill because there is an active Training Need. Please complete the required training first.")
+            
+        # 2. Freeze the existing SELF rating
+        existing_self = self.rating_repo.get_single(
+            employee_id=employee_id,
+            skill_id=skill_id,
+            rating_type=SkillRatingType.SELF
+        )
+        
+        if not existing_self or existing_self.status != SkillRatingStatus.SUBMITTED:
+            raise ValidationError("You can only re-assess a skill that has already been submitted and reviewed.")
+            
+        # Check if manager has submitted their review.
+        existing_manager = self.rating_repo.get_single(
+            employee_id=employee_id,
+            skill_id=skill_id,
+            rating_type=SkillRatingType.MANAGER
+        )
+        
+        if not existing_manager or existing_manager.status != SkillRatingStatus.SUBMITTED:
+            raise ValidationError("You can only re-assess a skill after the manager has reviewed and finalized it.")
+        
+        # 3. Freeze them
+        self.rating_repo.model.objects.filter(pk=existing_self.pk).update(is_latest=False)
+        self.rating_repo.model.objects.filter(pk=existing_manager.pk).update(is_latest=False)
+        
+        # 4. Create new DRAFT rating
+        new_draft, _ = self.rating_repo.upsert(
+            employee_id=employee_id,
+            skill_id=skill_id,
+            rating_type=SkillRatingType.SELF,
+            defaults={
+                "rated_by_id": existing_self.rated_by_id,
+                "rated_level_id": existing_self.rated_level_id,
+                "status": SkillRatingStatus.DRAFT,
+            }
+        )
+        
+        from ..serializers import EmployeeSkillRatingSerializer
+        return EmployeeSkillRatingSerializer(new_draft).data
+
+    # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
 

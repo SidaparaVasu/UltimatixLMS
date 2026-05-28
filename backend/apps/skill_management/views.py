@@ -1,7 +1,7 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, serializers
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
-from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.utils import extend_schema, OpenApiParameter, inline_serializer
 from common.response import success_response, created_response, error_response
 from apps.rbac.permissions import HasScopedPermission
 from apps.rbac.permission_codes import P
@@ -451,6 +451,7 @@ class EmployeeSkillRatingViewSet(viewsets.GenericViewSet):
                 employee_id__in=direct_report_ids,
                 rating_type=SkillRatingType.SELF,
                 status=SkillRatingStatus.SUBMITTED,
+                is_latest=True,
             )
             .values_list("employee_id", flat=True)
             .distinct()
@@ -509,6 +510,7 @@ class EmployeeSkillRatingViewSet(viewsets.GenericViewSet):
                 employee_id=employee_id,
                 rating_type=SkillRatingType.SELF,
                 status=SkillRatingStatus.SUBMITTED,
+                is_latest=True,
             ).select_related("skill", "rated_level")
         }
 
@@ -521,6 +523,7 @@ class EmployeeSkillRatingViewSet(viewsets.GenericViewSet):
             for r in EmployeeSkillRating.objects.filter(
                 employee_id=employee_id,
                 rating_type=SkillRatingType.MANAGER,
+                is_latest=True,
             ).select_related("rated_level")
         }
 
@@ -734,6 +737,36 @@ class EmployeeSkillRatingViewSet(viewsets.GenericViewSet):
         serializer = EmployeeSkillRatingHistorySerializer(qs, many=True)
         return success_response(data=serializer.data)
 
+    # ── Reassess ──────────────────────────────────────────────────────────
+    @extend_schema(
+        request=inline_serializer(
+            name="ReassessSkillRequest",
+            fields={"skill_id": serializers.IntegerField()}
+        )
+    )
+    @action(detail=False, methods=["post"], url_path="reassess")
+    def reassess(self, request):
+        """
+        Unlock a skill for re-assessment.
+        Validates that there is no active TrainingNeed for this skill.
+        Validates that the previous rating is SUBMITTED (meaning manager has reviewed it).
+        Freezes old ratings and creates a new DRAFT rating.
+        """
+        employee, err = _get_employee_or_error(request.user)
+        if err:
+            return err
+            
+        skill_id = request.data.get("skill_id")
+        if not skill_id:
+            return error_response(message="skill_id is required.")
+            
+        service = SelfRatingService()
+        try:
+            result = service.reassess_skill(employee_id=employee.id, skill_id=skill_id)
+            return success_response(message="Skill unlocked for re-assessment.", data=result)
+        except ValidationError as e:
+            return error_response(message=str(e))
+
 
 # ---------------------------------------------------------------------------
 # SkillMatrixViewSet
@@ -776,7 +809,10 @@ class SkillMatrixViewSet(viewsets.GenericViewSet):
             EmployeeSkillRating,
             SkillCategorySkillMap,
             SkillRatingType,
+            SkillRatingStatus,
         )
+        from apps.tni_management.models import TrainingNeed
+        from apps.tni_management.constants import TNIStatus
 
         # 1. Required skills for this job role
         requirements = (
@@ -800,6 +836,7 @@ class SkillMatrixViewSet(viewsets.GenericViewSet):
             for r in EmployeeSkillRating.objects.filter(
                 employee=employee,
                 rating_type=SkillRatingType.SELF,
+                is_latest=True,
             ).select_related("rated_level")
         }
 
@@ -809,6 +846,7 @@ class SkillMatrixViewSet(viewsets.GenericViewSet):
             for r in EmployeeSkillRating.objects.filter(
                 employee=employee,
                 rating_type=SkillRatingType.MANAGER,
+                is_latest=True,
             ).select_related("rated_level")
         }
 
@@ -826,7 +864,17 @@ class SkillMatrixViewSet(viewsets.GenericViewSet):
             if mapping.skill_id not in category_map:
                 category_map[mapping.skill_id] = mapping.category
 
-        # 6. Assemble rows
+        # 6. Training needs
+        active_training_needs = {
+            tn.skill_id: tn
+            for tn in TrainingNeed.objects.filter(
+                employee=employee,
+                is_active=True,
+                status__in=[TNIStatus.PENDING, TNIStatus.APPROVED, TNIStatus.PLANNED]
+            )
+        }
+
+        # 7. Assemble rows
         rows = []
         if scope == "all_user":
             source_items = [current_skills[skill_id] for skill_id in skill_ids]
@@ -859,6 +907,15 @@ class SkillMatrixViewSet(viewsets.GenericViewSet):
                 gap_value    = None
                 gap_severity = None
 
+            active_tn = active_training_needs.get(skill.id)
+            active_tn_status = active_tn.status if active_tn else None
+            
+            can_reassess = False
+            if not active_tn:
+                if self_rating and self_rating.status == SkillRatingStatus.SUBMITTED:
+                    if mgr_rating and mgr_rating.status == SkillRatingStatus.SUBMITTED:
+                        can_reassess = True
+
             rows.append({
                 "skill_id":       skill.id,
                 "skill_name":     skill.skill_name,
@@ -873,6 +930,8 @@ class SkillMatrixViewSet(viewsets.GenericViewSet):
                 "manager_rating": mgr_rating,
                 "gap_value":      gap_value,
                 "gap_severity":   gap_severity,
+                "active_training_need_status": active_tn_status,
+                "can_reassess":   can_reassess,
             })
 
         rows.sort(key=lambda row: (not row["is_role_skill"], row["skill_name"].lower()))

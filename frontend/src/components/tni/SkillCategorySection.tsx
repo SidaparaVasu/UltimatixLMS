@@ -10,6 +10,7 @@ export interface SkillRowData {
   selectedLevelId: number | null;
   selfRating?: RatingNested | null;
   isMissing?: boolean;
+  readOnly?: boolean;
 }
 
 interface SkillCategorySectionProps {
@@ -174,7 +175,7 @@ export const SkillCategorySection: React.FC<SkillCategorySectionProps> = ({
               levels={levels}
               selectedLevelId={skill.selectedLevelId}
               onChange={onLevelChange}
-              readOnly={readOnly}
+              readOnly={skill.readOnly ?? readOnly}
               selfRating={showSelfRating ? skill.selfRating : undefined}
               isMissing={skill.isMissing && !skill.selectedLevelId}
             />

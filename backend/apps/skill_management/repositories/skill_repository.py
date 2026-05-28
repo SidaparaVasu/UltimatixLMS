@@ -52,19 +52,19 @@ class EmployeeSkillAssessmentRepository(BaseRepository[EmployeeSkillAssessment])
 class EmployeeSkillRatingRepository(BaseRepository[EmployeeSkillRating]):
     model = EmployeeSkillRating
 
-    def get_for_employee(self, employee_id, rating_type=None, status=None):
+    def get_for_employee(self, employee_id, rating_type=None, status=None, is_latest=True):
         """
         Fetch all rating rows for an employee, optionally filtered by
         rating_type (SELF / MANAGER) and/or status (DRAFT / SUBMITTED).
         """
-        qs = self.filter(employee_id=employee_id)
+        qs = self.filter(employee_id=employee_id, is_latest=is_latest)
         if rating_type:
             qs = qs.filter(rating_type=rating_type)
         if status:
             qs = qs.filter(status=status)
         return qs
 
-    def get_single(self, employee_id, skill_id, rating_type):
+    def get_single(self, employee_id, skill_id, rating_type, is_latest=True):
         """
         Fetch the unique rating row for a given employee-skill-type combination.
         Returns None if not found.
@@ -73,6 +73,7 @@ class EmployeeSkillRatingRepository(BaseRepository[EmployeeSkillRating]):
             employee_id=employee_id,
             skill_id=skill_id,
             rating_type=rating_type,
+            is_latest=is_latest,
         ).first()
 
     def upsert(self, employee_id, skill_id, rating_type, defaults):
@@ -84,6 +85,7 @@ class EmployeeSkillRatingRepository(BaseRepository[EmployeeSkillRating]):
             employee_id=employee_id,
             skill_id=skill_id,
             rating_type=rating_type,
+            is_latest=True,
             defaults=defaults,
         )
 

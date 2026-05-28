@@ -369,9 +369,9 @@ class EmployeeSkillRating(models.Model):
     History is preserved automatically via the post_save signal which writes
     every change to EmployeeSkillRatingHistory before the row is overwritten.
 
-    Cycle reset: when a new TNI cycle starts the service updates this row
-    (status → DRAFT, new level). The signal fires first, archiving the old
-    state, so no data is lost across cycles.
+    Cycle reset: instead of overwriting, a new TNI cycle or re-assessment
+    freezes the old row (is_latest=False) and creates a new one. The signal
+    still fires to maintain append-only history.
     """
     employee = models.ForeignKey(
         EmployeeMaster,
@@ -427,12 +427,15 @@ class EmployeeSkillRating(models.Model):
         default="",
         help_text="Reviewer notes (used for MANAGER ratings)."
     )
+    is_latest = models.BooleanField(
+        default=True,
+        help_text="True if this is the most recent rating for this employee/skill/type."
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = "employee_skill_rating"
-        unique_together = ["employee", "skill", "rating_type"]
         verbose_name = "Employee Skill Rating"
         verbose_name_plural = "Employee Skill Ratings"
         ordering = ["-updated_at"]
@@ -440,6 +443,14 @@ class EmployeeSkillRating(models.Model):
             models.Index(fields=["employee"], name="idx_skill_rating_employee_id"),
             models.Index(fields=["skill"],    name="idx_skill_rating_skill_id"),
             models.Index(fields=["status"],   name="idx_skill_rating_status"),
+            models.Index(fields=["is_latest"],name="idx_skill_rating_is_latest"),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["employee", "skill", "rating_type"],
+                condition=models.Q(is_latest=True),
+                name="unique_latest_skill_rating"
+            )
         ]
 
     def __str__(self):

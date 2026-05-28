@@ -174,6 +174,8 @@ export interface SkillMatrixRow {
   manager_rating: RatingNested | null;
   gap_value: number | null;
   gap_severity: GapSeverity | null;
+  active_training_need_status: string | null;
+  can_reassess: boolean;
 }
 
 // ---------------------------------------------------------------------------
