@@ -140,7 +140,7 @@ export default function GamificationSettingsPage() {
     {
       type: 'custom',
       header: 'Base XP',
-      width: '120px',
+      width: '150px',
       render: (row) => (
         <TableCell>
           <input
@@ -166,7 +166,7 @@ export default function GamificationSettingsPage() {
     {
       type: 'custom',
       header: 'Multiplier',
-      width: '120px',
+      width: '150px',
       render: (row) => (
         <TableCell>
           <input
