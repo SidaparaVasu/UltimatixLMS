@@ -5,7 +5,8 @@ from .models import (
     UserCourseEnrollment, 
     UserLessonProgress, 
     UserContentProgress, 
-    CourseCertificate
+    CourseCertificate,
+    UserSCORMProgress
 )
 
 
@@ -50,3 +51,12 @@ class UserContentProgressAdmin(admin.ModelAdmin):
 class CourseCertificateAdmin(admin.ModelAdmin):
     list_display = ["certificate_number", "enrollment", "issued_at"]
     search_fields = ["certificate_number", "verification_code"]
+
+
+@admin.register(UserSCORMProgress)
+class UserSCORMProgressAdmin(admin.ModelAdmin):
+    list_display = ["enrollment", "lesson", "content", "lesson_status", "score_raw", "last_accessed_at"]
+    list_filter = ["lesson_status", "success_status", "last_accessed_at"]
+    search_fields = ["enrollment__employee__employee_code", "lesson__lesson_title"]
+    readonly_fields = ["first_accessed_at", "last_accessed_at"]
+
