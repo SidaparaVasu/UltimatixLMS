@@ -6,3 +6,6 @@ class FileManagementConfig(AppConfig):
     name = "apps.file_management"
     label = "file_management"
     verbose_name = "File Management"
+
+    def ready(self):
+        import apps.file_management.signals  # noqa: F401 — registers post_delete handler

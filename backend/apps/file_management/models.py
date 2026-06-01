@@ -82,3 +82,41 @@ class FileRegistry(models.Model):
             return self.converted_pdf  # reverse OneToOne from converted_from
         except FileRegistry.DoesNotExist:
             return None
+
+
+class ScormPackage(models.Model):
+    """
+    Metadata extracted from imsmanifest.xml at upload time.
+    Created by FileService when a ZIP with file_type=SCORM is uploaded.
+    One record per uploaded SCORM ZIP.
+    """
+    file_ref = models.OneToOneField(
+        FileRegistry,
+        on_delete=models.CASCADE,
+        related_name='scorm_package',
+    )
+    # '1.2', '2004_2nd', '2004_3rd', '2004_4th'
+    scorm_version = models.CharField(max_length=20, default='1.2')
+
+    # Relative path inside the extracted package to the launch HTML file
+    # e.g. 'index.html' or 'story.html' or 'scormcontent/index.html'
+    launch_url = models.CharField(max_length=500)
+
+    # Course title from manifest <title> element
+    title = models.CharField(max_length=255, blank=True, default='')
+
+    # Where the extracted files live:
+    # - Dev:  absolute disk path  e.g. /app/media/scorm/<uuid>/
+    # - Prod: S3 prefix           e.g. scorm/<uuid>
+    extracted_path = models.CharField(max_length=500, blank=True, default='')
+
+    extracted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'scorm_package'
+        verbose_name = 'SCORM Package'
+        verbose_name_plural = 'SCORM Packages'
+
+    def __str__(self):
+        return f"{self.title or self.file_ref.original_name} (v{self.scorm_version})"
+

@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Video, FileText, Presentation, Link as LinkIcon,
   LayoutList, ChevronDown, ChevronUp, CheckCircle, Check,
   MonitorPlay, BookOpen, X, ChevronLeft, ChevronRight,
   Keyboard, Loader2
 } from 'lucide-react';
+import { Scorm12API, Scorm2004API } from 'scorm-again';
 import { CurriculumNode } from '@/components/admin/builder/CurriculumTree';
 import { VideoViewer } from './VideoViewer';
 import { DocumentViewer } from './DocumentViewer';
@@ -30,6 +31,7 @@ const LessonIcon: React.FC<{ contentType?: string; size?: number }> = ({ content
     case 'PPT':    return <Presentation size={size} className="text-orange-400 shrink-0" />;
     case 'QUIZ':   return <LayoutList size={size} className="text-purple-400 shrink-0" />;
     case 'LINK':   return <LinkIcon size={size} className="text-cyan-400 shrink-0" />;
+    case 'SCORM':  return <MonitorPlay size={size} className="text-cyan-400 shrink-0" />;
     default:       return <MonitorPlay size={size} className="text-slate-500 shrink-0" />;
   }
 };
@@ -121,6 +123,136 @@ const QuizLessonPlayer: React.FC<{ lesson: CurriculumNode }> = ({ lesson }) => {
   }
 
   return <QuizPlayer quizData={quizData ?? undefined} lessonTitle={lesson.title} />;
+};
+
+/**
+ * In-memory emulated SCORM Player for course builder preview pane.
+ * Avoids any database synchronization or API endpoints, but loads the ZIP package index
+ * and mounts the SCORM API object to run the visual package cleanly.
+ */
+const ScormPreviewPlayer: React.FC<{ lesson: CurriculumNode }> = ({ lesson }) => {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const apiRef = useRef<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  const scormMeta = lesson.scormPackage;
+  const iframeSrc = scormMeta?.content_url || '';
+
+  useEffect(() => {
+    if (!scormMeta) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
+    const settings = {
+      autocommit: false,
+      logLevel: 1, // error only or none
+    };
+
+    let api: any;
+    if (scormMeta.scorm_version === '1.2') {
+      api = new Scorm12API({ ...settings, initialData: {} });
+      (window as any).API = api;
+    } else {
+      // Seed common ADL objectives so compliant packages do not crash
+      const initialData: Record<string, string> = {
+        'cmi.objectives._count': '4',
+        'cmi.objectives.0.id': 'obj_playing',
+        'cmi.objectives.1.id': 'obj_etiquette',
+        'cmi.objectives.2.id': 'obj_handicapping',
+        'cmi.objectives.3.id': 'obj_havingfun',
+      };
+      api = new Scorm2004API({ ...settings, initialData });
+      (window as any).API_1484_11 = api;
+    }
+    apiRef.current = api;
+
+    // Override network methods
+    api.processHttpRequest = function () {
+      return Promise.resolve({ success: true });
+    };
+
+    // Mount on window.top too for sub-frames searching upward
+    try {
+      if (window.top && window.top !== window) {
+        if (scormMeta.scorm_version === '1.2') {
+          (window.top as any).API = api;
+        } else {
+          (window.top as any).API_1484_11 = api;
+        }
+      }
+    } catch {}
+
+    setLoading(false);
+
+    return () => {
+      if ((window as any).API === apiRef.current) delete (window as any).API;
+      if ((window as any).API_1484_11 === apiRef.current) delete (window as any).API_1484_11;
+      try {
+        if (window.top && window.top !== window) {
+          if ((window.top as any).API === apiRef.current) delete (window.top as any).API;
+          if ((window.top as any).API_1484_11 === apiRef.current) delete (window.top as any).API_1484_11;
+        }
+      } catch {}
+      apiRef.current = null;
+    };
+  }, [lesson.id, scormMeta]);
+
+  if (!scormMeta || !iframeSrc) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 rounded-xl bg-slate-900/50 border border-dashed border-slate-700 text-slate-400 gap-3 p-6 text-center">
+        <MonitorPlay size={36} className="opacity-30 text-cyan-400 animate-pulse" />
+        <p className="text-sm font-semibold text-white">SCORM Package Not Ready</p>
+        <p className="text-xs text-slate-500 max-w-sm">
+          Please make sure you have uploaded the SCORM ZIP package and saved your changes in the Lesson Editor.
+        </p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-40 text-slate-500 gap-2">
+        <Loader2 size={18} className="animate-spin text-cyan-400" />
+        <span className="text-sm">Initializing SCORM Preview Player...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full h-full relative bg-white rounded-lg overflow-hidden border border-slate-800" style={{ minHeight: '600px' }}>
+      <iframe
+        ref={iframeRef}
+        src={iframeSrc}
+        title={lesson.title}
+        className="w-full h-full border-0"
+        style={{ minHeight: '600px' }}
+        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads allow-modals"
+        referrerPolicy="no-referrer"
+        loading="eager"
+        onLoad={() => {
+          try {
+            const win = iframeRef.current?.contentWindow;
+            if (win) {
+              // Intercept alert and log them to console instead
+              win.alert = (msg) => {
+                console.warn('[SCORM Preview Alert Suppressed]:', msg);
+              };
+              // Intercept confirm and auto-resolve to true (e.g. for resume prompts)
+              win.confirm = (msg) => {
+                console.warn('[SCORM Preview Confirm Suppressed]:', msg);
+                return true;
+              };
+            }
+          } catch (err) {
+            console.error('Failed to intercept iframe alert/confirm:', err);
+          }
+        }}
+      />
+    </div>
+  );
 };
 
 /**
@@ -411,6 +543,9 @@ export const LearnerPreviewPane: React.FC<LearnerPreviewPaneProps> = ({
               )}
               {selectedLesson.contentType === 'QUIZ' && (
                 <QuizLessonPlayer lesson={selectedLesson} />
+              )}
+              {selectedLesson.contentType === 'SCORM' && (
+                <ScormPreviewPlayer lesson={selectedLesson} />
               )}
               {selectedLesson.contentType === 'LINK' && (
                 <div className="flex flex-col items-center justify-center h-64 rounded-xl bg-slate-900/50 border border-dashed border-slate-700 text-slate-400 gap-4 p-6 text-center">

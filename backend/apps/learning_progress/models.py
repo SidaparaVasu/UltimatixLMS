@@ -135,3 +135,96 @@ class CourseCertificate(models.Model):
         db_table = "lp_course_certificate"
         verbose_name = "Certificate"
         verbose_name_plural = "Certificates"
+
+
+class UserSCORMProgress(models.Model):
+    """
+    Persists the SCORM data model for a learner × content pair.
+
+    Kept separate from UserContentProgress because:
+    - suspend_data can be up to 64KB (doesn't belong in a generic progress record)
+    - SCORM declares its own completion via lesson_status — we must trust it, not infer it
+    - Full variable snapshots (scorm_variables) are needed for audit and diagnostics
+    - attempt_count allows clean retake handling without touching prior progress records
+    """
+    enrollment = models.ForeignKey(
+        UserCourseEnrollment,
+        on_delete=models.CASCADE,
+        related_name='scorm_progress',
+    )
+    content = models.ForeignKey(
+        'course_management.CourseContent',
+        on_delete=models.PROTECT,
+        related_name='scorm_progress',
+    )
+    lesson = models.ForeignKey(
+        'course_management.CourseLesson',
+        on_delete=models.PROTECT,
+        related_name='scorm_lesson_progress',
+    )
+
+    # --- Core SCORM fields (cached from raw variables for fast reporting) ---
+
+    # SCORM 1.2:   cmi.core.lesson_status
+    # SCORM 2004:  cmi.completion_status
+    # Values: 'not attempted' | 'incomplete' | 'completed' | 'passed' | 'failed' | 'browsed'
+    lesson_status = models.CharField(max_length=20, default='not attempted')
+
+    # SCORM 2004 only: cmi.success_status  → 'passed' | 'failed' | 'unknown'
+    success_status = models.CharField(max_length=10, blank=True, default='')
+
+    # Bookmark so the course can resume to the right slide/page on next launch
+    # SCORM 1.2: cmi.core.lesson_location  |  SCORM 2004: cmi.location
+    lesson_location = models.CharField(max_length=255, blank=True, default='')
+
+    # Score fields
+    # SCORM 1.2: cmi.core.score.*  |  SCORM 2004: cmi.score.*
+    score_raw    = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    score_max    = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    score_min    = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    # SCORM 2004 only: cmi.score.scaled (range -1.0 to 1.0)
+    score_scaled = models.DecimalField(max_digits=5, decimal_places=4, null=True, blank=True)
+
+    # Total accumulated session time (seconds)
+    total_time_seconds = models.PositiveIntegerField(default=0)
+
+    # --- Resume data ---
+    # cmi.suspend_data — opaque string the course writes to resume its internal state
+    # SCORM 1.2 spec limit: 4,096 chars  |  SCORM 2004 (3rd/4th): 64,000 chars
+    # We store up to 65,536 — backend truncates with a warning if exceeded
+    suspend_data = models.TextField(blank=True, default='')
+
+    # --- Full variable snapshot for audit/diagnostics ---
+    # Raw key→value dict from the last Commit() call.
+    # Do NOT query on this; use the cached fields above for reporting.
+    scorm_variables = models.JSONField(default=dict)
+
+    # --- Attempt tracking ---
+    # Incremented when a learner retakes the course so prior state is cleared
+    attempt_count = models.PositiveIntegerField(default=1)
+
+    last_accessed_at  = models.DateTimeField(auto_now=True)
+    first_accessed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'lp_user_scorm_progress'
+        unique_together = ['enrollment', 'content']
+        indexes = [
+            models.Index(fields=['enrollment', 'content'], name='idx_scorm_enroll_content'),
+        ]
+        verbose_name = 'User SCORM Progress'
+        verbose_name_plural = 'User SCORM Progress Records'
+
+    def __str__(self):
+        return (
+            f"{self.enrollment.employee.employee_code} → "
+            f"content:{self.content_id} ({self.lesson_status})"
+        )
+
+    def is_complete(self) -> bool:
+        """
+        Returns True when the SCORM package has declared this SCO finished.
+        Trust the package's status — don't try to infer completion from other signals.
+        """
+        return self.lesson_status in ('completed', 'passed')
+

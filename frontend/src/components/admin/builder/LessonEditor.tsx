@@ -23,7 +23,7 @@ interface LessonEditorProps {
 }
 
 const isDocumentType = (type: ContentType) =>
-  type === 'PDF' || type === 'PPT' || type === 'DOCUMENT';
+  type === 'PDF' || type === 'PPT' || type === 'DOCUMENT' || type === 'SCORM';
 
 // ── Map backend question → QuizQuestion ──────────────────────────────────────
 const mapBackendToQuizQuestion = (q: BackendQuestion): QuizQuestion => ({
@@ -203,6 +203,11 @@ export const LessonEditor: React.FC<LessonEditorProps> = ({ node, courseId, onSa
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (contentType === 'SCORM' && !file.name.endsWith('.zip')) {
+      alert('Please upload a valid SCORM ZIP package.');
+      e.target.value = '';
+      return;
+    }
     setIsUploadingFile(true);
     setUploadStatus('uploading');
     setUploadProgress(25);
@@ -353,7 +358,7 @@ export const LessonEditor: React.FC<LessonEditorProps> = ({ node, courseId, onSa
       fileUrl: isDocumentType(contentType) ? fileUrl : null,
       docMetadata: isDocumentType(contentType) ? docFile : null,
       estimatedDurationMinutes: estimatedDuration,
-      requireMarkComplete: contentType === 'LINK' ? requireMarkComplete : false,
+      requireMarkComplete: (contentType === 'LINK' || contentType === 'SCORM') ? requireMarkComplete : false,
     });
   };
 
@@ -429,7 +434,7 @@ export const LessonEditor: React.FC<LessonEditorProps> = ({ node, courseId, onSa
               { type: 'PPT', label: 'PPT Document', icon: Presentation, active: true },
               { type: 'LINK', label: 'External Link', icon: LinkIcon, active: true },
               { type: 'QUIZ', label: 'Assessment', icon: LayoutList, active: true },
-              { type: 'SCORM', label: 'SCORM Package', icon: MonitorPlay, active: false },
+              { type: 'SCORM', label: 'SCORM Package', icon: MonitorPlay, active: true },
             ] as { type: string; label: string; icon: React.ElementType; active: boolean }[]).map(format => (
               <button
                 key={format.type}
@@ -505,19 +510,29 @@ export const LessonEditor: React.FC<LessonEditorProps> = ({ node, courseId, onSa
                   <input
                     type="file"
                     className="hidden"
-                    accept={contentType === 'PDF' ? '.pdf' : contentType === 'PPT' ? '.ppt,.pptx' : '.pdf,.ppt,.pptx,.doc,.docx'}
+                    accept={contentType === 'SCORM' ? '.zip' : contentType === 'PDF' ? '.pdf' : contentType === 'PPT' ? '.ppt,.pptx' : '.pdf,.ppt,.pptx,.doc,.docx'}
                     onChange={handleFileChange}
                   />
                   <UploadCloud size={40} className="text-slate-500 mb-3 group-hover:text-blue-400 transition-colors" />
-                  <h4 className="text-sm font-bold text-slate-300 mb-1">Click to upload {contentType}</h4>
+                  <h4 className="text-sm font-bold text-slate-300 mb-1">Click to upload {contentType === 'SCORM' ? 'SCORM ZIP Package' : contentType}</h4>
                   <p className="text-[10px] text-slate-500 max-w-xs mb-3 uppercase tracking-tighter">Drag &amp; Drop supported</p>
-                  <div className="px-3 py-1 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-full text-[9px] font-bold">In-browser viewer enabled</div>
+                  <div className="px-3 py-1 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-full text-[9px] font-bold">
+                    {contentType === 'SCORM' ? 'Auto-extraction enabled' : 'In-browser viewer enabled'}
+                  </div>
                 </label>
               ) : (
                 <div className="bg-[#0a0c10] border border-slate-800 rounded-lg p-5 space-y-4">
                   <div className="flex items-start gap-4">
                     <div className="w-12 h-12 rounded bg-slate-800 flex items-center justify-center shrink-0">
-                      {contentType === 'PDF' ? <FileText className="text-red-400" /> : <Presentation className="text-orange-400" />}
+                      {contentType === 'PDF' ? (
+                        <FileText className="text-red-400" />
+                      ) : contentType === 'PPT' ? (
+                        <Presentation className="text-orange-400" />
+                      ) : contentType === 'SCORM' ? (
+                        <MonitorPlay className="text-cyan-400" />
+                      ) : (
+                        <FileText className="text-rose-400" />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <h4 className="text-sm font-bold text-slate-200 truncate">{docFile?.name}</h4>
@@ -539,11 +554,33 @@ export const LessonEditor: React.FC<LessonEditorProps> = ({ node, courseId, onSa
                     </div>
                   )}
                   {uploadStatus === 'complete' && (
-                    <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-md">
-                      <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
-                        <span className="text-[8px] font-bold text-black">OK</span>
+                    <div className="space-y-4 w-full">
+                      <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-md">
+                        <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+                          <span className="text-[8px] font-bold text-black">OK</span>
+                        </div>
+                        <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wide">
+                          {contentType === 'SCORM' ? 'SCORM Package Extracted & Ready' : 'Ready for course launch'}
+                        </p>
                       </div>
-                      <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wide">Ready for course launch</p>
+
+                      {contentType === 'SCORM' && (
+                        <label className="flex items-center gap-3 p-4 border border-slate-700 bg-slate-800/30 rounded-md cursor-pointer hover:bg-slate-800/50 transition">
+                          <input
+                            type="checkbox"
+                            checked={requireMarkComplete}
+                            onChange={e => setRequireMarkComplete(e.target.checked)}
+                            className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900"
+                          />
+                          <div>
+                            <p className="text-sm font-semibold text-white">Require "Mark Completed"</p>
+                            <p className="text-xs text-slate-400 text-balance">
+                              Learners can manually click "Mark Completed" to finish this SCORM lesson.
+                              Highly recommended for static or non-interactive packages that do not self-track.
+                            </p>
+                          </div>
+                        </label>
+                      )}
                     </div>
                   )}
                 </div>

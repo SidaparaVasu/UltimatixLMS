@@ -10,7 +10,7 @@ const mapLessonContentToNode = (contents?: CourseContent[]) => {
     return {};
   }
 
-  const isDocumentContent = ['PDF', 'PPT', 'DOCUMENT'].includes(primaryContent.content_type);
+  const isDocumentContent = ['PDF', 'PPT', 'DOCUMENT', 'SCORM'].includes(primaryContent.content_type);
 
   return {
     contentId: primaryContent.id,
@@ -29,6 +29,7 @@ const mapLessonContentToNode = (contents?: CourseContent[]) => {
           size: 'Unknown size',
         }
       : null,
+    scormPackage: primaryContent.scorm_package ?? null,
   };
 };
 
@@ -136,11 +137,11 @@ export const useCurriculumDraft = (initialCourse?: CourseDetail | null) => {
 
   const toCurriculumSyncPayload = (): CurriculumSyncPayload => {
     const buildLessonContents = (lesson: CurriculumNode) => {
-      const persistedType = lesson.contentType && lesson.contentType !== 'SCORM' ? lesson.contentType : undefined;
+      const persistedType = lesson.contentType;
       const hasPersistableValue =
         persistedType === 'QUIZ' ||
         ((persistedType === 'VIDEO' || persistedType === 'LINK') && !!lesson.contentUrl?.trim()) ||
-        ((persistedType === 'PDF' || persistedType === 'PPT' || persistedType === 'DOCUMENT') && !!lesson.fileRefId);
+        ((persistedType === 'PDF' || persistedType === 'PPT' || persistedType === 'DOCUMENT' || persistedType === 'SCORM') && !!lesson.fileRefId);
 
       if (!persistedType || !hasPersistableValue) {
         return [];

@@ -51,8 +51,31 @@ class CourseSkillMappingSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+class ScormPackageMetaSerializer(serializers.Serializer):
+    """
+    Read-only serializer for SCORM package metadata.
+    Embedded inside CourseContentSerializer when content_type is SCORM.
+    The frontend ScormPlayer needs these fields to know what to launch.
+    """
+    package_id    = serializers.UUIDField(source='file_ref.pk', read_only=True)
+    scorm_version = serializers.CharField(read_only=True)
+    launch_url    = serializers.CharField(read_only=True)
+    title         = serializers.CharField(read_only=True)
+    content_url   = serializers.SerializerMethodField()
+
+    def get_content_url(self, obj):
+        """Returns the full browser-loadable URL for the SCORM launch file."""
+        from apps.file_management.scorm_storage import get_scorm_launch_url
+        try:
+            return get_scorm_launch_url(obj.extracted_path, obj.launch_url)
+        except Exception:
+            return None
+
+
 class CourseContentSerializer(serializers.ModelSerializer):
     file_url = serializers.SerializerMethodField()
+    # Nested SCORM package metadata — None for non-SCORM content types
+    scorm_package = serializers.SerializerMethodField()
 
     class Meta:
         model = CourseContent
@@ -62,6 +85,22 @@ class CourseContentSerializer(serializers.ModelSerializer):
         if obj.file_ref and obj.file_ref.file:
             return obj.file_ref.file.url
         return None
+
+    def get_scorm_package(self, obj):
+        """
+        Returns SCORM package metadata when content_type is SCORM.
+        Returns None for all other content types.
+        """
+        if obj.content_type != 'SCORM':
+            return None
+        if not obj.file_ref:
+            return None
+        try:
+            pkg = obj.file_ref.scorm_package
+            return ScormPackageMetaSerializer(pkg).data
+        except Exception:
+            return None
+
 
 
 class CourseLessonSerializer(serializers.ModelSerializer):

@@ -41,3 +41,22 @@ urlpatterns = [
     path("api/v1/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("api/v1/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# Serve extracted SCORM package files in development only.
+# In production, point Nginx or CloudFront directly at MEDIA_ROOT/scorm/
+# (or the S3 bucket prefix) — never let Django serve these in prod.
+if settings.DEBUG:
+    import os
+    from django.views.static import serve
+
+    scorm_root = os.path.join(settings.MEDIA_ROOT, getattr(settings, 'SCORM_STORAGE_PREFIX', 'scorm'))
+    serve_path = getattr(settings, 'SCORM_SERVE_PATH', 'scorm-content')
+
+    urlpatterns += [
+        path(
+            f"{serve_path}/<path:path>",
+            serve,
+            {'document_root': scorm_root},
+        ),
+    ]
+

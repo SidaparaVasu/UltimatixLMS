@@ -117,7 +117,7 @@ export default function CourseCatalogPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-6">
       {/* Header */}
       <div className="mt-5">
         <div className="2-full flex items-center justify-between">

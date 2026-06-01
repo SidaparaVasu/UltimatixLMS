@@ -4,7 +4,9 @@ from .views import (
     LearningPathViewSet,
     UserProgressViewSet,
     HeartbeatViewSet,
-    CourseCertificateViewSet
+    CourseCertificateViewSet,
+    SCORMStateView,
+    SCORMCommitView,
 )
 
 router = DefaultRouter()
@@ -15,4 +17,16 @@ router.register(r"certificates", CourseCertificateViewSet, basename="certificate
 
 urlpatterns = [
     path("", include(router.urls)),
+    # SCORM state + commit endpoints
+    path(
+        "scorm/state/<int:enrollment_id>/<int:content_id>/",
+        SCORMStateView.as_view(),
+        name="scorm-state",
+    ),
+    path(
+        "scorm/commit/",
+        SCORMCommitView.as_view(),
+        name="scorm-commit",
+    ),
 ]
+

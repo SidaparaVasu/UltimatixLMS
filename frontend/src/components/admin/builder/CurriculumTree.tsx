@@ -12,6 +12,7 @@ import {
   FolderClosed,
   FolderOpen,
   LayoutGrid,
+  MonitorPlay,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 import {
@@ -32,6 +33,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { CourseContentType } from "@/types/courses.types";
+import { ScormPackageMeta } from "@/types/scorm.types";
 
 export type NodeType = "SECTION" | "LESSON";
 export type ContentType = CourseContentType | "SCORM";
@@ -58,6 +60,7 @@ export interface CurriculumNode {
   filePath?: string;
   videoUrl?: string;
   docMetadata?: LessonDocumentMetadata | null;
+  scormPackage?: ScormPackageMeta | null;
   assessmentId?: number;          // persisted AssessmentMaster id for QUIZ lessons
   requireMarkComplete?: boolean;  // LINK lessons: learner must explicitly mark done
   quizData?: {                    // cached quiz data for preview rendering
@@ -131,6 +134,7 @@ const SortableNode: React.FC<SortableItemProps> = ({
       case "PPT": return <FileText size={14} className="text-orange-500" />;
       case "DOCUMENT": return <FileText size={14} className="text-rose-400" />;
       case "QUIZ": return <FileText size={14} className="text-purple-500" />;
+      case "SCORM": return <MonitorPlay size={14} className="text-cyan-400" />;
       default: return <LinkIcon size={14} className="text-slate-400" />;
     }
   };

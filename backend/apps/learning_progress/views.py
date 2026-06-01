@@ -249,3 +249,222 @@ class CourseCertificateViewSet(viewsets.ReadOnlyModelViewSet):
          if hasattr(self.request.user, 'employee'):
               return self.queryset.filter(enrollment__employee=self.request.user.employee)
          return self.queryset
+
+
+# ---------------------------------------------------------------------------
+# SCORM Endpoints
+# ---------------------------------------------------------------------------
+
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from django.db import transaction
+from .models import UserSCORMProgress
+
+
+class SCORMStateView(APIView):
+    """
+    GET /api/v1/learning/scorm/state/<enrollment_id>/<content_id>/
+
+    Returns saved SCORM state for a learner + content pair.
+    Called by ScormPlayer on mount, before the iframe loads, so scorm-again
+    can seed its data model and the course can resume from its last position.
+
+    First-visit response returns empty defaults — the course starts fresh.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, enrollment_id, content_id):
+        employee = request.user.employee_record.first()
+        if not employee:
+            return error_response("Employee profile not found.", status_code=404)
+
+        # Ownership check — learner can only read their own progress
+        try:
+            enrollment = UserCourseEnrollment.objects.get(
+                pk=enrollment_id,
+                employee=employee,
+            )
+        except UserCourseEnrollment.DoesNotExist:
+            return error_response(
+                "Enrollment not found or you do not have access to it.",
+                status_code=404,
+            )
+
+        try:
+            progress = UserSCORMProgress.objects.get(
+                enrollment=enrollment,
+                content_id=content_id,
+            )
+        except UserSCORMProgress.DoesNotExist:
+            # First visit — return empty state; scorm-again starts a fresh session
+            return success_response(data={
+                'lesson_status': 'not attempted',
+                'lesson_location': '',
+                'suspend_data': '',
+                'score_raw': None,
+                'score_max': None,
+                'score_min': None,
+                'total_time_seconds': 0,
+                'scorm_variables': {},
+                'attempt_count': 1,
+            })
+
+        return success_response(data={
+            'lesson_status':     progress.lesson_status,
+            'lesson_location':   progress.lesson_location,
+            'suspend_data':      progress.suspend_data,
+            'score_raw':         str(progress.score_raw) if progress.score_raw is not None else None,
+            'score_max':         str(progress.score_max) if progress.score_max is not None else None,
+            'score_min':         str(progress.score_min) if progress.score_min is not None else None,
+            'total_time_seconds': progress.total_time_seconds,
+            'scorm_variables':   progress.scorm_variables,
+            'attempt_count':     progress.attempt_count,
+        })
+
+
+class SCORMCommitView(APIView):
+    """
+    POST /api/v1/learning/scorm/commit/
+
+    Receives a snapshot of all SCORM variables at LMSCommit / Commit time.
+    Persists to UserSCORMProgress and, when the package signals completion,
+    propagates it through the existing heartbeat service so the LMS sidebar,
+    progress bar, and certificate logic all update automatically.
+
+    Expected body:
+    {
+        "enrollment_id": 42,
+        "content_id": 17,
+        "lesson_id": 9,
+        "scorm_data": {
+            "cmi.core.lesson_status": "completed",
+            "cmi.core.lesson_location": "page_7",
+            "cmi.suspend_data": "...",
+            "cmi.core.score.raw": "85",
+            ...
+        }
+    }
+    """
+    permission_classes = [IsAuthenticated]
+
+    # Minimum session time (seconds) before we trust a completion signal.
+    # Guards against packages that fire LMSSetValue("completed") on first load.
+    COMPLETION_GRACE_SECONDS = 10
+
+    def post(self, request):
+        enrollment_id = request.data.get('enrollment_id')
+        content_id    = request.data.get('content_id')
+        lesson_id     = request.data.get('lesson_id')
+        scorm_data    = request.data.get('scorm_data', {})
+
+        if not all([enrollment_id, content_id, lesson_id]):
+            return error_response(
+                "enrollment_id, content_id, and lesson_id are required.",
+                status_code=400,
+            )
+
+        employee = request.user.employee_record.first()
+        if not employee:
+            return error_response("Employee profile not found.", status_code=404)
+
+        # Ownership check
+        try:
+            enrollment = UserCourseEnrollment.objects.get(
+                pk=enrollment_id,
+                employee=employee,
+            )
+        except UserCourseEnrollment.DoesNotExist:
+            return error_response(
+                "Enrollment not found or you do not have access to it.",
+                status_code=403,
+            )
+
+        with transaction.atomic():
+            progress, _created = UserSCORMProgress.objects.get_or_create(
+                enrollment=enrollment,
+                content_id=content_id,
+                defaults={'lesson_id': lesson_id, 'lesson_status': 'not attempted'},
+            )
+
+            # --- Map SCORM 1.2 and 2004 variable paths to model fields ---
+
+            # Completion status
+            lesson_status = (
+                scorm_data.get('cmi.core.lesson_status')          # SCORM 1.2
+                or scorm_data.get('cmi.completion_status')         # SCORM 2004
+                or progress.lesson_status
+            )
+
+            success_status = scorm_data.get('cmi.success_status', progress.success_status)
+
+            # Bookmark (resume location)
+            lesson_location = (
+                scorm_data.get('cmi.core.lesson_location')        # SCORM 1.2
+                or scorm_data.get('cmi.location')                  # SCORM 2004
+                or progress.lesson_location
+            )
+
+            # Resume data
+            suspend_data = scorm_data.get('cmi.suspend_data', progress.suspend_data)
+
+            # suspend_data size guard — don't let a buggy package blow up the column
+            if len(suspend_data) > 65536:
+                import logging as _log
+                _log.getLogger(__name__).warning(
+                    "SCORM commit: suspend_data truncated for enrollment=%s content=%s "
+                    "(was %d chars)", enrollment_id, content_id, len(suspend_data)
+                )
+                suspend_data = suspend_data[:65536]
+
+            # Score fields (SCORM 1.2 and 2004 paths)
+            def _decimal(key_12, key_2004, current):
+                raw = scorm_data.get(key_12) or scorm_data.get(key_2004)
+                if raw is not None:
+                    try:
+                        return float(raw)
+                    except (ValueError, TypeError):
+                        pass
+                return current
+
+            score_raw    = _decimal('cmi.core.score.raw', 'cmi.score.raw',    progress.score_raw)
+            score_max    = _decimal('cmi.core.score.max', 'cmi.score.max',    progress.score_max)
+            score_min    = _decimal('cmi.core.score.min', 'cmi.score.min',    progress.score_min)
+            score_scaled = _decimal('', 'cmi.score.scaled', progress.score_scaled)
+
+            # Update record
+            progress.lesson_status   = lesson_status
+            progress.success_status  = success_status
+            progress.lesson_location = lesson_location
+            progress.suspend_data    = suspend_data
+            progress.score_raw       = score_raw
+            progress.score_max       = score_max
+            progress.score_min       = score_min
+            progress.score_scaled    = score_scaled
+            progress.scorm_variables = scorm_data    # full snapshot for audit
+            progress.save()
+
+            # --- Propagate completion to LMS progress pipeline ---
+            # Only trigger if SCORM declares the SCO complete/passed.
+            # The heartbeat service handles all downstream effects:
+            # lesson completion, course progress %, certificate eligibility.
+            if progress.is_complete():
+                try:
+                    svc = UserContentProgressService()
+                    svc.record_heartbeat(
+                        enrollment_id=enrollment.id,
+                        lesson_id=lesson_id,
+                        content_id=content_id,
+                        playhead=1,                 # SCORM has no video playhead concept
+                        signal_completion=True,
+                    )
+                except Exception as exc:
+                    import logging as _log
+                    _log.getLogger(__name__).error(
+                        "Failed to propagate SCORM completion to lesson progress: %s", exc
+                    )
+                    # Don't fail the whole commit — SCORM state is already saved
+
+        return success_response(
+            message="SCORM state committed.",
+            data={'lesson_status': progress.lesson_status},
+        )

@@ -164,7 +164,7 @@ MAX_UPLOAD_SIZE_BY_TYPE_MB = {
     "mp4":  500,
     "webm": 500,
     "mov":  500,
-    "zip":  100,
+    "zip":  200,   # bumped for SCORM packages (single-SCO courses can be 100MB+)
     "doc":  20,
     "docx": 20,
 }
@@ -172,6 +172,47 @@ MAX_UPLOAD_SIZE_BY_TYPE_MB = {
 # PPT → PDF conversion settings
 # Timeout in seconds for unoconv subprocess (default: 120s for large files)
 UNOCONV_TIMEOUT_SECONDS = 120
+
+# ---------------------------------------------------------------------------
+# SCORM Package Storage
+# ---------------------------------------------------------------------------
+# Controls where uploaded ZIPs and extracted SCORM files are stored.
+# 'local' → MEDIA_ROOT on disk (development)
+# 's3'    → AWS S3 bucket (production) — requires django-storages + boto3
+STORAGE_BACKEND = os.getenv("STORAGE_BACKEND", "local")
+
+if STORAGE_BACKEND == "s3":
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        },
+        "staticfiles": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        },
+    }
+    AWS_ACCESS_KEY_ID        = os.getenv("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY    = os.getenv("AWS_SECRET_ACCESS_KEY")
+    AWS_STORAGE_BUCKET_NAME  = os.getenv("AWS_STORAGE_BUCKET_NAME")
+    AWS_S3_REGION_NAME       = os.getenv("AWS_S3_REGION_NAME", "ap-south-1")
+    AWS_LOCATION             = os.getenv("AWS_S3_LOCATION", "")
+    AWS_DEFAULT_ACL          = "private"
+    AWS_S3_FILE_OVERWRITE    = False
+    AWS_QUERYSTRING_AUTH     = True
+    AWS_QUERYSTRING_EXPIRE   = 300   # presigned URL lifetime: 5 minutes
+    AWS_S3_OBJECT_PARAMETERS = {"CacheControl": "max-age=86400"}
+    AWS_S3_CUSTOM_DOMAIN     = os.getenv("AWS_S3_CUSTOM_DOMAIN", "")
+    if AWS_S3_CUSTOM_DOMAIN:
+        AWS_QUERYSTRING_AUTH = False   # CloudFront handles auth
+
+# Subdirectory (within MEDIA_ROOT or S3 bucket) for extracted SCORM packages
+SCORM_STORAGE_PREFIX = os.getenv("SCORM_STORAGE_PREFIX", "scorm")
+
+# URL path segment used by Django (dev) or Nginx to serve extracted SCORM files
+SCORM_SERVE_PATH = os.getenv("SCORM_SERVE_PATH", "scorm-content")
+
+# DOS protection: reject ZIPs exceeding these limits before extracting anything
+SCORM_MAX_FILES_IN_PACKAGE  = int(os.getenv("SCORM_MAX_FILES_IN_PACKAGE", "2000"))
+SCORM_MAX_UNZIPPED_SIZE_MB  = int(os.getenv("SCORM_MAX_UNZIPPED_SIZE_MB", "500"))
 
 # ---------------------------------------------------------------------------
 # Django REST Framework
@@ -270,3 +311,8 @@ CORS_ALLOW_CREDENTIALS = True
 # Permission map cache TTL in seconds. Signals invalidate the cache on any
 # role/permission change, so this is a safety fallback, not the primary expiry.
 RBAC_CACHE_TTL = 3600
+
+# ---------------------------------------------------------------------------
+# Security hardening
+# ---------------------------------------------------------------------------
+X_FRAME_OPTIONS = "SAMEORIGIN"   # SCORM iframes require SAMEORIGIN (not DENY)

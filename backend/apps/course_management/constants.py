@@ -14,3 +14,4 @@ class CourseContentType(models.TextChoices):
     DOCUMENT = "DOCUMENT", "Document"
     LINK = "LINK", "External Link"
     QUIZ = "QUIZ", "Quiz"
+    SCORM = "SCORM", "SCORM Package"

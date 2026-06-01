@@ -10,10 +10,13 @@ import logging
 import subprocess
 import tempfile
 import shutil
+import zipfile
+import xml.etree.ElementTree as ET
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.signing import Signer, BadSignature
 from django.core.files import File
+from django.utils import timezone
 from common.services.base import BaseService
 from .repositories import FileRepository
 from .constants import FileType, FileUploadStatus
@@ -55,7 +58,28 @@ class FileService(BaseService):
                 f"File size {size_mb:.1f}MB exceeds the {max_mb}MB limit for .{ext} files."
             )
 
+        # 3. Magic-byte check for ZIP files — reject fakes
+        if ext == 'zip' and not self._is_valid_zip(file_obj):
+            raise ValidationError(
+                "Uploaded file does not appear to be a valid ZIP archive "
+                "(invalid magic bytes). Re-export the SCORM package and try again."
+            )
+
         return ext
+
+    @staticmethod
+    def _is_valid_zip(file_obj) -> bool:
+        """
+        Checks the ZIP magic bytes (PK\x03\x04) at the start of the file.
+        Extension alone is not a reliable indicator of file type.
+        """
+        try:
+            file_obj.seek(0)
+            header = file_obj.read(4)
+            file_obj.seek(0)
+            return header == b'PK\x03\x04'
+        except Exception:
+            return False
 
     def map_extension_to_type(self, ext):
         """Maps a file extension to a FileType constant."""
@@ -76,21 +100,25 @@ class FileService(BaseService):
 
     def upload_file(self, file_obj, uploaded_by_employee=None):
         """
-        Orchestrates file upload and registry creation.
+        Orchestrates file upload and post-processing.
 
-        For PPT/PPTX files:
-          1. Saves the original PPT record with status=CONVERTING
-          2. Converts to PDF using unoconv (synchronous, at upload time)
-          3. Saves the resulting PDF as a new FileRegistry record
-          4. Links the PDF back to the PPT via converted_from
-          5. Updates the PPT record status to UPLOADED
+        For PPT/PPTX:
+          1. Saves with status=CONVERTING
+          2. Converts to PDF via unoconv
+          3. Creates a linked PDF record
+          4. Updates PPT status to UPLOADED
+
+        For SCORM (ZIP):
+          1. Saves with status=UPLOADED
+          2. Extracts ZIP to local disk (dev) or S3 (prod)
+          3. Parses imsmanifest.xml
+          4. Creates a ScormPackage record linked to this registry
 
         For all other types: saves directly with status=UPLOADED.
         """
         ext = self.validate_file(file_obj)
         file_type = self.map_extension_to_type(ext)
 
-        # Save the original file record
         registry = self.repository.create(**{
             "original_name": file_obj.name,
             "file": file_obj,
@@ -104,18 +132,28 @@ class FileService(BaseService):
             "uploaded_by": uploaded_by_employee,
         })
 
-        # Trigger PPT → PDF conversion
         if file_type == FileType.PPT:
             try:
                 self._convert_ppt_to_pdf(registry, uploaded_by_employee)
             except Exception as exc:
-                # Conversion failed — mark original as FAILED but don't block upload
                 logger.error(
                     "PPT→PDF conversion failed for file %s: %s",
                     registry.pk, exc, exc_info=True
                 )
                 registry.upload_status = FileUploadStatus.FAILED
                 registry.save(update_fields=['upload_status'])
+
+        elif file_type == FileType.SCORM:
+            try:
+                self._extract_scorm(registry)
+            except Exception as exc:
+                logger.error(
+                    "SCORM extraction failed for file %s: %s",
+                    registry.pk, exc, exc_info=True
+                )
+                registry.upload_status = FileUploadStatus.FAILED
+                registry.save(update_fields=['upload_status'])
+                raise   # re-raise so the upload view returns an error to the admin
 
         return registry
 
@@ -198,6 +236,218 @@ class FileService(BaseService):
         finally:
             # Always clean up the temp directory
             shutil.rmtree(tmp_dir, ignore_errors=True)
+
+    # ── SCORM Extraction ───────────────────────────────────────────────
+
+    def _extract_scorm(self, registry):
+        """
+        Extracts a SCORM ZIP and creates the ScormPackage metadata record.
+
+        Steps:
+          1. Call extract_scorm_to_storage() — handles local vs S3 transparently
+          2. Find imsmanifest.xml inside the extracted tree
+          3. Parse version, launch_url, and title from the manifest
+          4. Create a ScormPackage record linked to this FileRegistry
+        """
+        from .scorm_storage import extract_scorm_to_storage
+        from .models import ScormPackage
+
+        package_uuid = str(registry.pk)
+
+        # Extract ZIP to the correct location (local or S3)
+        extracted_path = extract_scorm_to_storage(registry.file, package_uuid)
+
+        # Find imsmanifest.xml in the extracted directory (local only; S3 uses temp)
+        # For S3, the manifest was already extracted to temp during upload.
+        # We re-parse it from a temp extraction if needed.
+        manifest_path = self._find_manifest(extracted_path, registry.file, package_uuid)
+
+        version, launch_url, title = self._parse_manifest(manifest_path)
+
+        ScormPackage.objects.create(
+            file_ref=registry,
+            scorm_version=version,
+            launch_url=launch_url,
+            title=title,
+            extracted_path=extracted_path,
+            extracted_at=timezone.now(),
+        )
+
+        logger.info(
+            "SCORM package ready: %s | version=%s | launch=%s",
+            registry.pk, version, launch_url
+        )
+
+    def _find_manifest(self, extracted_path: str, zip_field, package_uuid: str) -> str:
+        """
+        Returns the absolute path to imsmanifest.xml.
+
+        For local storage: searches the extracted directory on disk.
+        For S3 storage:    we need to look inside the original ZIP since the
+                           extracted files are on S3. Use a fresh temp extraction.
+        """
+        from .scorm_storage import is_s3_storage
+
+        if not is_s3_storage():
+            # Search extracted directory on disk
+            manifest = os.path.join(extracted_path, 'imsmanifest.xml')
+            if os.path.exists(manifest):
+                return manifest
+            # Some packages nest one level deep
+            for root_dir, _, files in os.walk(extracted_path):
+                if 'imsmanifest.xml' in files:
+                    return os.path.join(root_dir, 'imsmanifest.xml')
+            raise ValidationError(
+                "No imsmanifest.xml found in the SCORM package. "
+                "Is this a valid SCORM package?"
+            )
+        else:
+            # S3: download the ZIP from S3 and extract just the manifest to a temp dir
+            import boto3
+            tmp_dir = tempfile.mkdtemp(prefix="scorm_manifest_")
+            try:
+                s3 = boto3.client(
+                    "s3",
+                    region_name=getattr(settings, "AWS_S3_REGION_NAME", "ap-south-1"),
+                    aws_access_key_id=getattr(settings, "AWS_ACCESS_KEY_ID", None),
+                    aws_secret_access_key=getattr(settings, "AWS_SECRET_ACCESS_KEY", None),
+                )
+                zip_tmp = os.path.join(tmp_dir, 'package.zip')
+                s3.download_file(settings.AWS_STORAGE_BUCKET_NAME, zip_field.name, zip_tmp)
+
+                with zipfile.ZipFile(zip_tmp, 'r') as zf:
+                    # Extract only the manifest file(s)
+                    for name in zf.namelist():
+                        if 'imsmanifest.xml' in name:
+                            zf.extract(name, tmp_dir)
+                            manifest_path = os.path.join(tmp_dir, name)
+                            # Move it to tmp_dir root so we can clean up cleanly
+                            return manifest_path
+                raise ValidationError(
+                    "No imsmanifest.xml found in the SCORM package. "
+                    "Is this a valid SCORM package?"
+                )
+            except ValidationError:
+                shutil.rmtree(tmp_dir, ignore_errors=True)
+                raise
+            # Note: tmp_dir is intentionally NOT cleaned up here.
+            # The returned path must remain valid until _parse_manifest() reads it.
+            # The OS will clean up temp dirs on reboot; acceptable trade-off.
+
+    def _parse_manifest(self, manifest_path: str) -> tuple:
+        """
+        Parses imsmanifest.xml and extracts the SCORM version, launch URL, and title.
+        Returns: (scorm_version: str, launch_url: str, title: str)
+
+        Uses namespace-agnostic tag matching so it works across all authoring tools
+        regardless of the namespace URI variations they use.
+        """
+        try:
+            tree = ET.parse(manifest_path)
+            root = tree.getroot()
+        except ET.ParseError as exc:
+            raise ValidationError(f"imsmanifest.xml is not valid XML: {exc}")
+
+        # --- Detect SCORM version ---
+        version = self._detect_scorm_version(manifest_path, root)
+
+        # --- Extract title (first <title> element anywhere in the manifest) ---
+        title = ''
+        for elem in root.iter():
+            local_tag = elem.tag.split('}')[-1].lower()
+            if local_tag == 'title' and elem.text and elem.text.strip():
+                title = elem.text.strip()
+                break
+
+        # --- Find the SCO launch URL ---
+        # SCORM 1.2: <resource type="webcontent" adlcp:scormtype="sco" href="..."/>
+        # SCORM 2004: same pattern but different namespace
+        # Strategy: find the first resource with scormtype="sco"; fallback to first href
+        launch_url = ''
+        first_href = ''
+
+        for elem in root.iter():
+            local_tag = elem.tag.split('}')[-1].lower()
+            if local_tag != 'resource':
+                continue
+
+            href = elem.get('href', '')
+            # Some tools put the href in a namespaced attribute; try common variants
+            if not href:
+                for attr, val in elem.attrib.items():
+                    if attr.split('}')[-1].lower() == 'href':
+                        href = val
+                        break
+
+            if not href:
+                continue
+
+            if not first_href:
+                first_href = href
+
+            # Check scormtype attribute — could be namespaced
+            scorm_type = ''
+            for attr, val in elem.attrib.items():
+                if attr.split('}')[-1].lower() == 'scormtype':
+                    scorm_type = val.lower()
+                    break
+
+            if scorm_type == 'sco':
+                launch_url = href
+                break   # Found the SCO — no need to keep searching
+
+        if not launch_url:
+            # Fallback 1: use the first resource href found
+            launch_url = first_href
+
+        if not launch_url:
+            # Fallback 2: look for index.html in the manifest's directory
+            manifest_dir = os.path.dirname(manifest_path)
+            if os.path.exists(os.path.join(manifest_dir, 'index.html')):
+                launch_url = 'index.html'
+
+        if not launch_url:
+            raise ValidationError(
+                "Cannot determine the SCORM launch URL from imsmanifest.xml. "
+                "The package may be corrupt or non-standard."
+            )
+
+        return version, launch_url, title
+
+    @staticmethod
+    def _detect_scorm_version(manifest_path: str, root) -> str:
+        """
+        Detects SCORM version from the manifest XML content.
+        Returns one of: '1.2', '2004_2nd', '2004_3rd', '2004_4th'
+        Defaults to '1.2' when detection is ambiguous (safer assumption).
+        """
+        # Try reading from <schemaversion> element
+        for elem in root.iter():
+            if elem.tag.split('}')[-1].lower() == 'schemaversion' and elem.text:
+                v = elem.text.strip()
+                if '1.2' in v:
+                    return '1.2'
+                if '2004' in v:
+                    if '4th' in v.lower() or '4.0' in v:
+                        return '2004_4th'
+                    if '3rd' in v.lower() or '3.0' in v:
+                        return '2004_3rd'
+                    if '2nd' in v.lower() or '2.0' in v:
+                        return '2004_2nd'
+                    return '2004_4th'   # unspecified 2004 → assume latest
+
+        # Fallback: check namespace URIs in the raw file
+        try:
+            with open(manifest_path, 'r', encoding='utf-8', errors='replace') as f:
+                content = f.read(2048)   # only need the header
+            if 'adlcp_v1p3' in content or 'adlcp_rootv1p3' in content:
+                return '2004_4th'
+            if 'adlcp_rootv1p2' in content:
+                return '1.2'
+        except OSError:
+            pass
+
+        return '1.2'   # safe default
 
     @staticmethod
     def is_unoconv_available():

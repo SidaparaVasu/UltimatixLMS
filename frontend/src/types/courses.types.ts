@@ -104,13 +104,16 @@ export interface CourseLesson {
   assessment_id?: number | null;  // linked AssessmentMaster id if lesson has a quiz
 }
 
+import { ScormPackageMeta } from './scorm.types';
+
 export type CourseContentType =
   | 'VIDEO'
   | 'PDF'
   | 'PPT'
   | 'DOCUMENT'
   | 'LINK'
-  | 'QUIZ';
+  | 'QUIZ'
+  | 'SCORM';
 
 export interface CourseContent {
   id: number;
@@ -122,6 +125,7 @@ export interface CourseContent {
   file_url?: string | null;
   display_order: number;
   created_at: string;
+  scorm_package?: ScormPackageMeta;
 }
 
 export interface TagMaster {

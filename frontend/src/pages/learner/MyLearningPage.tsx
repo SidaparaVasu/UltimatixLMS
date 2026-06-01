@@ -127,7 +127,7 @@ export default function MyLearningPage() {
   const emptyState = getEmptyStateContent(activeTab);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-6">
       {/* Header */}
       <div className="mt-5 flex items-center justify-between">
         <div>

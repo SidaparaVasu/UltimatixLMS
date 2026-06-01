@@ -14,6 +14,7 @@ import { VideoPlayer } from '@/components/learner/player/VideoPlayer';
 import { DocumentViewer } from '@/components/learner/player/DocumentViewer';
 import { LinkContent } from '@/components/learner/player/LinkContent';
 import { AssessmentPlayer } from '@/components/learner/player/AssessmentPlayer';
+import { ScormPlayer } from '@/components/learner/player/ScormPlayer';
 
 interface ContentRendererProps {
   lesson: CourseLesson;
@@ -42,11 +43,13 @@ export const ContentRenderer = ({ lesson, enrollment, nextLesson }: ContentRende
   const activeContent = contents[safeIndex];
 
   // Determine if this content type should show the manual mark-complete button
-  // VIDEO handles its own completion (auto at 90%), QUIZ handles via result
+  // VIDEO handles its own completion (auto at 90%), QUIZ handles via result, SCORM handles via LMSCommit
+  // For SCORM, we also allow the manual button as a fallback if the admin enabled require_mark_complete (e.g. for non-interactive packages)
   const showMarkCompleteButton =
     !isLessonCompleted &&
     activeContent &&
-    activeContent.content_type !== 'QUIZ';
+    activeContent.content_type !== 'QUIZ' &&
+    (activeContent.content_type !== 'SCORM' || lesson.require_mark_complete);
 
   const handleMarkComplete = useCallback(() => {
     if (isLessonCompleted || !activeContent) return;
@@ -77,6 +80,7 @@ export const ContentRenderer = ({ lesson, enrollment, nextLesson }: ContentRende
       case 'DOCUMENT': return <FileText className="h-3 w-3" />;
       case 'LINK': return <LinkIcon className="h-3 w-3" />;
       case 'QUIZ': return <ClipboardList className="h-3 w-3" />;
+      case 'SCORM': return <Play className="h-3 w-3" />;
       default: return <FileText className="h-3 w-3" />;
     }
   };
@@ -89,6 +93,7 @@ export const ContentRenderer = ({ lesson, enrollment, nextLesson }: ContentRende
       case 'DOCUMENT': return 'Document';
       case 'LINK': return 'Link';
       case 'QUIZ': return 'Quiz';
+      case 'SCORM': return 'SCORM';
       default: return type;
     }
   };
@@ -195,6 +200,17 @@ export const ContentRenderer = ({ lesson, enrollment, nextLesson }: ContentRende
                   enrollment={enrollment}
                   lessonProgress={lessonProgress}
                   nextLesson={nextLesson}
+                />
+              );
+            case 'SCORM':
+              return (
+                <ScormPlayer
+                  content={activeContent}
+                  lesson={lesson}
+                  enrollment={enrollment}
+                  lessonProgress={lessonProgress}
+                  nextLesson={nextLesson}
+                  scormMeta={activeContent.scorm_package!}
                 />
               );
             default:
